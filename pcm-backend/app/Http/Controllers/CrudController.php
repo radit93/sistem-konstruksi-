@@ -109,6 +109,26 @@ class CrudController extends Controller
             'update' => 'scope.write',
             'delete' => 'scope.write',
         ]],
+        'material-receivings' => [\App\Models\MaterialReceiving::class, [
+            'create' => 'stock.write',
+            'update' => 'stock.write',
+            'delete' => 'stock.write',
+        ]],
+        'material-inspections' => [\App\Models\MaterialInspection::class, [
+            'create' => 'stock.write',
+            'update' => 'stock.write',
+            'delete' => 'stock.write',
+        ]],
+        'material-storings' => [\App\Models\MaterialStoring::class, [
+            'create' => 'stock.write',
+            'update' => 'stock.write',
+            'delete' => 'stock.write',
+        ]],
+        'material-issuings' => [\App\Models\MaterialIssuing::class, [
+            'create' => 'stock.write',
+            'update' => 'stock.write',
+            'delete' => 'stock.write',
+        ]],
     ];
 
     /**
@@ -121,6 +141,7 @@ class CrudController extends Controller
         'line-services', 'material-standards', 'welding-maps',
         'bill-of-materials', 'engineering-boqs', 'document-controls',
         'project-milestones', 'budget-items',
+        'material-receivings', 'material-inspections', 'material-storings', 'material-issuings',
     ];
 
     /**
@@ -153,6 +174,10 @@ class CrudController extends Controller
         'document-controls' => 'ENG',
         'project-milestones' => 'PMO',
         'budget-items' => 'PMO',
+        'material-receivings' => 'MAT',
+        'material-inspections' => 'MAT',
+        'material-storings' => 'MAT',
+        'material-issuings' => 'MAT',
     ];
 
     private function resolve(string $res): array

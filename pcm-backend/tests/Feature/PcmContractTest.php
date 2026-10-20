@@ -25,10 +25,42 @@ class PcmContractTest extends TestCase
         foreach ([
             'drawings', 'joints', 'stock', 'inspections', 'test-packages', 'hse', 'scopes', 'progress', 'daily-progress',
             'line-services', 'material-standards', 'welding-maps', 'bill-of-materials', 'engineering-boqs', 'document-controls',
-            'project-milestones', 'budget-items'
+            'project-milestones', 'budget-items',
+            'material-receivings', 'material-inspections', 'material-storings', 'material-issuings'
         ] as $r) {
             $this->getJson("/api/$r", ['Authorization' => "Bearer $mgr"])->assertOk()->assertJsonIsArray();
         }
+    }
+
+    public function test_material_role_writes_material_modules(): void
+    {
+        $mat = $this->token('material');
+
+        // Test receiving write
+        $rec = $this->postJson('/api/material-receivings', [
+            'arrival_date' => '2026-10-15', 'shipment_no' => 'SJ-TEST-001', 'po_no' => 'PO-TEST',
+            'vendor' => 'Test Vendor', 'item_name' => 'Test Pipe', 'description' => 'Test Pipe Desc',
+            'specification' => 'ASTM A106', 'size' => '4"', 'heat_no' => 'HT-TEST-01', 'qty' => 10,
+        ], ['Authorization' => "Bearer $mat"])->assertCreated()->json();
+        $this->assertSame('SJ-TEST-001', $rec['shipment_no']);
+        \App\Models\MaterialReceiving::where('shipment_no', 'SJ-TEST-001')->delete();
+
+        // Test storing write
+        $stk = $this->postJson('/api/material-storings', [
+            'item_code' => 'MAT-TEST-01', 'item_name' => 'Test Storing Item', 'category' => 'PIPE',
+            'specification' => 'ASTM A106', 'size' => '4"', 'storage_type' => 'OPEN_YARD',
+            'location_detail' => 'Laydown Test', 'stock_in' => 10, 'balance' => 10,
+        ], ['Authorization' => "Bearer $mat"])->assertCreated()->json();
+        $this->assertSame('MAT-TEST-01', $stk['item_code']);
+        \App\Models\MaterialStoring::where('item_code', 'MAT-TEST-01')->delete();
+
+        // Test issuing write
+        $iss = $this->postJson('/api/material-issuings', [
+            'issue_date' => '2026-10-16', 'issue_no' => 'MIS-TEST-001', 'requestor' => 'Test Requestor',
+            'item_name' => 'Test Pipe', 'specification' => 'ASTM A106', 'size' => '4"', 'qty' => 2,
+        ], ['Authorization' => "Bearer $mat"])->assertCreated()->json();
+        $this->assertSame('MIS-TEST-001', $iss['issue_no']);
+        \App\Models\MaterialIssuing::where('issue_no', 'MIS-TEST-001')->delete();
     }
 
     public function test_project_manager_writes_milestone_and_budget(): void

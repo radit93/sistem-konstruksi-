@@ -1,0 +1,458 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\Project;
+use App\Models\Department;
+use App\Models\MaterialReceiving;
+use App\Models\MaterialInspection;
+use App\Models\MaterialStoring;
+use App\Models\MaterialIssuing;
+
+class MaterialSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $matDept = Department::where('code', 'MAT')->first();
+        $deptId = $matDept ? $matDept->id : null;
+        $proj = Project::first();
+        $projId = $proj ? $proj->id : null;
+
+        // 1. Material Receiving (MAT-000 / MAT-006)
+        $receivings = [
+            [
+                'arrival_date' => '2026-10-05',
+                'shipment_no' => 'SJ-SPN-8842',
+                'po_no' => 'PO-2428-MAT-001',
+                'vendor' => 'PT Seamless Pipe Nusantara',
+                'item_name' => 'Pipe Seamless Carbon Steel',
+                'description' => 'Pipe Seamless BE ASTM A106 Gr. B 4" Sch 40',
+                'specification' => 'ASTM A106 Gr. B',
+                'size' => '4"',
+                'schedule_rating' => 'Sch 40',
+                'heat_no' => 'HT-99421A',
+                'mtc_no' => 'MTC-SPN-2026-101',
+                'qty' => 120.00,
+                'unit' => 'meter',
+                'storage_type' => 'OPEN_YARD',
+                'storage_location' => 'Laydown Yard Bay 01',
+                'status' => 'ACCEPTED',
+                'remarks' => 'Material tiba lengkap dengan cap sertifikat pabrik & bevel protector utuh.',
+            ],
+            [
+                'arrival_date' => '2026-10-06',
+                'shipment_no' => 'SJ-SPN-8849',
+                'po_no' => 'PO-2428-MAT-001',
+                'vendor' => 'PT Seamless Pipe Nusantara',
+                'item_name' => 'Pipe Seamless Stainless Steel',
+                'description' => 'Pipe Seamless Plain End ASTM A312 TP304 2" Sch 80',
+                'specification' => 'ASTM A312 TP304',
+                'size' => '2"',
+                'schedule_rating' => 'Sch 80',
+                'heat_no' => 'HT-77218B',
+                'mtc_no' => 'MTC-SPN-2026-108',
+                'qty' => 60.00,
+                'unit' => 'meter',
+                'storage_type' => 'OPEN_YARD',
+                'storage_location' => 'Laydown Yard Bay 02',
+                'status' => 'ACCEPTED',
+                'remarks' => 'Disimpan di atas dunnage kayu bertutup terpal anti kontaminasi.',
+            ],
+            [
+                'arrival_date' => '2026-10-08',
+                'shipment_no' => 'SJ-VFP-1092',
+                'po_no' => 'PO-2428-MAT-002',
+                'vendor' => 'PT Valve & Fitting Perkasa',
+                'item_name' => '90 Deg Elbow BW',
+                'description' => '90 Deg LR Elbow BW ASTM A234 WPB 4" Sch 40',
+                'specification' => 'ASTM A234 WPB',
+                'size' => '4"',
+                'schedule_rating' => 'Sch 40',
+                'heat_no' => 'HT-55102C',
+                'mtc_no' => 'MTC-VFP-2026-55',
+                'qty' => 24.00,
+                'unit' => 'pcs',
+                'storage_type' => 'WAREHOUSE',
+                'storage_location' => 'Warehouse Rack A-02',
+                'status' => 'ACCEPTED',
+                'remarks' => 'Pemeriksaan visual bevel & ketebalan dinding sesuai toleransi ASME B16.9.',
+            ],
+            [
+                'arrival_date' => '2026-10-08',
+                'shipment_no' => 'SJ-VFP-1094',
+                'po_no' => 'PO-2428-MAT-002',
+                'vendor' => 'PT Valve & Fitting Perkasa',
+                'item_name' => 'Flange WNRF 150#',
+                'description' => 'Weld Neck Raised Face Flange ASTM A105 4" Class 150',
+                'specification' => 'ASTM A105',
+                'size' => '4"',
+                'schedule_rating' => '150# RF',
+                'heat_no' => 'HT-44190D',
+                'mtc_no' => 'MTC-VFP-2026-58',
+                'qty' => 16.00,
+                'unit' => 'pcs',
+                'storage_type' => 'WAREHOUSE',
+                'storage_location' => 'Warehouse Rack B-01',
+                'status' => 'ACCEPTED',
+                'remarks' => 'Serrated spiral finish pada flange face kondisi prima tanpa goresan.',
+            ],
+            [
+                'arrival_date' => '2026-10-10',
+                'shipment_no' => 'SJ-VFP-1105',
+                'po_no' => 'PO-2428-MAT-002',
+                'vendor' => 'PT Valve & Fitting Perkasa',
+                'item_name' => 'Gate Valve 150# RF',
+                'description' => 'Gate Valve OS&Y Rising Stem Body ASTM A216 WCB Trim 8 4" 150#',
+                'specification' => 'ASTM A216 WCB',
+                'size' => '4"',
+                'schedule_rating' => '150# RF',
+                'heat_no' => 'HT-88201E',
+                'mtc_no' => 'MTC-VFP-2026-72',
+                'qty' => 6.00,
+                'unit' => 'pcs',
+                'storage_type' => 'WAREHOUSE',
+                'storage_location' => 'Warehouse Valve Bay C-01',
+                'status' => 'ACCEPTED',
+                'remarks' => 'End flange cover terpasang, handwheel dan stem berpelumas baik.',
+            ],
+            [
+                'arrival_date' => '2026-10-11',
+                'shipment_no' => 'SJ-SI-5521',
+                'po_no' => 'PO-2428-MAT-003',
+                'vendor' => 'PT Steel Indotech',
+                'item_name' => 'Stud Bolts & Nuts',
+                'description' => 'Stud Bolt with 2 Heavy Hex Nuts ASTM A193 B7 / A194 2H 5/8" x 90mm',
+                'specification' => 'ASTM A193 B7 / A194 2H',
+                'size' => '5/8" x 90mm',
+                'schedule_rating' => 'UNC Heavy',
+                'heat_no' => 'HT-11920F',
+                'mtc_no' => 'MTC-SI-2026-310',
+                'qty' => 128.00,
+                'unit' => 'set',
+                'storage_type' => 'WAREHOUSE',
+                'storage_location' => 'Warehouse Bin Fastener D-03',
+                'status' => 'ACCEPTED',
+                'remarks' => 'Pelapisan anti karat hitam (black phosphate) bersih & rapi.',
+            ],
+            [
+                'arrival_date' => '2026-10-11',
+                'shipment_no' => 'SJ-SI-5525',
+                'po_no' => 'PO-2428-MAT-003',
+                'vendor' => 'PT Steel Indotech',
+                'item_name' => 'Spiral Wound Gasket',
+                'description' => 'Spiral Wound Gasket SS316 with Graphite Filler & Inner Ring 4" 150#',
+                'specification' => 'ASME B16.20 SS316',
+                'size' => '4"',
+                'schedule_rating' => '150#',
+                'heat_no' => 'HT-33019G',
+                'mtc_no' => 'MTC-SI-2026-315',
+                'qty' => 32.00,
+                'unit' => 'pcs',
+                'storage_type' => 'WAREHOUSE',
+                'storage_location' => 'Warehouse Shelf Gasket E-01',
+                'status' => 'ACCEPTED',
+                'remarks' => 'Tersimpan rata tanpa beban tumpuk berlebih untuk menjaga kerapatan spiral.',
+            ],
+        ];
+
+        $createdReceivings = [];
+        foreach ($receivings as $item) {
+            $createdReceivings[] = MaterialReceiving::updateOrCreate(
+                ['shipment_no' => $item['shipment_no'], 'heat_no' => $item['heat_no']],
+                array_merge($item, [
+                    'project_id' => $projId,
+                    'department_id' => $deptId,
+                ])
+            );
+        }
+
+        // 2. Material Inspection (MAT-001 / MAT-007)
+        $inspections = [
+            [
+                'material_receiving_id' => $createdReceivings[0]->id,
+                'report_no' => 'MIR-2428-001',
+                'inspection_date' => '2026-10-06',
+                'inspector_name' => 'Budi Santoso (QC Inspector)',
+                'item_name' => 'Pipe Seamless Carbon Steel 4" Sch 40',
+                'heat_no' => 'HT-99421A',
+                'visual_check' => 'PASS',
+                'dimension_check' => 'PASS',
+                'mtc_check' => 'PASS',
+                'result' => 'ACCEPTED',
+                'ncr_no' => null,
+                'notes' => 'Tebal dinding 6.02 mm (nominal 6.02 mm). Hardness & tensile test MTC lolos spek ASTM A106.',
+            ],
+            [
+                'material_receiving_id' => $createdReceivings[1]->id,
+                'report_no' => 'MIR-2428-002',
+                'inspection_date' => '2026-10-07',
+                'inspector_name' => 'Budi Santoso (QC Inspector)',
+                'item_name' => 'Pipe Seamless SS304 2" Sch 80',
+                'heat_no' => 'HT-77218B',
+                'visual_check' => 'PASS',
+                'dimension_check' => 'PASS',
+                'mtc_check' => 'PASS',
+                'result' => 'ACCEPTED',
+                'ncr_no' => null,
+                'notes' => 'PMI test konfirmasi komposisi Cr 18.2%, Ni 8.1%. Permukaan mulus tanpa goresan.',
+            ],
+            [
+                'material_receiving_id' => $createdReceivings[2]->id,
+                'report_no' => 'MIR-2428-003',
+                'inspection_date' => '2026-10-09',
+                'inspector_name' => 'Rahmat Hidayat (QC Inspector)',
+                'item_name' => '90 Deg LR Elbow BW 4" Sch 40',
+                'heat_no' => 'HT-55102C',
+                'visual_check' => 'PASS',
+                'dimension_check' => 'PASS',
+                'mtc_check' => 'PASS',
+                'result' => 'ACCEPTED',
+                'ncr_no' => null,
+                'notes' => 'Sudut lengkung 90° tepat, ovalitas di bawah batas maksimum 1.5%.',
+            ],
+            [
+                'material_receiving_id' => $createdReceivings[3]->id,
+                'report_no' => 'MIR-2428-004',
+                'inspection_date' => '2026-10-09',
+                'inspector_name' => 'Rahmat Hidayat (QC Inspector)',
+                'item_name' => 'Flange WNRF ASTM A105 4" 150#',
+                'heat_no' => 'HT-44190D',
+                'visual_check' => 'PASS',
+                'dimension_check' => 'PASS',
+                'mtc_check' => 'PASS',
+                'result' => 'ACCEPTED',
+                'ncr_no' => null,
+                'notes' => 'Pitch diameter bolt hole & raised face height 1.6mm sesuai standar ASME B16.5.',
+            ],
+            [
+                'material_receiving_id' => $createdReceivings[4]->id,
+                'report_no' => 'MIR-2428-005',
+                'inspection_date' => '2026-10-11',
+                'inspector_name' => 'Budi Santoso (QC Inspector)',
+                'item_name' => 'Gate Valve OS&Y A216 WCB 4" 150#',
+                'heat_no' => 'HT-88201E',
+                'visual_check' => 'PASS',
+                'dimension_check' => 'PASS',
+                'mtc_check' => 'PASS',
+                'result' => 'ACCEPTED',
+                'ncr_no' => null,
+                'notes' => 'Seat tightness hydrostatic test certificate terlampir dari pabrik pembuat.',
+            ],
+        ];
+
+        foreach ($inspections as $insp) {
+            MaterialInspection::updateOrCreate(
+                ['report_no' => $insp['report_no']],
+                array_merge($insp, [
+                    'project_id' => $projId,
+                    'department_id' => $deptId,
+                ])
+            );
+        }
+
+        // 3. Material Storing / Stock Inventory (MAT-002, 003, 004 / MAT-008, 009, 010)
+        $storings = [
+            [
+                'item_code' => 'MAT-STK-001',
+                'item_name' => 'Pipe Seamless Carbon Steel 4" Sch 40',
+                'category' => 'PIPE',
+                'specification' => 'ASTM A106 Gr. B',
+                'size' => '4"',
+                'schedule_rating' => 'Sch 40',
+                'storage_type' => 'OPEN_YARD',
+                'location_detail' => 'Laydown Yard Bay 01 (Rack P-01)',
+                'stock_in' => 120.00,
+                'stock_out' => 24.80,
+                'balance' => 95.20,
+                'unit' => 'meter',
+                'min_stock_alert' => 20.00,
+                'mapping_doc_url' => '/docs/mapping-laydown-yard.pdf',
+            ],
+            [
+                'item_code' => 'MAT-STK-002',
+                'item_name' => 'Pipe Seamless Stainless Steel 2" Sch 80',
+                'category' => 'PIPE',
+                'specification' => 'ASTM A312 TP304',
+                'size' => '2"',
+                'schedule_rating' => 'Sch 80',
+                'storage_type' => 'OPEN_YARD',
+                'location_detail' => 'Laydown Yard Bay 02 (Rack P-04)',
+                'stock_in' => 60.00,
+                'stock_out' => 8.40,
+                'balance' => 51.60,
+                'unit' => 'meter',
+                'min_stock_alert' => 15.00,
+                'mapping_doc_url' => '/docs/mapping-laydown-yard.pdf',
+            ],
+            [
+                'item_code' => 'MAT-STK-003',
+                'item_name' => '90 Deg LR Elbow BW 4" Sch 40',
+                'category' => 'FITTING',
+                'specification' => 'ASTM A234 WPB',
+                'size' => '4"',
+                'schedule_rating' => 'Sch 40',
+                'storage_type' => 'WAREHOUSE',
+                'location_detail' => 'Warehouse Rack A-02 Shelf 1',
+                'stock_in' => 24.00,
+                'stock_out' => 6.00,
+                'balance' => 18.00,
+                'unit' => 'pcs',
+                'min_stock_alert' => 4.00,
+                'mapping_doc_url' => '/docs/mapping-warehouse.pdf',
+            ],
+            [
+                'item_code' => 'MAT-STK-004',
+                'item_name' => 'Weld Neck Flange 4" 150# RF',
+                'category' => 'FLANGE',
+                'specification' => 'ASTM A105',
+                'size' => '4"',
+                'schedule_rating' => '150# RF',
+                'storage_type' => 'WAREHOUSE',
+                'location_detail' => 'Warehouse Rack B-01 Shelf 2',
+                'stock_in' => 16.00,
+                'stock_out' => 4.00,
+                'balance' => 12.00,
+                'unit' => 'pcs',
+                'min_stock_alert' => 4.00,
+                'mapping_doc_url' => '/docs/mapping-warehouse.pdf',
+            ],
+            [
+                'item_code' => 'MAT-STK-005',
+                'item_name' => 'Gate Valve OS&Y 4" 150# RF',
+                'category' => 'VALVE',
+                'specification' => 'ASTM A216 WCB Trim 8',
+                'size' => '4"',
+                'schedule_rating' => '150# RF',
+                'storage_type' => 'WAREHOUSE',
+                'location_detail' => 'Warehouse Valve Bay C-01',
+                'stock_in' => 6.00,
+                'stock_out' => 1.00,
+                'balance' => 5.00,
+                'unit' => 'pcs',
+                'min_stock_alert' => 2.00,
+                'mapping_doc_url' => '/docs/mapping-warehouse.pdf',
+            ],
+            [
+                'item_code' => 'MAT-STK-006',
+                'item_name' => 'Stud Bolt with 2 Nuts 5/8" x 90mm',
+                'category' => 'FASTENER',
+                'specification' => 'ASTM A193 B7 / A194 2H',
+                'size' => '5/8" x 90mm',
+                'schedule_rating' => 'UNC',
+                'storage_type' => 'WAREHOUSE',
+                'location_detail' => 'Warehouse Bin Fastener D-03',
+                'stock_in' => 128.00,
+                'stock_out' => 32.00,
+                'balance' => 96.00,
+                'unit' => 'set',
+                'min_stock_alert' => 24.00,
+                'mapping_doc_url' => '/docs/mapping-warehouse.pdf',
+            ],
+            [
+                'item_code' => 'MAT-STK-007',
+                'item_name' => 'Spiral Wound Gasket 4" 150# RF',
+                'category' => 'GASKET',
+                'specification' => 'ASME B16.20 SS316/Graphite',
+                'size' => '4"',
+                'schedule_rating' => '150#',
+                'storage_type' => 'WAREHOUSE',
+                'location_detail' => 'Warehouse Shelf Gasket E-01',
+                'stock_in' => 32.00,
+                'stock_out' => 4.00,
+                'balance' => 28.00,
+                'unit' => 'pcs',
+                'min_stock_alert' => 8.00,
+                'mapping_doc_url' => '/docs/mapping-warehouse.pdf',
+            ],
+        ];
+
+        foreach ($storings as $stk) {
+            MaterialStoring::updateOrCreate(
+                ['item_code' => $stk['item_code']],
+                array_merge($stk, [
+                    'project_id' => $projId,
+                    'department_id' => $deptId,
+                ])
+            );
+        }
+
+        // 4. Material Issuing (MAT-005 / MAT-011)
+        $issuings = [
+            [
+                'issue_date' => '2026-10-12',
+                'issue_no' => 'MIS-2428-001',
+                'requestor' => 'Workshop Spool Fab - Team A (Foreman Sukardi)',
+                'target_spool_no' => 'SP-01',
+                'target_line_no' => '15-MPP-AB',
+                'drawing_no' => '2428-M-15-MPP-AB-SHT1',
+                'item_name' => 'Pipe Seamless CS 4" Sch 40',
+                'specification' => 'ASTM A106 Gr. B',
+                'size' => '4"',
+                'qty' => 6.20,
+                'unit' => 'meter',
+                'heat_no' => 'HT-99421A',
+                'issued_by' => 'Material Control (Agus W.)',
+                'remarks' => 'Dikeluarkan untuk pemotongan pipa & beveling spool SP-01 Joint W-001 & W-002.',
+            ],
+            [
+                'issue_date' => '2026-10-12',
+                'issue_no' => 'MIS-2428-002',
+                'requestor' => 'Workshop Spool Fab - Team A (Foreman Sukardi)',
+                'target_spool_no' => 'SP-01',
+                'target_line_no' => '15-MPP-AB',
+                'drawing_no' => '2428-M-15-MPP-AB-SHT1',
+                'item_name' => '90 Deg LR Elbow BW 4" Sch 40',
+                'specification' => 'ASTM A234 WPB',
+                'size' => '4"',
+                'qty' => 2.00,
+                'unit' => 'pcs',
+                'heat_no' => 'HT-55102C',
+                'issued_by' => 'Material Control (Agus W.)',
+                'remarks' => 'Fit-up fitting elbow untuk spool SP-01 joint W-002 & W-003.',
+            ],
+            [
+                'issue_date' => '2026-10-13',
+                'issue_no' => 'MIS-2428-003',
+                'requestor' => 'Workshop Spool Fab - Team A (Foreman Sukardi)',
+                'target_spool_no' => 'SP-01',
+                'target_line_no' => '15-MPP-AB',
+                'drawing_no' => '2428-M-15-MPP-AB-SHT1',
+                'item_name' => 'Weld Neck Flange 4" 150# RF',
+                'specification' => 'ASTM A105',
+                'size' => '4"',
+                'qty' => 1.00,
+                'unit' => 'pcs',
+                'heat_no' => 'HT-44190D',
+                'issued_by' => 'Material Control (Agus W.)',
+                'remarks' => 'Terminasi flange spool SP-01 joint W-001 (ujung sambungan tie-in).',
+            ],
+            [
+                'issue_date' => '2026-10-14',
+                'issue_no' => 'MIS-2428-004',
+                'requestor' => 'Workshop Spool Fab - Team B (Foreman Hendra)',
+                'target_spool_no' => 'SP-02',
+                'target_line_no' => '15-MPP-AB',
+                'drawing_no' => '2428-M-15-MPP-AB-SHT1',
+                'item_name' => 'Pipe Seamless CS 4" Sch 40',
+                'specification' => 'ASTM A106 Gr. B',
+                'size' => '4"',
+                'qty' => 8.40,
+                'unit' => 'meter',
+                'heat_no' => 'HT-99421A',
+                'issued_by' => 'Material Control (Agus W.)',
+                'remarks' => 'Pemotongan & persiapan perakitan spool SP-02 joint W-005, W-006, W-007.',
+            ],
+        ];
+
+        foreach ($issuings as $iss) {
+            MaterialIssuing::updateOrCreate(
+                ['issue_no' => $iss['issue_no']],
+                array_merge($iss, [
+                    'project_id' => $projId,
+                    'department_id' => $deptId,
+                ])
+            );
+        }
+    }
+}

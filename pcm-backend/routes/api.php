@@ -39,7 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/roles/{role}/permissions', [PermissionController::class, 'sync'])->middleware('permission:access.update');
     });
 
-    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|budget-items';
+    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|budget-items|material-receivings|material-inspections|material-storings|material-issuings';
     Route::get('/overview', [CrudController::class, 'overview']);
     Route::get('/{res}', [CrudController::class, 'index'])->where('res', $resRegex);
     Route::get('/{res}/{id}', [CrudController::class, 'show'])->where('res', $resRegex);

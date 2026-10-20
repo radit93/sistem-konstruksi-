@@ -17,6 +17,12 @@ export const OPERATIONAL_MENU_IDS = [
     'pm_milestone',
     'report',
     'material',
+    'mat_receiving',
+    'mat_inspection',
+    'mat_storing',
+    'mat_warehouse',
+    'mat_openyard',
+    'mat_issuing',
     'fabrication',
     'erection',
     'qaqc',
@@ -43,7 +49,14 @@ export const DEPARTMENT_MENUS = {
         'material_standard',
         'document_control'
     ],
-    MAT: ['material'],
+    MAT: [
+        'mat_receiving',
+        'mat_inspection',
+        'mat_storing',
+        'mat_warehouse',
+        'mat_openyard',
+        'mat_issuing'
+    ],
     CONS: ['fabrication', 'erection'],
     QAQC: ['qaqc', 'testpackage'],
     HSE: ['hse']
@@ -107,10 +120,46 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Riwayat Revisi & Surat Transmittal'
     },
     {
-        id: 'material',
-        label: 'Material Control',
+        id: 'mat_receiving',
+        label: 'Material Receiving',
         perm: 'stock.view',
-        desc: 'Kontrol Stok Pipa & Heat No'
+        group: 'Material Control',
+        desc: 'Penerimaan Material, Packing List & Surat Jalan'
+    },
+    {
+        id: 'mat_inspection',
+        label: 'Material Inspection',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Hold Point Verifikasi QC, Visual, Dimensi, MTC'
+    },
+    {
+        id: 'mat_storing',
+        label: 'Material Storing',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Rekap Saldo Stok, Safety Stock & Denah PDF'
+    },
+    {
+        id: 'mat_warehouse',
+        label: 'Warehousing (Indoor)',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Penyimpanan Tertutup: Valve, Flange, Gasket, Fastener'
+    },
+    {
+        id: 'mat_openyard',
+        label: 'Open Yard Storage',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Penyimpanan Terbuka: Pipa Batangan CS/SS & Spool'
+    },
+    {
+        id: 'mat_issuing',
+        label: 'Material Issuing',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Distribusi Pengeluaran Material ke Workshop/Spool Fab'
     },
     {
         id: 'fabrication',

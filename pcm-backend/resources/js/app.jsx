@@ -354,13 +354,14 @@ function App() {
                             }}
                         />
                     )}
-                    {activeTab === 'material' && (
+                    {['material', 'mat_receiving', 'mat_inspection', 'mat_storing', 'mat_warehouse', 'mat_openyard', 'mat_issuing'].includes(activeTab) && (
                         <MaterialTab
+                            currentSection={activeTab}
                             stockMoves={stockMoves}
                             user={user}
                             onReload={() => {
                                 loadData();
-                                showToast('Data Mutasi Material diperbarui');
+                                showToast('Data Material Control diperbarui');
                             }}
                         />
                     )}

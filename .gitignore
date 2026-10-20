@@ -1,0 +1,42 @@
+# Binaries & local database runtime
+mariadbd
+mysql-data/
+mysql.sock
+mysql.pid
+
+# Logs
+*.log
+laravel_serve.log
+mysql.log
+db-admin.log
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+pcm-backend/.env
+pcm-backend/.env.*
+!pcm-backend/.env.example
+
+# Dependencies & caches
+node_modules/
+vendor/
+pcm-backend/node_modules/
+pcm-backend/vendor/
+.phpunit.result.cache
+pcm-backend/.phpunit.result.cache
+
+# Framework temporary storage
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/testing/*
+pcm-backend/storage/logs/*
+pcm-backend/storage/framework/cache/*
+pcm-backend/storage/framework/sessions/*
+pcm-backend/storage/framework/views/*
+pcm-backend/storage/framework/testing/*
+
+# Screenshots
+screenshots/

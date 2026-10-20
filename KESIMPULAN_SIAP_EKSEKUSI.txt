@@ -1,0 +1,63 @@
+KESIMPULAN SIAP EKSEKUSI - DASHBOARD PCM PIPING
+12 Okt 2026. Acuan penuh: ANALISIS.txt (bagian A sampai I).
+
+1. TUJUAN AKHIR
+Satu dashboard web via internet untuk banyak user Windows (cukup
+browser, tanpa install). Role: manager, engineer, material,
+construction, qaqc, testpackage, hse. Semua input PIC mengalir ke
+satu Overview manager + laporan satu klik.
+
+2. KEPUTUSAN TECH FINAL
+Backend: Laravel 11 API + Auth Sanctum, 7 role.
+Frontend: React via Vite + Inertia di DALAM Laravel (monolit, bukan
+SPA terpisah). Alasan: migrasi cPanel shared hosting hanya punya
+1 document root, tanpa Node build, tanpa supervisor. Monolit =
+1 repo, 1 deploy, tanpa CORS, tanpa 2 domain.
+Database: MySQL/MariaDB, 8 tabel + daily_progress (lihat ANALISIS
+bagian E, kunci drawing_no + seq joint).
+DB admin: phpMyAdmin bawaan cPanel.
+File: scan PDF iso + foto QC di storage/app/public (symlink sekali).
+Kulit UI: pola template Acorn (Dashboard, List+Detail, Invoice,
+Calendar), isi toko online dibuang. Chart.js, datatables, dropzone,
+fullcalendar dipakai ulang dari pola Acorn.
+Realtime: polling 30 detik + tombol refresh (tanpa websocket, agar
+jalan di shared hosting).
+
+3. MENU (9 modul, tidak berubah dari analisis)
+Overview | Engineering | Material | Shop Fabrication |
+Field Erection | QA-QC | Test Package | HSE | Schedule | Laporan.
+Tulis per role, baca semua role. Detail tiap modul: ANALISIS C.
+
+4. FLOW (7 alur, tulang punggung tetap 1)
+Joint: RECEIVED - ISSUED - FITUP_OK - WELDED - VISUAL_OK - NDT_OK -
+TESTED - REINSTATED. Pindah status hanya oleh role pemilik.
+Drawing+scan, material berstandar, QC nilai kualitas, test package
+ready check, HSE+schedule, laporan manager. Detail: ANALISIS D.
+
+5. DATA AWAL
+Seed dari Excel: 28 joint traceability (iso 2428-M-15-MPP-AB-SHT1)
++ 18 scope kontrak + BOQ. Baseline kontrak configurable sampai
+diputuskan (default tampil dua versi agar bisa dipilih di UI).
+
+6. STRATEGI CPANEL (migrasi tanpa rombak)
+Deploy: isi public_html = folder public Laravel; React hasil build
+Vite jadi asset statis; route /api Laravel biasa; import .sql via
+phpMyAdmin; cron cPanel untuk scheduler; symlink storage sekali.
+URL jadi https://domain/api. Tanya provider dulu: PHP 8.2+,
+limit upload 20MB+, symlink diizinkan, kuota PDF, jml database.
+
+7. TAHAP EKSEKUSI (3 tahap, tiap tahap 1 verifikasi)
+Tahap 1: monolit Laravel+Inertia+MySQL, login 7 role, import seed.
+Verifikasi: tiap role login, seed 28 joint tampil.
+Tahap 2: 9 form modul + upload PDF/foto + alur status joint.
+Verifikasi: input per PIC masuk, status berpindah benar.
+Tahap 3: Overview manager (S-curve, budget vs actual, antrian QC,
+readiness) + export CSV/PDF + deploy cPanel.
+Verifikasi: build lolos, akses via browser Windows, manager lihat
+angka benar.
+
+8. YANG MASIH PERLU JAWABAN SAAT EKSEKUSI (bukan sekarang)
+Baseline 333.497 DI atau 151.018 DI; satuan Rp atau USD;
+VPS/cPanel/demo-tunnel; nama domain; seed demo ya/tidak.
+
+STATUS: SIAP. Menunggu aba-aba GAS. Belum ada kode aplikasi ditulis.

@@ -1,0 +1,1736 @@
+/* Hallmark · macrostructure: Workbench · theme: Acorn-Blue · tone: utilitarian
+ * Button Equalizer & Multi-Role Layout Styles
+ */
+
+/* ==========================================================================
+   PCM Piping Suite 2428 - Standardized Button Sizing
+   Ratakan ukuran semua button di dashboard agar seragam, rapi, dan konsisten
+   ========================================================================== */
+
+/* 1. Standard Button Size (Tinggi 42px) untuk Semua Action Button & Modal */
+.btn-sm,
+button.btn-sm,
+.btn-pcm-action,
+.page-title-container .btn,
+.card-header .btn,
+.modal-footer .btn {
+    height: 42px !important;
+    min-height: 42px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 18px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+    gap: 6px !important;
+}
+
+/* 2. Compact Table Action Buttons (Tinggi 32px) untuk Aksi Baris Tabel */
+.table .btn,
+.table button,
+.btn-table-action {
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 12px !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    gap: 4px !important;
+}
+
+/* 3. Close Buttons Modal Tetap Presisi Sesuai Standar Bootstrap */
+.btn-close {
+    height: auto !important;
+    min-height: auto !important;
+    padding: 0.5rem !important;
+    width: auto !important;
+}
+
+/* ==========================================================================
+   SIDEBAR BIRU DENGAN MENU PUTIH BERKONTRAS TINGGI & NON-ROUNDED
+   - Latar belakang sidebar solid BIRU (#1e40af)
+   - Menu-menunya PUTIH (#ffffff)
+   - Menu aktif berlatar belakang PUTIH murni (#ffffff) dengan teks biru pekat (#1e40af)
+   - Menu tidak aktif memiliki teks PUTIH bersih (#ffffff)
+   - Seluruh elemen 0px border-radius (non-rounded)
+   - Role lain dihapus total saat login
+   ========================================================================== */
+#nav,
+.nav-container,
+.nav-content {
+    background-color: #1e40af !important;
+    background: #1e40af !important;
+    border-radius: 0 !important;
+}
+
+#nav {
+    border-right: 1px solid #1d4ed8 !important;
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+.nav-shadow {
+    display: none !important;
+}
+
+#nav,
+.nav-container,
+.nav-content,
+.nav-shadow,
+#nav *,
+.menu-container,
+.menu,
+.menu li,
+.menu li a,
+.menu li a.active,
+.menu li a:hover,
+.nav-logout-container,
+.nav-logout-container .btn,
+.nav-logout-container button {
+    border-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+/* Container Sidebar - Rapat ke Atas */
+html[data-placement=vertical] .nav-container .nav-content {
+    background-color: #1e40af !important;
+    background: #1e40af !important;
+    border-radius: 0 !important;
+    padding-top: 1rem !important;
+    align-items: stretch !important;
+}
+
+/* Logo Sementara: Putih Bersih di Latar Biru */
+html[data-placement=vertical] .nav-container .nav-content .logo {
+    background-color: #1e40af !important;
+    background: #1e40af !important;
+    margin-bottom: 0.75rem !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    text-align: left !important;
+}
+
+html[data-placement=vertical] .nav-container .nav-content .logo .img,
+html[data-placement=vertical] .nav-container .logo .img {
+    filter: brightness(0) invert(1) !important;
+}
+
+/* Menu Container: Di Bawah Logo Tanpa Jeda Besar */
+html[data-placement=vertical] .nav-container .nav-content .menu-container {
+    background-color: #1e40af !important;
+    background: #1e40af !important;
+    order: 1 !important;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.5rem !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+/* Label kelompok menu, hanya untuk superadmin (Operasional / Administrasi). */
+html[data-placement=vertical] .nav-container .nav-content .menu-container .menu li.pcm-menu-group {
+    padding: 0.5rem 1rem 0.25rem !important;
+    margin: 0 !important;
+    border-bottom: 0 !important;
+    background: #1e40af !important;
+    font-size: 0.625rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Superadmin punya 15 menu: daftar bisa digulir. Fade di tepi bawah menandakan
+   masih ada menu lain, jadi baris yang terpotong tidak terbaca sebagai bug. */
+html[data-placement=vertical] .nav-container .nav-content .menu-container {
+    min-height: 0 !important;
+    overscroll-behavior: contain;
+}
+
+html[data-placement=vertical] .nav-container .nav-content .menu-container::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 10px;
+    bottom: 0;
+    height: 22px;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(30, 64, 175, 0), #1e40af);
+}
+
+html[data-placement=vertical] .nav-container .nav-content .menu-container .menu,
+html[data-placement=vertical] .nav-container .menu-container .menu {
+    display: flex !important;
+    flex-direction: column !important;
+    background-color: #1e40af !important;
+    background: #1e40af !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+}
+
+html[data-placement=vertical] .nav-container .nav-content .menu-container .menu li {
+    background-color: #1e40af !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-placement=vertical] .nav-container .nav-content .menu-container .menu li a {
+    border-radius: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    background: transparent !important;
+    border-left: 4px solid transparent !important;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+}
+
+html[data-placement=vertical] .nav-container .nav-content .menu-container .menu li a .label {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+html[data-placement=vertical] .nav-container .nav-content .menu-container .menu li a:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+    border-left-color: #ffffff !important;
+}
+
+html[data-placement=vertical] .nav-container .nav-content .menu-container .menu li a:hover .label {
+    color: #ffffff !important;
+}
+
+/* Menu Aktif: Senada Biru Sidebar (#1d4ed8) dengan Teks Putih Bersih */
+html[data-placement=vertical] .nav-container .nav-content .menu-container .menu li a.active {
+    background: #1d4ed8 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border-left-color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+html[data-placement=vertical] .nav-container .nav-content .menu-container .menu li a.active .label {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+/* Tombol Logout di Sidebar */
+.nav-logout-container {
+    order: 10 !important;
+    margin-top: auto !important;
+    background: #1e40af !important;
+    border-radius: 0 !important;
+    padding: 0.75rem 1rem !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.nav-logout-container .btn {
+    width: 100% !important;
+    border-radius: 0 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    font-size: 0.875rem !important;
+    background: #ffffff !important;
+    border: 1px solid #ffffff !important;
+    color: #dc2626 !important;
+}
+
+.nav-logout-container .btn:hover {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+}
+
+/* ==========================================================================
+   PCM DESIGN TOKENS
+   --------------------------------------------------------------------------
+   Locked values for the PCM modules. Reason for every value is written in
+   DESIGN.md (rule R-31). Palette limit, radius scale and elevation scale are
+   enforced here so modules do not invent their own (R-01, R-11, R-12, R-29).
+   ========================================================================== */
+:root {
+    /* Brand accent: matches the existing sidebar blue (#1e40af / #1d4ed8) */
+    --pcm-primary: #1d4ed8;
+    --pcm-primary-dark: #1e40af;
+    --pcm-primary-soft: #eff6ff;
+    --pcm-primary-line: #bfdbfe;
+
+    /* Identity band: the established navy, shared with the Overview page */
+    --pcm-navy: #0d3b66;
+    --pcm-navy-deep: #001e3d;
+
+    /* Neutrals */
+    --pcm-ink: #0f172a;
+    --pcm-body: #334155;
+    --pcm-muted: #64748b;
+    --pcm-line: #e2e8f0;
+    --pcm-line-soft: #f1f5f9;
+    --pcm-surface: #ffffff;
+    --pcm-canvas: #f8fafc;
+
+    /* Semantic status. Used only for real state, never decoration */
+    --pcm-success: #15803d;
+    --pcm-success-soft: #f0fdf4;
+    --pcm-success-line: #bbf7d0;
+    --pcm-warning: #b45309;
+    --pcm-warning-soft: #fffbeb;
+    --pcm-warning-line: #fde68a;
+    --pcm-warning-ink: #78350f;
+    --pcm-danger: #b91c1c;
+    --pcm-danger-soft: #fef2f2;
+    --pcm-danger-line: #fecaca;
+
+    /* Radius scale: three steps, no pills */
+    --pcm-radius-chip: 6px;
+    --pcm-radius-control: 8px;
+    --pcm-radius-card: 12px;
+
+    /* Elevation scale: two levels */
+    --pcm-elev-1: 0 1px 2px rgba(15, 23, 42, .05), 0 1px 3px rgba(15, 23, 42, .07);
+    --pcm-elev-2: 0 16px 40px -12px rgba(15, 23, 42, .28);
+
+    /* Identifiers only: drawing / line / job numbers */
+    --pcm-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* Lock the standard buttons onto the control radius so the scale stays honest */
+.btn-sm,
+button.btn-sm,
+.btn-pcm-action,
+.page-title-container .btn,
+.card-header .btn,
+.modal-footer .btn {
+    border-radius: var(--pcm-radius-control) !important;
+}
+
+/* ==========================================================================
+   PCM SCALE
+   --------------------------------------------------------------------------
+   One deliberate step up in size for the menus and the page layout.
+   The lever is the root font size: the whole theme (Acorn + Bootstrap) is
+   expressed in rem, so lifting the root scales menus, gutters, cards, forms
+   and tables together and keeps their proportions intact. The Acorn layout
+   variables are then re-declared because main.css loads last and would
+   otherwise flatten the theme's own responsive steps.
+   ========================================================================== */
+html {
+    font-size: 17px;
+}
+
+:root {
+    /* Sidebar: 18rem -> 19rem (288px -> 323px at the 17px root) */
+    --nav-size: 19rem;
+    --nav-size-slim: 4.75rem;
+    --footer-size: 4.75rem;
+    --input-height: 2.5rem;
+    --small-title-height: 2.25rem;
+    --main-spacing-horizontal: 2.75rem;
+    --main-spacing-vertical: 2.25rem;
+    --card-spacing: 2.25rem;
+    --title-spacing: 1.5rem;
+}
+
+/* Keep the theme's responsive steps, one size up */
+@media (max-width: 1199.98px) {
+    :root {
+        --main-spacing-horizontal: 2.25rem;
+    }
+}
+
+@media (max-width: 991.98px) {
+    :root {
+        --nav-size-slim: 4.25rem;
+        --title-spacing: 1.25rem;
+        --footer-size: 4.25rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    :root {
+        --card-spacing: 2rem;
+        --footer-size: 3.25rem;
+        --main-spacing-horizontal: 1.5rem;
+        --main-spacing-vertical: 1.5rem;
+    }
+}
+
+/* Sidebar logo grows with the wider column (theme hard-codes 100px) */
+html[data-placement=vertical] .nav-container .nav-content .logo a {
+    width: 120px !important;
+}
+
+html[data-placement=vertical] .nav-container .logo .img,
+html[data-placement=horizontal] .nav-container .logo .img {
+    width: 120px !important;
+    min-height: 42px !important;
+}
+
+/* ==========================================================================
+   LOGIN PAGE
+   --------------------------------------------------------------------------
+   Standalone threshold page. It renders instead of the dashboard shell, so it
+   carries its own canvas and centring. One card, one focal action, no role
+   picker: the API authenticates on the credential pair alone.
+   ========================================================================== */
+.pcm-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1.5rem;
+    background: var(--pcm-canvas);
+}
+
+.pcm-login__panel {
+    width: 100%;
+    max-width: 26rem;
+    padding: 2rem;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-card);
+    background: var(--pcm-surface);
+    box-shadow: var(--pcm-elev-1);
+}
+
+.pcm-login__brand {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--pcm-line-soft);
+}
+
+.pcm-login__mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-primary-dark);
+    color: #ffffff;
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 800;
+}
+
+.pcm-login__brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.pcm-login__brand-text strong {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--pcm-ink);
+}
+
+.pcm-login__brand-text span {
+    font-size: .8125rem;
+    color: var(--pcm-muted);
+}
+
+.pcm-login__title {
+    margin: 0 0 .25rem;
+    font-family: var(--font-heading);
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -.01em;
+    color: var(--pcm-ink);
+}
+
+.pcm-login__lede {
+    margin: 0 0 1.5rem;
+    font-size: .875rem;
+    color: var(--pcm-muted);
+}
+
+.pcm-login__alert {
+    padding: .625rem .75rem;
+    font-size: .8125rem;
+}
+
+.pcm-login__label {
+    margin-bottom: .375rem;
+    font-size: .8125rem;
+    font-weight: 700;
+    color: var(--pcm-body);
+}
+
+.pcm-login__submit {
+    min-height: 3rem;
+    font-weight: 700;
+}
+
+.pcm-login__foot {
+    margin: 1.5rem 0 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--pcm-line-soft);
+    font-size: .75rem;
+    text-align: center;
+    color: var(--pcm-muted);
+}
+
+/* ==========================================================================
+   ENGINEERING MODULE
+   --------------------------------------------------------------------------
+   Folder explorer + drawing register. Replaces the previous Tailwind layer so
+   this module matches the other eleven components that already use the
+   Acorn/Bootstrap house style.
+   ========================================================================== */
+
+/* --- Icons: one set, one stroke weight (R-04) --- */
+.pcm-i {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+}
+
+.pcm-i--sm {
+    width: .875rem;
+    height: .875rem;
+}
+
+.pcm-i--lg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+/* --- Page header band: the single focal point of the screen --- */
+.pcm-page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--pcm-radius-card);
+    background: linear-gradient(135deg, var(--pcm-navy) 0%, var(--pcm-navy-deep) 100%);
+    color: #ffffff;
+}
+
+.pcm-page-head__text {
+    flex: 1 1 22rem;
+    min-width: 0;
+}
+
+.pcm-eyebrow {
+    display: inline-block;
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #bfdbfe;
+}
+
+.pcm-page-head__title {
+    margin: .375rem 0 0;
+    font-family: var(--font-heading);
+    font-size: 1.375rem;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -.01em;
+    color: #ffffff;
+}
+
+.pcm-page-head__lede {
+    margin: .375rem 0 0;
+    max-width: 64ch;
+    font-size: .8125rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, .84);
+}
+
+.pcm-page-head__aside {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.pcm-note {
+    display: inline-block;
+    padding: .5rem .75rem;
+    border: 1px solid rgba(255, 255, 255, .24);
+    border-radius: var(--pcm-radius-control);
+    font-size: .75rem;
+    color: rgba(255, 255, 255, .9);
+}
+
+/* Stat tiles on the header band */
+.pcm-stat {
+    padding: .625rem .875rem;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: var(--pcm-radius-control);
+    background: rgba(255, 255, 255, .08);
+    min-width: 6.5rem;
+}
+
+.pcm-stat__label {
+    display: block;
+    font-size: .625rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .76);
+}
+
+.pcm-stat__value {
+    display: block;
+    margin-top: .125rem;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #ffffff;
+}
+
+/* Standalone stat tile used on the light canvas */
+.pcm-tile {
+    height: 100%;
+    padding: .875rem 1rem;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-card);
+    background: var(--pcm-surface);
+    box-shadow: var(--pcm-elev-1);
+}
+
+.pcm-tile__label {
+    display: block;
+    font-size: .6875rem;
+    font-weight: 600;
+    color: var(--pcm-muted);
+}
+
+.pcm-tile__value {
+    display: block;
+    margin-top: .25rem;
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--pcm-ink);
+}
+
+.pcm-tile__value--primary {
+    color: var(--pcm-primary);
+}
+
+.pcm-tile__value--warning {
+    color: var(--pcm-warning);
+}
+
+.pcm-tile__unit {
+    margin-left: .25rem;
+    font-size: .6875rem;
+    font-weight: 600;
+    color: var(--pcm-muted);
+}
+
+/* --- Toolbar --- */
+.pcm-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .75rem 1rem;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-card);
+    background: var(--pcm-surface);
+    box-shadow: var(--pcm-elev-1);
+}
+
+.pcm-toolbar__grow {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .625rem;
+}
+
+.pcm-search {
+    position: relative;
+    flex: 1 1 16rem;
+    max-width: 26rem;
+}
+
+.pcm-search__icon {
+    position: absolute;
+    top: 50%;
+    left: .75rem;
+    width: 1rem;
+    height: 1rem;
+    transform: translateY(-50%);
+    color: var(--pcm-muted);
+    pointer-events: none;
+}
+
+.pcm-search .form-control {
+    padding-left: 2.25rem;
+}
+
+.pcm-select {
+    max-width: 16rem;
+}
+
+.pcm-count {
+    font-size: .75rem;
+    color: var(--pcm-muted);
+    white-space: nowrap;
+}
+
+.pcm-count strong {
+    color: var(--pcm-ink);
+}
+
+/* Visible focus ring, never removed (R-32) */
+.pcm-search .form-control:focus,
+.pcm-select:focus {
+    border-color: var(--pcm-primary);
+    box-shadow: 0 0 0 .2rem rgba(29, 78, 216, .16);
+}
+
+/* --- Chips: real labels only (R-09) --- */
+.pcm-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .125rem .4375rem;
+    border: 1px solid transparent;
+    border-radius: var(--pcm-radius-chip);
+    font-size: .625rem;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: .01em;
+    white-space: nowrap;
+}
+
+.pcm-chip--neutral {
+    background: var(--pcm-canvas);
+    border-color: var(--pcm-line);
+    color: var(--pcm-body);
+}
+
+.pcm-chip--primary {
+    background: var(--pcm-primary-soft);
+    border-color: var(--pcm-primary-line);
+    color: var(--pcm-primary-dark);
+}
+
+.pcm-chip--warning {
+    background: var(--pcm-warning-soft);
+    border-color: var(--pcm-warning-line);
+    color: var(--pcm-warning);
+}
+
+.pcm-chip--success {
+    background: var(--pcm-success-soft);
+    border-color: var(--pcm-success-line);
+    color: var(--pcm-success);
+}
+
+.pcm-chip--danger {
+    background: var(--pcm-danger-soft);
+    border-color: var(--pcm-danger-line);
+    color: var(--pcm-danger);
+}
+
+.pcm-nowrap {
+    white-space: nowrap;
+}
+
+.pcm-code {
+    font-family: var(--pcm-mono);
+    letter-spacing: 0;
+}
+
+/* --- Folder card: a real button, so keyboard and touch both work (R-32) --- */
+.pcm-folder-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: .875rem;
+    width: 100%;
+    height: 100%;
+    padding: 1.125rem;
+    text-align: left;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-card);
+    background: var(--pcm-surface);
+    box-shadow: var(--pcm-elev-1);
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+.pcm-folder-card:hover {
+    border-color: var(--pcm-primary);
+}
+
+.pcm-folder-card:focus-visible {
+    outline: 2px solid var(--pcm-primary);
+    outline-offset: 2px;
+    border-color: var(--pcm-primary);
+}
+
+.pcm-folder-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.pcm-folder-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 auto;
+    border: 1px solid var(--pcm-primary-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-primary-soft);
+    color: var(--pcm-primary);
+}
+
+.pcm-folder-card__tags {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .25rem;
+}
+
+.pcm-folder-card__name {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-family: var(--font-heading);
+    font-size: .9375rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--pcm-ink);
+}
+
+.pcm-folder-card:hover .pcm-folder-card__name {
+    color: var(--pcm-primary-dark);
+}
+
+.pcm-folder-card__metrics {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    padding: .625rem .75rem;
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-canvas);
+    font-size: .75rem;
+    color: var(--pcm-muted);
+}
+
+.pcm-folder-card__metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+.pcm-folder-card__metric strong {
+    font-weight: 700;
+    color: var(--pcm-ink);
+}
+
+.pcm-folder-card__cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding-top: .625rem;
+    border-top: 1px solid var(--pcm-line-soft);
+    font-size: .75rem;
+    font-weight: 700;
+    color: var(--pcm-primary);
+}
+
+.pcm-folder-card--warning {
+    background: var(--pcm-warning-soft);
+    border-color: var(--pcm-warning-line);
+}
+
+.pcm-folder-card--warning:hover {
+    border-color: var(--pcm-warning);
+}
+
+.pcm-folder-card--warning .pcm-folder-card__icon {
+    background: var(--pcm-surface);
+    border-color: var(--pcm-warning-line);
+    color: var(--pcm-warning);
+}
+
+.pcm-folder-card--warning .pcm-folder-card__name,
+.pcm-folder-card--warning:hover .pcm-folder-card__name {
+    color: var(--pcm-warning-ink);
+}
+
+.pcm-folder-card--warning .pcm-folder-card__metrics {
+    background: var(--pcm-surface);
+}
+
+.pcm-folder-card--warning .pcm-folder-card__cta {
+    border-top-color: var(--pcm-warning-line);
+    color: var(--pcm-warning);
+}
+
+/* --- Empty and loading states (R-27) --- */
+.pcm-state {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    border: 1px dashed var(--pcm-line);
+    border-radius: var(--pcm-radius-card);
+    background: var(--pcm-surface);
+}
+
+.pcm-state__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: .75rem;
+    border-radius: var(--pcm-radius-card);
+    background: var(--pcm-canvas);
+    color: var(--pcm-muted);
+}
+
+.pcm-state__title {
+    margin: 0 0 .25rem;
+    font-size: .9375rem;
+    font-weight: 700;
+    color: var(--pcm-ink);
+}
+
+.pcm-state__text {
+    max-width: 34rem;
+    margin: 0 auto;
+    font-size: .75rem;
+    color: var(--pcm-muted);
+}
+
+/* --- Breadcrumbs for the drill-down view --- */
+.pcm-crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+}
+
+.pcm-crumbs__sep {
+    color: var(--pcm-muted);
+}
+
+.pcm-crumbs__item {
+    font-size: .75rem;
+    color: var(--pcm-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 22rem;
+}
+
+.pcm-crumbs__item strong {
+    color: var(--pcm-ink);
+}
+
+.pcm-crumbs__item--current {
+    font-weight: 700;
+    color: var(--pcm-primary-dark);
+}
+
+/* --- Table --- */
+.pcm-table {
+    font-size: .8125rem;
+    margin-bottom: 0;
+}
+
+.pcm-table thead th {
+    padding: .5rem .625rem;
+    border-bottom: 1px solid var(--pcm-line);
+    background: var(--pcm-canvas);
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    color: var(--pcm-muted);
+    white-space: nowrap;
+}
+
+.pcm-table tbody td {
+    padding: .5rem .625rem;
+    border-bottom: 1px solid var(--pcm-line-soft);
+    vertical-align: middle;
+}
+
+.pcm-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.pcm-cell-strong {
+    font-weight: 700;
+    color: var(--pcm-ink);
+}
+
+.pcm-cell-sub {
+    font-size: .6875rem;
+    color: var(--pcm-muted);
+}
+
+.pcm-cell-id {
+    font-family: var(--pcm-mono);
+    font-weight: 700;
+    color: var(--pcm-primary-dark);
+}
+
+.pcm-cell-clip {
+    max-width: 13rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* --- Modals --- */
+.pcm-modal {
+    background: rgba(15, 23, 42, .55);
+}
+
+.pcm-modal .modal-content {
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-card);
+    box-shadow: var(--pcm-elev-2);
+}
+
+.pcm-modal .modal-header {
+    border-bottom: 1px solid var(--pcm-line-soft);
+}
+
+.pcm-modal .modal-title {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--pcm-ink);
+}
+
+.pcm-modal .modal-footer {
+    border-top: 1px solid var(--pcm-line-soft);
+    background: var(--pcm-canvas);
+}
+
+.pcm-modal__sub {
+    display: block;
+    margin-top: .125rem;
+    font-size: .75rem;
+    font-weight: 400;
+    color: var(--pcm-muted);
+}
+
+/* --- Form helper classes --- */
+.pcm-form-section + .pcm-form-section {
+    margin-top: 1.25rem;
+}
+
+.pcm-form-section__title {
+    display: block;
+    padding-bottom: .5rem;
+    margin-bottom: .75rem;
+    border-bottom: 1px solid var(--pcm-line-soft);
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--pcm-primary-dark);
+}
+
+.pcm-form-label {
+    font-size: .75rem;
+    font-weight: 700;
+    color: var(--pcm-body);
+}
+
+.pcm-hint {
+    display: block;
+    margin-top: .25rem;
+    font-size: .6875rem;
+    color: var(--pcm-muted);
+}
+
+.pcm-bind {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .75rem 1rem;
+    border: 1px solid var(--pcm-primary-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-primary-soft);
+}
+
+/* --- Specification list (read-only modal) --- */
+.pcm-spec {
+    height: 100%;
+    padding: .625rem .75rem;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-canvas);
+}
+
+.pcm-spec__label {
+    display: block;
+    font-size: .6875rem;
+    color: var(--pcm-muted);
+}
+
+.pcm-spec__value {
+    display: block;
+    margin-top: .125rem;
+    font-size: .8125rem;
+    font-weight: 700;
+    color: var(--pcm-ink);
+    word-break: break-word;
+}
+
+.pcm-file-box {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .75rem 1rem;
+    border: 1px solid var(--pcm-primary-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-primary-soft);
+}
+
+/* Surface card: one elevation level, one border, one radius (R-11, R-12) */
+.pcm-card {
+    overflow: hidden;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-card);
+    background: var(--pcm-surface);
+    box-shadow: var(--pcm-elev-1);
+}
+
+/* ==========================================================================
+   ENGINEERING MODULE, MOBILE
+   Minimum 44px tap target and single-column controls below the md breakpoint.
+   ========================================================================== */
+@media (max-width: 767.98px) {
+    .pcm-page-head {
+        padding: 1rem;
+    }
+
+    .pcm-page-head .btn,
+    .pcm-crumbs .btn,
+    .pcm-state .btn {
+        height: 48px !important;
+        min-height: 48px !important;
+    }
+
+    .pcm-toolbar__grow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pcm-search,
+    .pcm-select {
+        max-width: none;
+        flex: 1 1 auto;
+    }
+
+    .pcm-count {
+        white-space: normal;
+    }
+
+    .pcm-crumbs__item {
+        max-width: 100%;
+    }
+}
+
+/* ==========================================================================
+   GLOBAL DASHBOARD (OVERVIEW) MODULE
+   --------------------------------------------------------------------------
+   Executive summary for all seven roles. Replaces the inline hex values, nine
+   emoji, a Bootstrap Icons font that was never loaded, invalid Bootstrap
+   utility classes, and eight arbitrary badge colours that had no meaning.
+
+   Colour rule for this screen: the lifecycle funnel has exactly TWO states.
+   Brand accent = the joint has reached this stage. Neutral = it has not.
+   Nothing else, no pastel wash and no duplicated colour, so the shape of the
+   pipeline reads at a glance (R-01, R-29).
+   ========================================================================== */
+
+/* --- Section card: one header pattern for every panel on this screen --- */
+.pcm-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .875rem 1.125rem;
+    border-bottom: 1px solid var(--pcm-line-soft);
+    background: var(--pcm-surface);
+}
+
+.pcm-card__title {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: .9375rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--pcm-ink);
+}
+
+.pcm-card__sub {
+    display: block;
+    margin-top: .1875rem;
+    font-size: .75rem;
+    color: var(--pcm-muted);
+}
+
+.pcm-card__body {
+    padding: 1.125rem;
+}
+
+.pcm-card__body--flush {
+    padding: 0;
+}
+
+/* --- KPI tiles: peer metrics of one job, so one uniform treatment (R-14) --- */
+.pcm-kpi__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+.pcm-kpi__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-canvas);
+    color: var(--pcm-body);
+}
+
+.pcm-kpi__foot {
+    display: block;
+    margin-top: .625rem;
+    padding-top: .625rem;
+    border-top: 1px solid var(--pcm-line-soft);
+    font-size: .6875rem;
+    color: var(--pcm-muted);
+}
+
+.pcm-kpi__foot strong {
+    font-weight: 700;
+    color: var(--pcm-body);
+}
+
+/* A value with no source data renders as a dash, never a guessed number (R-16) */
+.pcm-dash {
+    font-weight: 600;
+    color: var(--pcm-muted);
+}
+
+/* --- Lifecycle funnel: two states, hard contrast --- */
+.pcm-flow {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: .5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pcm-flow__step {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    padding: .75rem .8125rem;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-card);
+    background: var(--pcm-surface);
+}
+
+/* Reached: solid brand accent behind white text, measured 6.7:1 */
+.pcm-flow__step--done {
+    border-color: var(--pcm-primary-dark);
+    background: var(--pcm-primary);
+}
+
+.pcm-flow__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .375rem;
+}
+
+.pcm-flow__n {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    flex: 0 0 auto;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-chip);
+    background: var(--pcm-canvas);
+    font-size: .6875rem;
+    font-weight: 700;
+    color: var(--pcm-body);
+}
+
+.pcm-flow__step--done .pcm-flow__n {
+    border-color: rgba(255, 255, 255, .55);
+    background: transparent;
+    color: #ffffff;
+}
+
+.pcm-flow__share {
+    font-size: .625rem;
+    font-weight: 700;
+    color: var(--pcm-muted);
+}
+
+.pcm-flow__step--done .pcm-flow__share {
+    color: rgba(255, 255, 255, .88);
+}
+
+.pcm-flow__count {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--pcm-ink);
+}
+
+.pcm-flow__step--done .pcm-flow__count {
+    color: #ffffff;
+}
+
+.pcm-flow__count small {
+    margin-left: .1875rem;
+    font-size: .625rem;
+    font-weight: 600;
+    color: var(--pcm-muted);
+}
+
+.pcm-flow__step--done .pcm-flow__count small {
+    color: rgba(255, 255, 255, .84);
+}
+
+.pcm-flow__label {
+    font-size: .75rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--pcm-body);
+}
+
+.pcm-flow__step--done .pcm-flow__label {
+    color: #ffffff;
+}
+
+.pcm-flow__sub {
+    font-size: .625rem;
+    line-height: 1.35;
+    color: var(--pcm-muted);
+}
+
+.pcm-flow__step--done .pcm-flow__sub {
+    color: rgba(255, 255, 255, .84);
+}
+
+.pcm-flow__bar {
+    display: block;
+    height: 4px;
+    margin-top: auto;
+    overflow: hidden;
+    border-radius: var(--pcm-radius-chip);
+    background: var(--pcm-line-soft);
+}
+
+.pcm-flow__bar > span {
+    display: block;
+    height: 100%;
+    border-radius: var(--pcm-radius-chip);
+    background: var(--pcm-line);
+}
+
+.pcm-flow__step--done .pcm-flow__bar {
+    background: rgba(255, 255, 255, .32);
+}
+
+.pcm-flow__step--done .pcm-flow__bar > span {
+    background: #ffffff;
+}
+
+/* --- Inline bar used by the weight table --- */
+.pcm-bar {
+    height: 6px;
+    overflow: hidden;
+    border-radius: var(--pcm-radius-chip);
+    background: var(--pcm-line-soft);
+}
+
+.pcm-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: var(--pcm-radius-chip);
+    background: var(--pcm-primary);
+}
+
+/* --- Quick navigation: real buttons, keyboard and touch both work (R-32) --- */
+.pcm-quick {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    width: 100%;
+    padding: .625rem .75rem;
+    text-align: left;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-surface);
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+.pcm-quick:hover {
+    border-color: var(--pcm-primary);
+    background: var(--pcm-primary-soft);
+}
+
+.pcm-quick:focus-visible {
+    outline: 2px solid var(--pcm-primary);
+    outline-offset: 2px;
+}
+
+.pcm-quick__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 auto;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-canvas);
+    color: var(--pcm-primary-dark);
+}
+
+.pcm-quick__text {
+    min-width: 0;
+}
+
+.pcm-quick__title {
+    display: block;
+    font-size: .8125rem;
+    font-weight: 700;
+    color: var(--pcm-ink);
+}
+
+.pcm-quick__count {
+    margin-left: auto;
+    flex: 0 0 auto;
+    font-size: .6875rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--pcm-body);
+}
+
+/* --- Data row used by the hydrotest and material panels --- */
+.pcm-row {
+    padding: .625rem .75rem;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-canvas);
+}
+
+.pcm-row + .pcm-row {
+    margin-top: .5rem;
+}
+
+.pcm-row__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+.pcm-row__id {
+    font-family: var(--pcm-mono);
+    font-size: .8125rem;
+    font-weight: 700;
+    color: var(--pcm-ink);
+}
+
+.pcm-row__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-top: .375rem;
+    font-size: .6875rem;
+    color: var(--pcm-muted);
+}
+
+.pcm-row__meta strong {
+    font-weight: 700;
+    color: var(--pcm-body);
+}
+
+/* ==========================================================================
+   GLOBAL DASHBOARD, NARROW VIEWPORTS
+   The funnel drops to four and then two columns so the eight stages stay
+   legible instead of being squeezed.
+   ========================================================================== */
+@media (max-width: 1199.98px) {
+    .pcm-flow {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575.98px) {
+    .pcm-flow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pcm-card__head,
+    .pcm-card__body {
+        padding: .875rem;
+    }
+
+    .pcm-quick {
+        min-height: 48px;
+    }
+
+    .pcm-toolbar__grow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* ============================================================
+   ADMINISTRATION MODULE (SUPERADMIN)
+   Each administration function is its own sidebar menu and its
+   own screen. Same tokens, no new colours.
+   ============================================================ */
+
+/* Menu dropdown List Departement di sidebar - ukuran & styling sama persis dengan menu lainnya */
+.pcm-menu-dept-select {
+    width: 100%;
+    background-color: transparent;
+    color: #ffffff;
+    border-left: 4px solid transparent;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
+    padding: 0.9rem 2.5rem 0.9rem 1.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    transition: background-color 0.2s ease, border-left 0.2s ease;
+}
+
+.pcm-menu-dept-select:hover {
+    background-color: #1d4ed8;
+}
+
+.pcm-menu-dept-select:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: -2px;
+}
+
+.pcm-menu-dept-select.active {
+    background-color: #1d4ed8;
+    border-left-color: #ffffff;
+    font-weight: 700;
+}
+
+
+.pcm-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .4375rem .75rem;
+    border: 1px solid var(--pcm-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-surface);
+    font-size: .8125rem;
+    font-weight: 600;
+    color: var(--pcm-ink);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.pcm-btn:hover {
+    background: var(--pcm-canvas);
+}
+
+.pcm-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.pcm-btn--primary {
+    border-color: var(--pcm-primary);
+    background: var(--pcm-primary);
+    color: #ffffff;
+}
+
+.pcm-btn--primary:hover {
+    background: var(--pcm-primary-dark);
+}
+
+.pcm-btn--danger {
+    border-color: var(--pcm-danger-line);
+    background: var(--pcm-danger-soft);
+    color: var(--pcm-danger);
+}
+
+.pcm-btn--danger:hover {
+    background: #fee2e2;
+}
+
+.pcm-btn--sm {
+    padding: .1875rem .5rem;
+    font-size: .75rem;
+}
+
+.pcm-table-wrap {
+    overflow-x: auto;
+}
+
+.pcm-alert {
+    padding: .625rem .75rem;
+    border: 1px solid var(--pcm-danger-line);
+    border-radius: var(--pcm-radius-control);
+    background: var(--pcm-danger-soft);
+    font-size: .8125rem;
+    color: var(--pcm-danger);
+}
+
+.pcm-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+}
+
+.pcm-form-grid__full {
+    grid-column: 1 / -1;
+}
+
+/* Permission matrix: one column per role, grouped by module. */
+.pcm-matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8125rem;
+}
+
+.pcm-matrix thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: .5rem .625rem;
+    border-bottom: 1px solid var(--pcm-line);
+    background: var(--pcm-canvas);
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.pcm-matrix thead th:first-child {
+    text-align: left;
+}
+
+.pcm-matrix__role {
+    display: block;
+    margin-bottom: .25rem;
+    font-size: .75rem;
+    font-weight: 700;
+    color: var(--pcm-ink);
+}
+
+.pcm-matrix tbody td,
+.pcm-matrix tbody th {
+    padding: .375rem .625rem;
+    border-bottom: 1px solid var(--pcm-line-soft);
+    vertical-align: middle;
+}
+
+.pcm-matrix__group th {
+    padding-top: .75rem;
+    background: var(--pcm-surface);
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--pcm-muted);
+}
+
+.pcm-matrix__code {
+    display: block;
+    margin-top: .125rem;
+    font-size: .6875rem;
+    color: var(--pcm-muted);
+}
+
+/* Tombol aksi di kolom kanan tidak boleh pecah dua baris. */
+.pcm-table td.text-end {
+    white-space: nowrap;
+}
+
+.pcm-matrix .form-check-input {
+    margin: 0;
+    cursor: pointer;
+}
+
+.pcm-matrix .form-check-input:disabled {
+    cursor: not-allowed;
+}
+
+@media (max-width: 767.98px) {
+    .pcm-form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pcm-form-grid__full {
+        grid-column: auto;
+    }
+}

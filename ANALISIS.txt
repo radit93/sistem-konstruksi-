@@ -1,0 +1,280 @@
+ANALISIS KESELURUHAN — DASHBOARD PCM PIPING MULTI-ROLE
+Tanggal: 12 Okt 2026 | Sumber: PCM Piping.xlsx (10 sheet, 729 KB)
+
+================================================================
+A. HASIL BEDAH EXCEL (fakta, bukan asumsi)
+================================================================
+1. Piping Work — peta tahapan: Pra-qualification, Bidding, Project
+   Execution (7 tim: Engineering, QA/QC, Safety, Material,
+   Construction, Admin/Finance + Test Package disebut di sheet lain).
+2. Title & Drawing — KOSONG. Tidak ada metadata proyek dan tidak ada
+   daftar gambar aktual.
+3. Report & Dashboard — BUKAN dashboard, melainkan DAFTAR FORM yang
+   harus diinput tiap PIC (spesifikasi kolom sudah ada, tinggal
+   dijadikan form web):
+   - Material: Receiving, Issuing, Stock List, Mapping Location (PDF)
+   - Engineering: Drawing List, Revisi, 3D Modeling, Distribusi
+   - Construction: Fit-Up, Welding Joint, Spool, Pipe Support,
+     Equipment, Tool/Consumable, Rigging Plan
+   - QA-QC: Visual, NDT, Radiography, Repair
+   - Test Package: Hydro Procedure, Schedule, Package List,
+     Blind Flange, Reinstatement
+4. Work Scope — panduan kerja per bidang (jadi acuan workflow status).
+5. BOQ Proposal — rumus harga/DI: Direct = Manpower + Equipment (60%
+   fab / 65% erection) + Tool (40% fab / 45% erection);
+   Indirect = 65% Direct. Fab Carbon 423.911/DI, Erection 635.867/DI.
+6. Contoh Unit Price — Field Installation 333.497 DI = Rp 194,45 M
+   (Carbon 264.708 DI, Stainless 47.495 DI, Alloy 18.424 DI,
+   Support 817 KG). Rumus antar kolom masih hidup dan benar.
+7. Welding Traceability — 28 joint contoh (1 iso: 2428-M-15-MPP-AB-
+   SHT1, line MPP-AB): 25 shop joint W-005 PASS, 1 shop joint tanpa
+   hasil, 3 field joint W-007 kosong. Kolom lengkap: drawing, line,
+   spool, item A/B, shop/field, joint type, method, WPS, welder,
+   tanggal, visual, NDT (RT/UT/MPI-PT), repair R1/R2, status.
+8. Progress Sch — kontrak Metallic 151.018 DI + Nonmetal 3.691 DI.
+   Kolom Drawing/Progress/Remain masih NOL semua.
+9. Budget VS Progress — Direct 4.799.731 + Indirect 2.320.269 =
+   Grand Total 7.120.000 (satuan mirip USD, TIDAK konsisten dengan
+   Rp di Contoh Unit Price). Progress dan deviasi masih NOL.
+
+TEMUAN KRITIS:
+a. Progress Sch + Budget VS Progress mengambil data dari file luar
+   "[28]A. Shop Fabrication" dan "[28]B. Field Installation" yang
+   TIDAK ikut terkirim -> seluruh progress = 0, dashboard Excel mati.
+b. DUA angka kontrak berbeda: 333.497 DI (Unit Price) vs 151.018 DI
+   (Progress Sch). Kemungkinan beda revisi/scope. Harus diputuskan
+   satu baseline.
+c. Tidak ada kunci penghubung: Line No / Iso No / Joint No diketik
+   manual di tiap sheet -> Fit-Up, Welding, QC, NDT tak bisa digabung.
+d. Tidak ada status gabungan per joint (tiap tahap terpisah).
+e. Tidak ada proteksi role dan tidak ada jejak siapa input apa/kapan.
+f. Typo dan inkonsistensi: "Materal", "Procedude", "Phenumatic",
+   bab IV dipakai dua kali, campur Indonesia-Inggris.
+
+================================================================
+B. DARI 7 CATATAN DIMINTA -> 9 MODUL DASHBOARD
+================================================================
+Catatan 1-2 (banyak user, satu dashboard via internet):
+  -> 1 aplikasi web + 1 database pusat, login per role, bisa dibuka
+     dari kantor maupun lapangan via browser/HP.
+Catatan 3-4 (manager pantau + laporan via dashboard):
+  -> Modul OVERVIEW manajerial + tombol export laporan (CSV/PDF).
+Catatan 5 (pembelian material ada standarnya):
+  -> Modul MATERIAL: setiap penerimaan dicek kesesuaian spec/qty/
+     kondisi vs PO + request inspeksi ke QC (persis Work Scope:
+     Receiving -> Inspection -> Storing -> Issuing). Stok menipis
+     muncul sebagai alert, bukan ketahuan saat habis.
+Catatan 6 (6 control + semua punya akses):
+  -> project control, material control, engineering control
+     (drafting & drawing), QA-QC control, construction control,
+     test package. Tiap control punya halaman kerja sendiri + hak
+     tulis hanya di bagiannya, baca semua bagian.
+Catatan 7 (overview, shop fabrication, field erection, HSE):
+  -> Shop fabrication dan field erection dipisah karena beda tim,
+     beda tarif (fab 15 DI/hari, erection 10 DI/hari), beda welder
+     (contoh: W-005 shop, W-007 field). HSE masuk sebagai modul
+     (permit, temuan, TBM, APD) agar satu pusat kontrol.
+Pengerjaan poin 2 (input drawing + scan):
+  -> Modul engineering punya upload scan PDF per iso + daftar revisi.
+Pengerjaan poin 3 (general schedule):
+  -> Modul SCHEDULE: rencana vs aktual per aktivitas (S-curve).
+
+================================================================
+C. STRUKTUR MENU
+================================================================
+Menu atas (semua role): Overview | Engineering | Material |
+Construction | QA-QC | Test Package | HSE | Schedule | Laporan |
+Profil.
+
+1. OVERVIEW (wajib untuk manager, boleh dibaca semua role)
+   - Kartu angka: total DI kontrak, DI selesai (%), shop %, field %,
+     NDT reject %, stok alert, test package ready.
+   - Grafik S-curve: rencana vs aktual DI per minggu/bulan.
+   - Budget vs Actual + deviasi per scope.
+   - Daftar perhatian: joint tertahan > X hari, NDT gagal, material
+     kurang, dokumen kedaluwarsa.
+2. ENGINEERING (tulis: engineer; baca: semua)
+   - Drawing List (area, line no, iso no, sheet, revisi, status)
+   - Upload scan PDF per iso + histori revisi
+   - Distribusi gambar (tanggal keluar, penerima)
+   - Weld Map & BoQ/BoM per iso (Dia-Inch per sheet)
+3. MATERIAL (tulis: material; baca: semua)
+   - Receiving (tanggal, shipment, line, deskripsi, qty, unit, packing,
+     hasil cek standar: spec/qty/kondisi, request inspeksi QC)
+   - Issuing (tanggal, deskripsi, qty, unit, requestor)
+   - Stock List (item, spec, qty, issued, balance, lokasi + peta PDF)
+4. CONSTRUCTION — SHOP FABRICATION (tulis: construction; baca: semua)
+   - Fit-Up Report, Spool Fabrication Report, Shop Welding Joint
+   - Harian DI shop + equipment + tool/consumable
+5. CONSTRUCTION — FIELD ERECTION (tulis: construction; baca: semua)
+   - Field Welding Joint, Pipe Support Fab/Install, Bolting/Banding
+   - Rigging Plan, Equipment Assignment, harian DI field
+6. QA-QC (tulis: qaqc; baca: semua)
+   - Antrian inspeksi: Fit-Up -> Visual -> NDT (RT/UT/MPI-PT)
+   - Input PASS/FAIL + foto + nomor report
+   - Repair Report (R1/R2) + reject rate per welder dan per WPS
+   - Traceability per joint (riwayat lengkap satu joint)
+7. TEST PACKAGE (tulis: testpackage; baca: semua)
+   - Package List + schedule + prosedur hydro/pneumatic (PDF)
+   - Blind Flange List + Reinstatement List + status ready/tested
+8. HSE (tulis: hse; baca: semua)
+   - Work Permit, Temuan + corrective action, TBM, Induksi, Inspeksi
+9. SCHEDULE (tulis: engineer/manager; baca: semua)
+   - General schedule per aktivitas + bobot + rencana vs aktual
+10. LAPORAN (semua role boleh export sesuai haknya)
+    - Harian, mingguan, bulanan; format ikut kolom Excel lama agar
+      transisi mudah (fit-up, welding, spool, support, NDT, stok).
+
+================================================================
+D. FLOW UTAMA (alur kerja antar role)
+================================================================
+FLOW 1 — HIDUP SATU JOINT (tulang punggung dashboard):
+  MATERIAL terima (RECEIVED) -> MATERIAL issue ke workshop (ISSUED)
+  -> CONSTRUCTION fit-up (FITUP_OK, dicek QA) -> CONSTRUCTION las
+  (WELDED + stamp welder + WPS) -> QA-QC visual (VISUAL_OK)
+  -> QA-QC NDT/RT (NDT_OK) -> jika FAIL masuk REPAIR (R1, R2, lalu
+  NDT ulang) -> TEST PACKAGE hydro/pneumatic (TESTED)
+  -> REINSTATEMENT -> serah terima.
+  Aturan: yang boleh memindahkan tiap status hanya role pemiliknya;
+  role lain hanya membaca. Inilah pengganti "kolom status" yang tidak
+  ada di Excel.
+
+FLOW 2 — DRAWING + SCAN (jawaban catatan pengerjaan no.2):
+  ENGINEER daftar iso (Drawing List) -> upload SCAN PDF -> beri revisi
+  (rev 0,1,2...) -> DISTRIBUSI ke construction/material/qc (catat
+  penerima+tanggal) -> revisi baru: gambar lama otomatis nonaktif,
+  joint yang terpengaruh ditandai. Semua role selalu melihat revisi
+  aktif yang sama (menghilangkan risiko kerja pakai gambar lama).
+
+FLOW 3 — MATERIAL BERSTANDAR (jawaban catatan no.5):
+  Barang datang -> cek standar (spec vs PO, qty vs packing list,
+  kondisi fisik) -> LULUS: masuk stok + lokasi; GAGAL: tahan + request
+  inspeksi QC -> QC putuskan (terima/tolak/retur) -> issue ke
+  workshop dicatat requestor-nya -> stok otomatis berkurang ->
+  stok di bawah batas: ALERT ke manager + material. Pembelian
+  berikutnya mengacu ke sisa BoM (kebutuhan iso minus stok).
+
+FLOW 4 — QA-QC MENILAI KUALITAS:
+  Antrian inspeksi muncul otomatis dari joint berstatus WELDED ->
+  inspector input PASS/FAIL + foto + nomor report -> FAIL: joint
+  masuk antrian repair, reject dihitung per welder dan per WPS ->
+  welder dengan reject tinggi ditandai ke manager. NDT (RT) dicatat
+  per report seperti kolom Excel (status per R1/R2).
+
+FLOW 5 — TEST PACKAGE:
+  Package disusun per line (daftar iso + dokumen: P&ID copy, material
+  cert, kalibrasi gauge, dokumen NDT) -> schedule hydro -> blind
+  flange dipasang -> test -> reinstatement -> status ready. Syarat
+  "ready" dicek sistem: semua joint NDT_OK + dokumen lengkap.
+
+FLOW 6 — HSE & SCHEDULE:
+  HSE: work permit dibuka sebelum kerja -> TBM/induksi dicatat ->
+  temuan inspeksi dicatat + corrective action + tenggat -> belum
+  ditutup: muncul di Overview manager.
+  Schedule: tiap aktivitas punya bobot + tanggal rencana -> progress
+  harian (DI) otomatis mengisi aktual -> S-curve + keterlambatan
+  per aktivitas terlihat.
+
+FLOW 7 — LAPORAN & PANTAU MANAGER:
+  Semua input harian mengalir ke Overview (tidak perlu rekap manual).
+  Manager buka satu halaman: % shop, % field, S-curve, budget vs
+  actual, antrian QC, stok kritis, kesiapan test package. Export
+  harian/mingguan/bulanan satu klik.
+
+================================================================
+E. MODEL DATA (8 tabel, kunci: drawing_no + seq joint)
+================================================================
+projects (nama, client, job_no) | drawings (drawing_no, line_no,
+area, rev, scan_url/PDF, status) | joints (satu baris per joint:
+spool, shop/field, item A/B, size, thickness, joint type, method,
+WPS, welder, tanggal fit/weld, status satu alur) | stock_moves
+(IN/OUT: tanggal, deskripsi, spec, qty, unit, requestor, lokasi) |
+inspections (joint, jenis: fitup/visual/ndt_rt/ndt_pt/repair, hasil
+PASS/FAIL, nomor report, tanggal, inspector, foto, catatan) |
+test_packages (nomor paket, line, jenis hydro/pneumatic, schedule,
+status, blinds, reinstatement) | hse_logs (tanggal, jenis:
+permit/temuan/tbm/induksi/inspeksi, deskripsi, status) | scopes
+(baseline kontrak: scope, unit, qty) + daily_progress (tanggal,
+scope, qty, tim) untuk S-curve dan earned value.
+
+================================================================
+F. KPI YANG TAMPIL DI OVERVIEW MANAGER
+================================================================
+- % Fit-Up, % Welded (shop vs field pisah), % Visual OK, % NDT OK
+- S-curve DI rencana vs aktual (shop + field)
+- Budget vs Actual + deviasi per scope (pengganti sheet Budget VS
+  Progress yang sekarang nol)
+- NDT reject % + ranking welder/WPS bermasalah
+- Stok kritis (item di bawah batas) + material tertahan QC
+- Test package ready vs total + HSE temuan terbuka.
+
+================================================================
+G. KEPUTUSAN YANG HARUS DIAMBIL SEBELUM DIBANGUN
+================================================================
+1. Baseline kontrak: 333.497 DI (Rp 194,45 M, Contoh Unit Price) ATAU
+   151.018 DI (Progress Sch)? Sampai diputuskan, pakai angka
+   configurable (ganti tanpa coding).
+2. Satuan uang: Rupiah (ikuti Contoh Unit Price) atau USD (ikuti
+   Budget VS Progress 7.120.000)? Saran: Rupiah.
+3. Data awal: 28 joint contoh + BOQ Excel jadi data demo? (saran: ya)
+4. Foto inspeksi & scan PDF disimpan di server sendiri atau cloud
+   (mis. Supabase Storage)? Saran: cloud agar bisa via internet.
+5. Perlu input lapangan via HP (form ringan) atau cukup via laptop?
+6. Bahasa aplikasi: Indonesia (ikuti mayoritas sheet) dengan istilah
+   teknik Inggris dipertahankan.
+
+================================================================
+H. TAHAPAN PEMBANGUNAN (setelah analisis ini disetujui)
+================================================================
+Tahap 1 — Fondasi: database + login 7 role + import 28 joint & BOQ.
+Tahap 2 — Form per PIC persis kolom Excel (drawing+scan, material,
+  construction, QC, test package, HSE) + status joint satu alur.
+Tahap 3 — Overview manager (S-curve, budget vs actual, antrian,
+  readiness) + export laporan + rapikan via internet.
+Setiap tahap diverifikasi: tiap role login, input di bagiannya,
+  manager melihat hasilnya di Overview.
+
+--> skipped: coding aplikasi, ganti ke Supabase penuh, offline HP.
+    add when: analisis ini disetujui + 6 keputusan bagian G dijawab.
+
+================================================================
+I. ANALISIS TEMPLATE (acorn-html-ecommerce-platform.zip, 2,6 MB)
+================================================================
+Identitas: Acorn HTML Admin Template, Bootstrap v5,
+ColoredStrategies, tahun 2021, 605 file, HTML statis + build gulp.
+Komponen siap pakai: Chart.js (grafik), datatables (tabel laporan),
+dropzone (upload scan PDF), fullcalendar (schedule), quill (catatan),
+invoice printable (cetak laporan), settings (profil/peran).
+
+PEMETAAN KE MODUL PCM (pakai pola halamannya, bukan isinya):
+- Dashboard.html (Stats + Performance + Activity) -> OVERVIEW manager:
+  ganti Recent Orders jadi joint tertahan, Top Selling jadi top
+  welder reject, Performance jadi S-curve DI.
+- Products.List + Detail (tabel + halaman rincian) -> DRAWING LIST +
+  MATERIAL STOCK (pola sama: tabel + detail + upload).
+- Orders.List + Detail (daftar + rincian + status) -> JOINT LIST +
+  TRACEABILITY per joint (nomor order = nomor joint).
+- Shipping -> TEST PACKAGE (jadwal + status kirim ~ jadwal hydro).
+- Customers -> data WELDER / TIM (profil + riwayat + rating ~ reject).
+- Storefront.Invoice -> CETAK LAPORAN. Settings -> PROFIL + peran.
+- FullCalendar -> SCHEDULE. Dropzone -> upload SCAN PDF iso + foto QC.
+- Abaikan: Storefront Home/Cart/Checkout, Discount (pola toko online,
+  tidak dipakai).
+
+CATATAN JUJUR:
+- Template 2021, Chart.js lama (v2), bergantung jQuery + gulp tua.
+  Bukan masalah fatal untuk dashboard internal, tapi tech debt.
+- HTML statis: datanya dummy. Agar multi-user via internet tetap
+  perlu backend (saran tetap Supabase) + JS fetch; template hanya
+  jadi kulit.
+- Sekitar 40% halaman terpakai, 60% (toko online) dibuang.
+
+TIGA PILIHAN PENDEKATAN:
+A. Kulit cepat: pakai CSS/komponen Acorn apa adanya, isi data via
+   JS + Supabase. Cepat jadi, tapi warisan jQuery/statis.
+B. Bersih: bangun Next.js fresh meniru layout Acorn. Rapi + RLS
+   penuh, tapi lebih lama.
+C. Hibrida (saran): convert dulu 4 pola (Dashboard, List+Detail
+   tabel, Invoice, Calendar) ke app, sisanya menyusul per modul.
+--> skipped: concentrations, convert/bangun. add when: jawaban
+    pendekatan A/B/C + 6 keputusan bagian G.

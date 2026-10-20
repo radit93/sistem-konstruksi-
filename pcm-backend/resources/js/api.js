@@ -1,0 +1,109 @@
+// API Client Helper untuk PCM Piping Dashboard
+const API_BASE = '/api';
+const DEPT_KEY = 'pcm_department_filter';
+
+export const api = {
+    getToken() {
+        return localStorage.getItem('pcm_token') || '';
+    },
+    setToken(token) {
+        if (token) localStorage.setItem('pcm_token', token);
+        else localStorage.removeItem('pcm_token');
+    },
+    getUser() {
+        try {
+            const raw = localStorage.getItem('pcm_user');
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
+        }
+    },
+    setUser(user) {
+        if (user) localStorage.setItem('pcm_user', JSON.stringify(user));
+        else localStorage.removeItem('pcm_user');
+        // Hanya superadmin yang boleh menyaring per departemen; role lain
+        // sudah dibatasi server berdasarkan departemennya sendiri.
+        if (!user || !user.is_superadmin) this.setDepartmentFilter(null);
+    },
+    getDepartmentFilter() {
+        const raw = localStorage.getItem(DEPT_KEY);
+        const id = raw ? Number(raw) : null;
+        return Number.isFinite(id) && id > 0 ? id : null;
+    },
+    setDepartmentFilter(id) {
+        if (id) localStorage.setItem(DEPT_KEY, String(id));
+        else localStorage.removeItem(DEPT_KEY);
+    },
+    async request(endpoint, options = {}) {
+        const { skipAuthRedirect = false, ...init } = options;
+        const token = this.getToken();
+        const department = this.getDepartmentFilter();
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            ...(department ? { 'X-Department-Id': String(department) } : {}),
+            ...(init.headers || {})
+        };
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+            ...init,
+            headers
+        });
+        // A 401 normally means the stored token died. On the login call it just
+        // means the credential pair was wrong, and the caller wants that message.
+        if (res.status === 401 && !skipAuthRedirect) {
+            this.setToken('');
+            this.setUser(null);
+            window.dispatchEvent(new Event('pcm-auth-changed'));
+            throw new Error('Sesi berakhir, silakan login kembali');
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.message || `Error HTTP ${res.status}`);
+        }
+        return data;
+    },
+    get(endpoint) {
+        // ponytail: unwrap paginator Laravel {data:[...]} -> array; hapus bila API full-REST.
+        return this.request(endpoint, { method: 'GET' }).then(d =>
+            (d && Array.isArray(d.data) && typeof d.current_page === 'number') ? d.data : d);
+    },
+    post(endpoint, body) {
+        return this.request(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+    },
+    put(endpoint, body) {
+        return this.request(endpoint, {
+            method: 'PUT',
+            body: JSON.stringify(body)
+        });
+    },
+    del(endpoint) {
+        return this.request(endpoint, { method: 'DELETE' });
+    },
+    async login(email, password) {
+        const res = await this.request('/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+            skipAuthRedirect: true
+        });
+        if (res.token && res.user) {
+            this.setToken(res.token);
+            this.setUser(res.user);
+            window.dispatchEvent(new Event('pcm-auth-changed'));
+        }
+        return res;
+    },
+    async logout() {
+        try {
+            await this.post('/logout', {});
+        } catch (e) {
+            // ignore
+        }
+        this.setToken('');
+        this.setUser(null);
+        window.dispatchEvent(new Event('pcm-auth-changed'));
+    }
+};

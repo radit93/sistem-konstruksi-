@@ -10,19 +10,30 @@ export const OPERATIONAL_MENU_IDS = [
     'bom',
     'material_standard',
     'document_control',
+    'schedule',
+    'pm_scurve',
+    'pm_budget',
+    'pm_daily',
+    'pm_milestone',
+    'report',
     'material',
     'fabrication',
     'erection',
     'qaqc',
     'testpackage',
     'hse',
-    'schedule',
-    'report'
 ];
 
 // Modul yang dimiliki tiap departemen.
 export const DEPARTMENT_MENUS = {
-    PMO: ['schedule', 'report'],
+    PMO: [
+        'schedule',
+        'pm_scurve',
+        'pm_budget',
+        'pm_daily',
+        'pm_milestone',
+        'report'
+    ],
     ENG: [
         'engineering',
         'line_service',
@@ -133,15 +144,45 @@ export const ROLE_SIDEBAR_MENUS = [
     },
     {
         id: 'schedule',
-        label: 'Project Manager',
+        label: 'Kontrak & BOQ',
         perm: 'scope.view',
-        desc: 'S-Curve & Kontrak BOQ'
+        group: 'Project Management',
+        desc: '18 Scopes Kontrak Piping & Target Volume'
+    },
+    {
+        id: 'pm_scurve',
+        label: 'S-Curve & Schedule',
+        perm: 'scope.view',
+        group: 'Project Management',
+        desc: 'Kurva S Mingguan & Deviasi Jadwal'
+    },
+    {
+        id: 'pm_budget',
+        label: 'Budget vs Actual',
+        perm: 'scope.view',
+        group: 'Project Management',
+        desc: 'Direct & Indirect Cost Control'
+    },
+    {
+        id: 'pm_daily',
+        label: 'Daily Progress Log',
+        perm: 'scope.view',
+        group: 'Project Management',
+        desc: 'Jurnal Harian & Akumulasi Kontrak'
+    },
+    {
+        id: 'pm_milestone',
+        label: 'Project Milestone',
+        perm: 'scope.view',
+        group: 'Project Management',
+        desc: 'Phase Gates & Hold Point Sign-off'
     },
     {
         id: 'report',
-        label: 'Laporan Terpadu',
+        label: 'Laporan Eksekutif',
         perm: 'report.view',
-        desc: 'Export & Ringkasan Laporan'
+        group: 'Project Management',
+        desc: 'Export CSV & Lembar Pengesahan'
     },
     {
         id: 'project',

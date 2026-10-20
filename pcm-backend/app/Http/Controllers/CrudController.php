@@ -99,6 +99,16 @@ class CrudController extends Controller
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
+        'project-milestones' => [\App\Models\ProjectMilestone::class, [
+            'create' => 'scope.write',
+            'update' => 'scope.write',
+            'delete' => 'scope.write',
+        ]],
+        'budget-items' => [\App\Models\BudgetItem::class, [
+            'create' => 'scope.write',
+            'update' => 'scope.write',
+            'delete' => 'scope.write',
+        ]],
     ];
 
     /**
@@ -110,6 +120,7 @@ class CrudController extends Controller
         'hse', 'scopes', 'progress', 'daily-progress',
         'line-services', 'material-standards', 'welding-maps',
         'bill-of-materials', 'engineering-boqs', 'document-controls',
+        'project-milestones', 'budget-items',
     ];
 
     /**
@@ -140,6 +151,8 @@ class CrudController extends Controller
         'bill-of-materials' => 'ENG',
         'engineering-boqs' => 'ENG',
         'document-controls' => 'ENG',
+        'project-milestones' => 'PMO',
+        'budget-items' => 'PMO',
     ];
 
     private function resolve(string $res): array

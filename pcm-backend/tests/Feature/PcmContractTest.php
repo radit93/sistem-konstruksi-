@@ -24,10 +24,30 @@ class PcmContractTest extends TestCase
         // index mengembalikan array langsung (bukan paginator) — sesuai app.jsx
         foreach ([
             'drawings', 'joints', 'stock', 'inspections', 'test-packages', 'hse', 'scopes', 'progress', 'daily-progress',
-            'line-services', 'material-standards', 'welding-maps', 'bill-of-materials', 'engineering-boqs', 'document-controls'
+            'line-services', 'material-standards', 'welding-maps', 'bill-of-materials', 'engineering-boqs', 'document-controls',
+            'project-milestones', 'budget-items'
         ] as $r) {
             $this->getJson("/api/$r", ['Authorization' => "Bearer $mgr"])->assertOk()->assertJsonIsArray();
         }
+    }
+
+    public function test_project_manager_writes_milestone_and_budget(): void
+    {
+        $pm = $this->token('project_manager');
+
+        // Test milestone write
+        $m = $this->postJson('/api/project-milestones', [
+            'code' => 'M-TEST', 'name' => 'Test Milestone', 'phase' => 'Testing', 'weight_pct' => 5,
+        ], ['Authorization' => "Bearer $pm"])->assertCreated()->json();
+        $this->assertSame('M-TEST', $m['code']);
+        \App\Models\ProjectMilestone::where('code', 'M-TEST')->delete();
+
+        // Test budget item write
+        $b = $this->postJson('/api/budget-items', [
+            'item_code' => 'BUD-TEST', 'scope_description' => 'Test Scope', 'total_budget' => 1000,
+        ], ['Authorization' => "Bearer $pm"])->assertCreated()->json();
+        $this->assertSame('BUD-TEST', $b['item_code']);
+        \App\Models\BudgetItem::where('item_code', 'BUD-TEST')->delete();
     }
 
     public function test_engineer_writes_engineering_modules(): void

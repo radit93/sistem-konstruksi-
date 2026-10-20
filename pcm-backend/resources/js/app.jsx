@@ -19,8 +19,7 @@ import { QaqcTab } from './components/QaqcTab';
 import { TestPackageTab } from './components/TestPackageTab';
 import { HseTab } from './components/HseTab';
 import { AdminTab } from './components/AdminTab';
-import { ScheduleTab } from './components/ScheduleTab';
-import { ReportTab } from './components/ReportTab';
+import { ProjectManagerTab } from './components/ProjectManagerTab';
 
 // Pemetaan role pengguna ke tab awal saat pertama login (Global Dashboard belum bisa dibuka)
 const ROLE_DEFAULT_TABS = {
@@ -417,23 +416,18 @@ function App() {
                             }}
                         />
                     )}
-                    {activeTab === 'schedule' && (
-                        <ScheduleTab
+                    {['schedule', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report'].includes(activeTab) && (
+                        <ProjectManagerTab
+                            currentSection={activeTab}
                             scopes={scopes}
+                            joints={joints}
+                            stockMoves={stockMoves}
+                            overview={overview}
                             user={user}
                             onReload={() => {
                                 loadData();
-                                showToast('Progres Kontrak BOQ diperbarui');
+                                showToast('Data Project Management diperbarui');
                             }}
-                        />
-                    )}
-                    {activeTab === 'report' && (
-                        <ReportTab
-                            overview={overview}
-                            joints={joints}
-                            stockMoves={stockMoves}
-                            scopes={scopes}
-                            user={user}
                         />
                     )}
                     {['project', 'users', 'roles', 'access', 'departments'].includes(activeTab) && (

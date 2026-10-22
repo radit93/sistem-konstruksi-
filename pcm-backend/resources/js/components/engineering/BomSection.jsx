@@ -15,6 +15,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
     const [editingItem, setEditingItem] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
+    const [deleteError, setDeleteError] = useState('');
 
     const [form, setForm] = useState({
         spool_no: 'SP-01',
@@ -167,12 +168,13 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
 
     const handleDelete = async (id) => {
         if (!(await confirmDelete('Yakin ingin menghapus item material ini dari BOM?'))) return;
+        setDeleteError('');
         try {
             await api.delete(`/bill-of-materials/${id}`);
             if (onToast) onToast('Item BOM berhasil dihapus.');
             loadData();
         } catch (err) {
-            alert(err.message || 'Gagal menghapus data.');
+            setDeleteError(err.message || 'Gagal menghapus data.');
         }
     };
 
@@ -196,6 +198,10 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                     </button>
                 )}
             </div>
+
+            {deleteError && (
+                <div role="alert" className="alert alert-danger py-2 small mb-3">{deleteError}</div>
+            )}
 
             {/* Metric Summary Cards */}
             <div className="row g-3 mb-4">

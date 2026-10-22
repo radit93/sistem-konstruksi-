@@ -13,6 +13,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
     const [editingItem, setEditingItem] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
+    const [deleteError, setDeleteError] = useState('');
 
     const [form, setForm] = useState({
         item_code: 'BOQ-ENG-FAB-01',
@@ -140,12 +141,13 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
 
     const handleDelete = async (id) => {
         if (!(await confirmDelete('Yakin ingin menghapus item BOQ ini?'))) return;
+        setDeleteError('');
         try {
             await api.delete(`/engineering-boqs/${id}`);
             if (onToast) onToast('Item BOQ berhasil dihapus.');
             loadData();
         } catch (err) {
-            alert(err.message || 'Gagal menghapus data.');
+            setDeleteError(err.message || 'Gagal menghapus data.');
         }
     };
 
@@ -169,6 +171,10 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                     </button>
                 )}
             </div>
+
+            {deleteError && (
+                <div role="alert" className="alert alert-danger py-2 small mb-3">{deleteError}</div>
+            )}
 
             {/* Summary Metrics */}
             <div className="row g-3 mb-4">

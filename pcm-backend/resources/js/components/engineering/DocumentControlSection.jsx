@@ -14,6 +14,7 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
     const [editingItem, setEditingItem] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
+    const [deleteError, setDeleteError] = useState('');
 
     const [form, setForm] = useState({
         document_no: '',
@@ -151,12 +152,13 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
 
     const handleDelete = async (id) => {
         if (!(await confirmDelete('Yakin ingin menghapus catatan distribusi dokumen ini?'))) return;
+        setDeleteError('');
         try {
             await api.delete(`/document-controls/${id}`);
             if (onToast) onToast('Dokumen berhasil dihapus.');
             loadData();
         } catch (err) {
-            alert(err.message || 'Gagal menghapus data.');
+            setDeleteError(err.message || 'Gagal menghapus data.');
         }
     };
 
@@ -180,6 +182,10 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
                     </button>
                 )}
             </div>
+
+            {deleteError && (
+                <div role="alert" className="alert alert-danger py-2 small mb-3">{deleteError}</div>
+            )}
 
             {/* Metric Summary Cards */}
             <div className="row g-3 mb-4">

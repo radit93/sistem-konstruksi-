@@ -15,6 +15,12 @@ class MaterialStandard extends Model
         'schedule',
         'size_range',
         'description',
+        'source',
+        'is_interim',
         'department_id',
+    ];
+
+    protected $casts = [
+        'is_interim' => 'boolean',
     ];
 }

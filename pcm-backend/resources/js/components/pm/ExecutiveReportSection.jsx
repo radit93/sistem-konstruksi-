@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function ExecutiveReportSection({ overview, joints = [], stockMoves = [], scopes = [], user }) {
+export function ExecutiveReportSection({ overview, project, joints = [], stockMoves = [], scopes = [], user }) {
     const totalJoints = joints?.length || 28;
     const welded = (joints || []).filter(j => ['WELDED', 'VISUAL_OK', 'NDT_OK', 'TESTED'].includes(j.status)).length;
     const visualOk = (joints || []).filter(j => ['VISUAL_OK', 'NDT_OK', 'TESTED'].includes(j.status)).length;

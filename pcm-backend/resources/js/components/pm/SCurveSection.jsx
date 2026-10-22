@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 
-export function SCurveSection({ scopes = [], user }) {
+export function SCurveSection({ scopes = [], project, user }) {
     // Simulasi data Kurva S 12 Minggu berdasarkan 18 scopes & bobot realisasi
     const scheduleWeeks = useMemo(() => {
         const totalContractDI = scopes

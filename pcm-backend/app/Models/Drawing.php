@@ -10,6 +10,7 @@ class Drawing extends Model
         'line_no',
         'line_service',
         'material_spec',
+        'fitup_specs',
         'size_range',
         'area',
         'sheet',
@@ -21,6 +22,10 @@ class Drawing extends Model
         'distribution_date',
         'status',
         'department_id',
+    ];
+
+    protected $casts = [
+        'fitup_specs' => 'array',
     ];
     public function project(){return $this->belongsTo(Project::class);}
 }

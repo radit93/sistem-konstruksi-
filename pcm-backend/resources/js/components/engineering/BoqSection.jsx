@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { confirmDelete } from '../../confirm';
+import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
 
-export function BoqSection({ user, projects = [], drawings = [], onToast }) {
+export function BoqSection({ user, projects = [], drawings = [], activeProjectId = '', onToast }) {
     const [boqList, setBoqList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+    const [filterProject, setFilterProject] = useProjectFilter(activeProjectId);
     const [showModal, setShowModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
@@ -43,24 +46,35 @@ export function BoqSection({ user, projects = [], drawings = [], onToast }) {
         loadData();
     }, [loadData]);
 
+    const scopedBoq = useMemo(
+        () => scopeRows(boqList, activeProjectId, filterProject),
+        [boqList, activeProjectId, filterProject]
+    );
+
+    const scopedDrawings = useMemo(
+        () => scopeRows(drawings, activeProjectId, filterProject),
+        [drawings, activeProjectId, filterProject]
+    );
+
     const stats = useMemo(() => {
-        const totalDI = boqList.reduce((acc, b) => acc + (parseFloat(b.dia_inch_total) || 0), 0);
-        const totalJoints = boqList.reduce((acc, b) => acc + (parseInt(b.joints_count, 10) || 0), 0);
-        const totalWeight = boqList.reduce((acc, b) => acc + (parseFloat(b.weight_kg) || 0), 0);
-        const totalSpools = boqList.reduce((acc, b) => acc + (parseInt(b.spools_count, 10) || 0), 0);
+        const totalDI = scopedBoq.reduce((acc, b) => acc + (parseFloat(b.dia_inch_total) || 0), 0);
+        const totalJoints = scopedBoq.reduce((acc, b) => acc + (parseInt(b.joints_count, 10) || 0), 0);
+        const totalWeight = scopedBoq.reduce((acc, b) => acc + (parseFloat(b.weight_kg) || 0), 0);
+        const totalSpools = scopedBoq.reduce((acc, b) => acc + (parseInt(b.spools_count, 10) || 0), 0);
         return { totalDI, totalJoints, totalWeight, totalSpools };
-    }, [boqList]);
+    }, [scopedBoq]);
 
     const filteredBoq = useMemo(() => {
         const q = search.toLowerCase();
-        if (!q) return boqList;
-        return boqList.filter(b =>
-            (b.item_code || '').toLowerCase().includes(q) ||
-            (b.work_scope || '').toLowerCase().includes(q) ||
-            (b.material_group || '').toLowerCase().includes(q) ||
-            (b.line_no || '').toLowerCase().includes(q)
-        );
-    }, [boqList, search]);
+        return scopedBoq.filter(b => {
+            const matchSearch = !q ||
+                (b.item_code || '').toLowerCase().includes(q) ||
+                (b.work_scope || '').toLowerCase().includes(q) ||
+                (b.material_group || '').toLowerCase().includes(q) ||
+                (b.line_no || '').toLowerCase().includes(q);
+            return matchSearch;
+        });
+    }, [scopedBoq, search]);
 
     const handleOpenModal = (item = null) => {
         setFormError('');
@@ -91,8 +105,8 @@ export function BoqSection({ user, projects = [], drawings = [], onToast }) {
                 weight_kg: 850.0,
                 status: 'ESTIMATED',
                 line_no: '15-MPP-AB',
-                drawing_id: drawings[0]?.id || '',
-                project_id: projects[0]?.id || ''
+                drawing_id: scopedDrawings[0]?.id || '',
+                project_id: defaultProjectId(activeProjectId, filterProject, projects)
             });
         }
         setShowModal(true);
@@ -125,7 +139,7 @@ export function BoqSection({ user, projects = [], drawings = [], onToast }) {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Hapus item BOQ ini?')) return;
+        if (!(await confirmDelete('Yakin ingin menghapus item BOQ ini?'))) return;
         try {
             await api.delete(`/engineering-boqs/${id}`);
             if (onToast) onToast('Item BOQ berhasil dihapus.');
@@ -141,7 +155,7 @@ export function BoqSection({ user, projects = [], drawings = [], onToast }) {
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                 <div>
                     <h2 className="h4 fw-bold text-dark mb-1">Bill of Quantity (BOQ) Engineering</h2>
-                    <p className="text-muted small mb-0">
+                    <p className="pcm-cell-sub mb-0">
                         Perhitungan kuantitas teknis per lingkup pekerjaan: volume diameter-inch (DI), bobot tonase, serta estimasi sambungan las.
                     </p>
                 </div>
@@ -149,7 +163,6 @@ export function BoqSection({ user, projects = [], drawings = [], onToast }) {
                     <button
                         type="button"
                         className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                        style={{ borderRadius: '6px' }}
                         onClick={() => handleOpenModal()}
                     >
                         + Tambah Item BOQ
@@ -160,94 +173,110 @@ export function BoqSection({ user, projects = [], drawings = [], onToast }) {
             {/* Summary Metrics */}
             <div className="row g-3 mb-4">
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Total Volume DI</span>
-                        <strong className="h3 fw-bold text-primary mb-0">{stats.totalDI.toFixed(1)}</strong>
-                        <span className="text-muted ms-1 small">Dia-Inch</span>
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Total Volume DI</span>
+                        <strong className="pcm-tile__value pcm-tile__value--primary">{stats.totalDI.toFixed(1)}</strong>
+                        <span className="pcm-tile__unit">Dia-Inch</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Total Sambungan</span>
-                        <strong className="h3 fw-bold text-success mb-0">{stats.totalJoints}</strong>
-                        <span className="text-muted ms-1 small">joints</span>
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Total Sambungan</span>
+                        <strong className="pcm-tile__value text-success">{stats.totalJoints}</strong>
+                        <span className="pcm-tile__unit">joints</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Total Spool</span>
-                        <strong className="h3 fw-bold text-dark mb-0">{stats.totalSpools}</strong>
-                        <span className="text-muted ms-1 small">spools</span>
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Total Spool</span>
+                        <strong className="pcm-tile__value">{stats.totalSpools}</strong>
+                        <span className="pcm-tile__unit">spools</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Total Bobot Material</span>
-                        <strong className="h3 fw-bold text-warning text-dark mb-0">{stats.totalWeight.toFixed(0)}</strong>
-                        <span className="text-muted ms-1 small">kg</span>
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Total Bobot Material</span>
+                        <strong className="pcm-tile__value text-dark">{stats.totalWeight.toFixed(0)}</strong>
+                        <span className="pcm-tile__unit">kg</span>
                     </div>
                 </div>
             </div>
 
-            {/* Search Toolbar */}
-            <div className="mb-3">
-                <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Cari Item Code, Lingkup Pekerjaan, Material Group..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{ borderRadius: '6px', padding: '0.65rem 0.85rem' }}
-                />
+            {/* Search & Project Filter Toolbar */}
+            <div className="pcm-filter-bar">
+                <div className="pcm-filter-search">
+                    <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Cari Item Code, Lingkup Pekerjaan, Material Group..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+                {!isProjectLocked(activeProjectId) && (
+                    <select
+                        className="form-select form-select-sm"
+                        value={filterProject}
+                        onChange={(e) => setFilterProject(e.target.value)}
+                        style={{ width: 'auto' }}
+                    >
+                        <option value="ALL">Semua Proyek ({projects.length})</option>
+                        {projects.map((p) => (
+                            <option key={p.id} value={p.id}>
+                                {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
+                            </option>
+                        ))}
+                    </select>
+                )}
             </div>
 
             {/* Table */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="pcm-card">
                 <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.875rem' }}>
-                        <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.75rem', letterSpacing: '0.04em' }}>
+                    <table className="table table-hover align-middle pcm-table">
+                        <thead>
                             <tr>
-                                <th className="ps-3 py-3">Item Code</th>
-                                <th className="py-3">Lingkup Pekerjaan</th>
-                                <th className="py-3">Material Group</th>
-                                <th className="py-3">Total Dia-Inch</th>
-                                <th className="py-3">Joints</th>
-                                <th className="py-3">Spools</th>
-                                <th className="py-3">Weight (Kg)</th>
-                                <th className="py-3">Status</th>
-                                {canEdit && <th className="text-end pe-3 py-3">Aksi</th>}
+                                <th className="ps-3">Item Code</th>
+                                <th>Lingkup Pekerjaan</th>
+                                <th>Material Group</th>
+                                <th>Total Dia-Inch</th>
+                                <th>Joints</th>
+                                <th>Spools</th>
+                                <th>Weight (Kg)</th>
+                                <th>Status</th>
+                                {canEdit && <th className="text-end pe-3">Aksi</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
                                         Memuat data BOQ Engineering...
                                     </td>
                                 </tr>
                             ) : filteredBoq.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
                                         Tidak ada item BOQ yang sesuai.
                                     </td>
                                 </tr>
                             ) : (
                                 filteredBoq.map((b) => (
                                     <tr key={b.id}>
-                                        <td className="ps-3 fw-bold font-monospace text-primary">{b.item_code}</td>
-                                        <td className="fw-semibold">{b.work_scope}</td>
-                                        <td><span className="badge bg-secondary">{b.material_group}</span></td>
-                                        <td className="fw-bold">{parseFloat(b.dia_inch_total).toFixed(1)} DI</td>
+                                        <td className="ps-3 fw-bold pcm-code text-primary">{b.item_code}</td>
+                                        <td className="pcm-cell-strong">{b.work_scope}</td>
+                                        <td><span className="pcm-chip pcm-chip--neutral">{b.material_group}</span></td>
+                                        <td className="fw-bold pcm-code">{parseFloat(b.dia_inch_total).toFixed(1)} DI</td>
                                         <td>{b.joints_count} joints</td>
                                         <td>{b.spools_count} spools</td>
-                                        <td>{parseFloat(b.weight_kg).toFixed(1)} kg</td>
+                                        <td className="pcm-code">{parseFloat(b.weight_kg).toFixed(1)} kg</td>
                                         <td>
-                                            <span className={`badge ${b.status === 'APPROVED' ? 'bg-success' : 'bg-warning text-dark'}`}>
+                                            <span className={`pcm-chip ${b.status === 'APPROVED' ? 'pcm-chip--success' : 'pcm-chip--warning'}`}>
                                                 {b.status}
                                             </span>
                                         </td>
                                         {canEdit && (
-                                            <td className="text-end pe-3">
+                                            <td className="text-end pe-3 text-nowrap">
                                                 <button
                                                     type="button"
                                                     className="btn btn-outline-primary btn-sm me-1 px-2 py-1"
@@ -257,7 +286,7 @@ export function BoqSection({ user, projects = [], drawings = [], onToast }) {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="btn btn-outline-danger btn-sm px-2 py-1"
+                                                    className="btn btn-danger btn-sm px-2 py-1"
                                                     onClick={() => handleDelete(b.id)}
                                                 >
                                                     Hapus

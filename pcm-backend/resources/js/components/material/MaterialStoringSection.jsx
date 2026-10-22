@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { confirmDelete } from '../../confirm';
 
 export function MaterialStoringSection({ user, onToast }) {
     const [storings, setStorings] = useState([]);
@@ -156,7 +157,7 @@ export function MaterialStoringSection({ user, onToast }) {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Hapus item inventaris ini?')) return;
+        if (!(await confirmDelete('Yakin ingin menghapus item inventaris ini?'))) return;
         try {
             await api.del(`/material-storings/${id}`);
             loadData();
@@ -406,7 +407,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            className="btn btn-sm btn-outline-danger py-1 px-2"
+                                                            className="btn btn-sm btn-danger py-1 px-2"
                                                             onClick={() => handleDelete(item.id)}
                                                         >
                                                             Hapus

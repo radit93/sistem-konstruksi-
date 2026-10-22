@@ -121,13 +121,10 @@ class AccessCatalog
                 'dashboard.view', 'scope.view', 'scope.write', 'progress.write', 'report.view',
             ]),
 
-            // Engineer membuka folder proyek dan mengunggah drawing. project.view
-            // tidak diberikan: itu izin layar admin, dan engineer tidak perlu
-            // melihat area administrasi.
+            // Engineer membuka folder proyek dan mengunggah drawing.
             'engineer' => [
                 'dashboard.view',
                 'drawing.view', 'drawing.write',
-                'project.create', 'project.update',
             ],
 
             'material' => [

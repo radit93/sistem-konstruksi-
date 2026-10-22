@@ -37,30 +37,37 @@ export function Header({ activeTab, user, scopeCode, onRefresh, lastRefresh, onS
                     </nav>
                 </div>
 
-                {/* Top Action Buttons (Rata Ukuran & Lengkap Logout) */}
+                {/* Top Action: Reload Button (Hitam & Ikon Besar) */}
                 <div className="col-12 col-md-5 d-flex align-items-center justify-content-end gap-2 pt-2 pt-md-0">
-                    <span className="badge bg-outline-primary d-none d-lg-inline-flex align-items-center px-3 py-1 text-uppercase" style={{ height: '42px', lineHeight: '28px', borderRadius: '8px' }}>
-                        Sesi: {user?.role_name || user?.role}{scopeCode ? ` · ${scopeCode}` : ''}
-                    </span>
                     <button
                         type="button"
                         onClick={onRefresh}
-                        className="btn btn-outline-primary btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 fw-bold"
-                        style={{ height: '42px', minWidth: '135px', borderRadius: '8px' }}
+                        className="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center"
+                        style={{
+                            width: '52px',
+                            height: '52px',
+                            padding: 0,
+                            borderRadius: '10px',
+                            color: '#000000',
+                            borderColor: '#64748b',
+                            backgroundColor: '#ffffff'
+                        }}
                         title={lastRefresh ? `Terakhir update: ${lastRefresh}` : 'Muat data terbaru'}
+                        aria-label="Refresh Data"
                     >
-                        <i data-acorn-icon="refresh" data-acorn-size="14"></i>
-                        <span>Refresh Data</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onLogout}
-                        className="btn btn-outline-danger btn-sm d-inline-flex align-items-center justify-content-center gap-1.5 fw-bold"
-                        style={{ height: '42px', minWidth: '110px', borderRadius: '8px' }}
-                        title="Keluar dari sesi saat ini"
-                    >
-                        <i data-acorn-icon="logout" data-acorn-size="14"></i>
-                        <span>Logout</span>
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="36"
+                            height="36"
+                            fill="none"
+                            stroke="#000000"
+                            strokeWidth="2.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                        </svg>
                     </button>
                 </div>
             </div>

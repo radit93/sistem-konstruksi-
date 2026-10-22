@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { confirmDelete } from '../../confirm';
+import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
 
-export function DocumentControlSection({ user, projects = [], drawings = [], onToast }) {
+export function DocumentControlSection({ user, projects = [], drawings = [], activeProjectId = '', onToast }) {
     const [docs, setDocs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+    const [filterProject, setFilterProject] = useProjectFilter(activeProjectId);
     const [filterStatus, setFilterStatus] = useState('ALL');
     const [showModal, setShowModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
@@ -46,17 +49,27 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
         loadData();
     }, [loadData]);
 
+    const scopedDocs = useMemo(
+        () => scopeRows(docs, activeProjectId, filterProject),
+        [docs, activeProjectId, filterProject]
+    );
+
+    const scopedDrawings = useMemo(
+        () => scopeRows(drawings, activeProjectId, filterProject),
+        [drawings, activeProjectId, filterProject]
+    );
+
     const stats = useMemo(() => {
-        const total = docs.length;
-        const ifcCount = docs.filter(d => d.status_doc === 'IFC').length;
-        const ifaCount = docs.filter(d => d.status_doc === 'IFA' || d.status_doc === 'IFR').length;
-        const asBuiltCount = docs.filter(d => d.status_doc === 'AS-BUILT').length;
+        const total = scopedDocs.length;
+        const ifcCount = scopedDocs.filter(d => d.status_doc === 'IFC').length;
+        const ifaCount = scopedDocs.filter(d => d.status_doc === 'IFA' || d.status_doc === 'IFR').length;
+        const asBuiltCount = scopedDocs.filter(d => d.status_doc === 'AS-BUILT').length;
         return { total, ifcCount, ifaCount, asBuiltCount };
-    }, [docs]);
+    }, [scopedDocs]);
 
     const filteredDocs = useMemo(() => {
         const q = search.toLowerCase();
-        return docs.filter(d => {
+        return scopedDocs.filter(d => {
             const matchStatus = filterStatus === 'ALL' || d.status_doc === filterStatus;
             const matchSearch = !q ||
                 (d.document_no || '').toLowerCase().includes(q) ||
@@ -67,7 +80,7 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
                 (d.receiver_name || '').toLowerCase().includes(q);
             return matchStatus && matchSearch;
         });
-    }, [docs, search, filterStatus]);
+    }, [scopedDocs, search, filterStatus]);
 
     const handleOpenModal = (item = null) => {
         setFormError('');
@@ -93,8 +106,8 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
             setEditingItem(null);
             setForm({
                 document_no: `DOC-2428-ISO-${String(docs.length + 1).padStart(3, '0')}`,
-                drawing_no: drawings[0]?.drawing_no || '2428-M-15-MPP-AB-SHT1',
-                title: drawings[0]?.title || 'Main Process Piping Sheet 1',
+                drawing_no: scopedDrawings[0]?.drawing_no || '2428-M-15-MPP-AB-SHT1',
+                title: scopedDrawings[0]?.title || 'Main Process Piping Sheet 1',
                 rev_no: '0',
                 status_doc: 'IFC',
                 incoming_date: today,
@@ -103,8 +116,8 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
                 receiver_name: 'Bpk. Sutrisno (QC Lead)',
                 transmittal_no: `TRANS-2428-ENG-${String(docs.length + 1).padStart(3, '0')}`,
                 remarks: 'Issued for Construction resmi untuk fabrikasi spool shop.',
-                drawing_id: drawings[0]?.id || '',
-                project_id: projects[0]?.id || ''
+                drawing_id: scopedDrawings[0]?.id || '',
+                project_id: defaultProjectId(activeProjectId, filterProject, projects)
             });
         }
         setShowModal(true);
@@ -137,7 +150,7 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Hapus catatan distribusi dokumen ini?')) return;
+        if (!(await confirmDelete('Yakin ingin menghapus catatan distribusi dokumen ini?'))) return;
         try {
             await api.delete(`/document-controls/${id}`);
             if (onToast) onToast('Dokumen berhasil dihapus.');
@@ -153,7 +166,7 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                 <div>
                     <h2 className="h4 fw-bold text-dark mb-1">Document Control &amp; Transmittal Register</h2>
-                    <p className="text-muted small mb-0">
+                    <p className="pcm-cell-sub mb-0">
                         Pencatatan riwayat revisi gambar isometrik, surat pengantar transmittal, dan verifikasi distribusi resmi IFC ke lapangan.
                     </p>
                 </div>
@@ -161,7 +174,6 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
                     <button
                         type="button"
                         className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                        style={{ borderRadius: '6px' }}
                         onClick={() => handleOpenModal()}
                     >
                         + Tambah Dokumen Transmittal
@@ -172,52 +184,66 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
             {/* Metric Summary Cards */}
             <div className="row g-3 mb-4">
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Total Dokumen</span>
-                        <strong className="h3 fw-bold text-primary mb-0">{stats.total}</strong>
-                        <span className="text-muted ms-1 small">tercatat</span>
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Total Dokumen</span>
+                        <strong className="pcm-tile__value pcm-tile__value--primary">{stats.total}</strong>
+                        <span className="pcm-tile__unit">tercatat</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Status IFC (Konstruksi)</span>
-                        <strong className="h3 fw-bold text-success mb-0">{stats.ifcCount}</strong>
-                        <span className="text-muted ms-1 small">berkas aktif</span>
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Status IFC (Konstruksi)</span>
+                        <strong className="pcm-tile__value text-success">{stats.ifcCount}</strong>
+                        <span className="pcm-tile__unit">berkas aktif</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Dalam Review (IFA/IFR)</span>
-                        <strong className="h3 fw-bold text-warning text-dark mb-0">{stats.ifaCount}</strong>
-                        <span className="text-muted ms-1 small">berkas</span>
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Dalam Review (IFA/IFR)</span>
+                        <strong className="pcm-tile__value text-warning">{stats.ifaCount}</strong>
+                        <span className="pcm-tile__unit">berkas</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">As-Built Final</span>
-                        <strong className="h3 fw-bold text-dark mb-0">{stats.asBuiltCount}</strong>
-                        <span className="text-muted ms-1 small">berkas selesai</span>
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">As-Built Final</span>
+                        <strong className="pcm-tile__value text-dark">{stats.asBuiltCount}</strong>
+                        <span className="pcm-tile__unit">berkas selesai</span>
                     </div>
                 </div>
             </div>
 
             {/* Filter Toolbar */}
-            <div className="d-flex flex-wrap gap-2 mb-3">
-                <div className="flex-grow-1" style={{ minWidth: '220px' }}>
+            <div className="pcm-filter-bar">
+                <div className="pcm-filter-search">
                     <input
                         type="text"
                         className="form-control form-control-sm"
                         placeholder="Cari Document No, Drawing No, Title, Transmittal No, Penerima..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        style={{ borderRadius: '6px', padding: '0.5rem 0.75rem' }}
                     />
                 </div>
+                {!isProjectLocked(activeProjectId) && (
+                    <select
+                        className="form-select form-select-sm"
+                        value={filterProject}
+                        onChange={(e) => setFilterProject(e.target.value)}
+                        style={{ width: 'auto' }}
+                    >
+                        <option value="ALL">Semua Proyek ({projects.length})</option>
+                        {projects.map((p) => (
+                            <option key={p.id} value={p.id}>
+                                {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
+                            </option>
+                        ))}
+                    </select>
+                )}
                 <select
                     className="form-select form-select-sm"
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    style={{ width: 'auto', borderRadius: '6px' }}
+                    style={{ width: 'auto' }}
                 >
                     <option value="ALL">Semua Status Dokumen</option>
                     <option value="IFC">IFC (Issued for Construction)</option>
@@ -228,52 +254,52 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
             </div>
 
             {/* Table */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="pcm-card">
                 <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-                        <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.04em' }}>
+                    <table className="table table-hover align-middle pcm-table">
+                        <thead>
                             <tr>
-                                <th className="ps-3 py-3">Doc No</th>
-                                <th className="py-3">Drawing Number</th>
-                                <th className="py-3">Judul Gambar</th>
-                                <th className="py-3">Rev</th>
-                                <th className="py-3">Status</th>
-                                <th className="py-3">Tanggal Terbit</th>
-                                <th className="py-3">Didistribusikan Ke</th>
-                                <th className="py-3">Penerima</th>
-                                <th className="py-3">Transmittal No</th>
-                                {canEdit && <th className="text-end pe-3 py-3">Aksi</th>}
+                                <th className="ps-3">Doc No</th>
+                                <th>Drawing Number</th>
+                                <th>Judul Gambar</th>
+                                <th>Rev</th>
+                                <th>Status</th>
+                                <th>Tanggal Terbit</th>
+                                <th>Didistribusikan Ke</th>
+                                <th>Penerima</th>
+                                <th>Transmittal No</th>
+                                {canEdit && <th className="text-end pe-3">Aksi</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 10 : 9} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 10 : 9} className="text-center py-4 pcm-cell-sub">
                                         Memuat data Document Control...
                                     </td>
                                 </tr>
                             ) : filteredDocs.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 10 : 9} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 10 : 9} className="text-center py-4 pcm-cell-sub">
                                         Tidak ada dokumen kontrol yang sesuai.
                                     </td>
                                 </tr>
                             ) : (
                                 filteredDocs.map((d) => (
                                     <tr key={d.id}>
-                                        <td className="ps-3 fw-bold font-monospace text-primary">{d.document_no}</td>
-                                        <td className="font-monospace fw-semibold">{d.drawing_no}</td>
-                                        <td>{d.title}</td>
-                                        <td><span className="badge bg-secondary font-monospace">Rev {d.rev_no}</span></td>
+                                        <td className="ps-3 fw-bold pcm-code text-primary">{d.document_no}</td>
+                                        <td className="pcm-code fw-semibold">{d.drawing_no}</td>
+                                        <td className="pcm-cell-strong">{d.title}</td>
+                                        <td><span className="pcm-chip pcm-chip--neutral pcm-code">Rev {d.rev_no}</span></td>
                                         <td>
-                                            <span className={`badge ${d.status_doc === 'IFC' ? 'bg-success' : d.status_doc === 'AS-BUILT' ? 'bg-dark' : 'bg-warning text-dark'}`}>
+                                            <span className={`pcm-chip ${d.status_doc === 'IFC' ? 'pcm-chip--success' : d.status_doc === 'AS-BUILT' ? 'pcm-chip--dark' : 'pcm-chip--warning'}`}>
                                                 {d.status_doc}
                                             </span>
                                         </td>
-                                        <td>{d.issued_date || '—'}</td>
-                                        <td className="small">{d.distributed_to || '—'}</td>
-                                        <td className="small">{d.receiver_name || '—'}</td>
-                                        <td className="font-monospace small">{d.transmittal_no || '—'}</td>
+                                        <td className="pcm-cell-sub">{d.issued_date || '—'}</td>
+                                        <td className="small pcm-cell-sub">{d.distributed_to || '—'}</td>
+                                        <td className="small pcm-cell-sub">{d.receiver_name || '—'}</td>
+                                        <td className="pcm-code small">{d.transmittal_no || '—'}</td>
                                         {canEdit && (
                                             <td className="text-end pe-3">
                                                 <button
@@ -285,7 +311,7 @@ export function DocumentControlSection({ user, projects = [], drawings = [], onT
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="btn btn-outline-danger btn-sm px-2 py-1"
+                                                    className="btn btn-danger btn-sm px-2 py-1"
                                                     onClick={() => handleDelete(d.id)}
                                                 >
                                                     Hapus

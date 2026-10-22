@@ -1,0 +1,2362 @@
+[
+  {
+    "nps": "1\"",
+    "dn": "DN 25",
+    "outer_diameter_mm": 33.4,
+    "schedule": "STD",
+    "wall_thickness_mm": 3.38,
+    "weight_kg_m": 2.5,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 15.0
+  },
+  {
+    "nps": "1\"",
+    "dn": "DN 25",
+    "outer_diameter_mm": 33.4,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 4.24,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 25.44
+  },
+  {
+    "nps": "1\"",
+    "dn": "DN 25",
+    "outer_diameter_mm": 33.4,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 3.38,
+    "weight_kg_m": 2.5,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 15.0
+  },
+  {
+    "nps": "1\"",
+    "dn": "DN 25",
+    "outer_diameter_mm": 33.4,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 4.55,
+    "weight_kg_m": 3.24,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 19.44
+  },
+  {
+    "nps": "1\"",
+    "dn": "DN 25",
+    "outer_diameter_mm": 33.4,
+    "schedule": "XS",
+    "wall_thickness_mm": 4.55,
+    "weight_kg_m": 3.24,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 19.44
+  },
+  {
+    "nps": "1\"",
+    "dn": "DN 25",
+    "outer_diameter_mm": 33.4,
+    "schedule": "XXS",
+    "wall_thickness_mm": 9.09,
+    "weight_kg_m": 5.45,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 32.7
+  },
+  {
+    "nps": "1/2\"",
+    "dn": "DN 15",
+    "outer_diameter_mm": 21.3,
+    "schedule": "STD",
+    "wall_thickness_mm": 2.77,
+    "weight_kg_m": 1.27,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 7.62
+  },
+  {
+    "nps": "1/2\"",
+    "dn": "DN 15",
+    "outer_diameter_mm": 21.3,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 4.78,
+    "weight_kg_m": 1.95,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 11.7
+  },
+  {
+    "nps": "1/2\"",
+    "dn": "DN 15",
+    "outer_diameter_mm": 21.3,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 2.77,
+    "weight_kg_m": 1.27,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 7.62
+  },
+  {
+    "nps": "1/2\"",
+    "dn": "DN 15",
+    "outer_diameter_mm": 21.3,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 3.73,
+    "weight_kg_m": 1.62,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 9.72
+  },
+  {
+    "nps": "1/2\"",
+    "dn": "DN 15",
+    "outer_diameter_mm": 21.3,
+    "schedule": "XS",
+    "wall_thickness_mm": 3.73,
+    "weight_kg_m": 1.62,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 9.72
+  },
+  {
+    "nps": "1/2\"",
+    "dn": "DN 15",
+    "outer_diameter_mm": 21.3,
+    "schedule": "XXS",
+    "wall_thickness_mm": 7.47,
+    "weight_kg_m": 2.55,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 15.3
+  },
+  {
+    "nps": "1/4\"",
+    "dn": "DN 8",
+    "outer_diameter_mm": 13.7,
+    "schedule": "STD",
+    "wall_thickness_mm": 2.24,
+    "weight_kg_m": 0.63,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 3.78
+  },
+  {
+    "nps": "1/4\"",
+    "dn": "DN 8",
+    "outer_diameter_mm": 13.7,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 2.24,
+    "weight_kg_m": 0.63,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 3.78
+  },
+  {
+    "nps": "1/4\"",
+    "dn": "DN 8",
+    "outer_diameter_mm": 13.7,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 3.02,
+    "weight_kg_m": 0.8,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 4.8
+  },
+  {
+    "nps": "1/4\"",
+    "dn": "DN 8",
+    "outer_diameter_mm": 13.7,
+    "schedule": "XS",
+    "wall_thickness_mm": 3.02,
+    "weight_kg_m": 0.8,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 4.8
+  },
+  {
+    "nps": "1/8\"",
+    "dn": "DN 5",
+    "outer_diameter_mm": 10.3,
+    "schedule": "STD",
+    "wall_thickness_mm": 1.73,
+    "weight_kg_m": 0.37,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2.22
+  },
+  {
+    "nps": "1/8\"",
+    "dn": "DN 5",
+    "outer_diameter_mm": 10.3,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 1.73,
+    "weight_kg_m": 0.37,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2.22
+  },
+  {
+    "nps": "1/8\"",
+    "dn": "DN 5",
+    "outer_diameter_mm": 10.3,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 2.41,
+    "weight_kg_m": 0.47,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2.82
+  },
+  {
+    "nps": "1/8\"",
+    "dn": "DN 5",
+    "outer_diameter_mm": 10.3,
+    "schedule": "XS",
+    "wall_thickness_mm": 2.41,
+    "weight_kg_m": 0.47,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2.82
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.27,
+    "weight_kg_m": 60.31,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 361.86
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "Sch 100",
+    "wall_thickness_mm": 18.26,
+    "weight_kg_m": 114.75,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 688.5
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 21.44,
+    "weight_kg_m": 133.06,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 798.36
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "Sch 140",
+    "wall_thickness_mm": 25.4,
+    "weight_kg_m": 155.15,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 930.9
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 28.58,
+    "weight_kg_m": 172.33,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1033.98
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 41.77,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 250.62
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 7.8,
+    "weight_kg_m": 51.03,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 306.18
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 9.27,
+    "weight_kg_m": 60.31,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 361.86
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "Sch 60",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 81.55,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 489.3
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 15.09,
+    "weight_kg_m": 96.01,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 576.06
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 81.55,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 489.3
+  },
+  {
+    "nps": "10\"",
+    "dn": "DN 250",
+    "outer_diameter_mm": 273.1,
+    "schedule": "XXS",
+    "wall_thickness_mm": 25.4,
+    "weight_kg_m": 155.15,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 930.9
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 73.88,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 443.28
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "Sch 100",
+    "wall_thickness_mm": 21.44,
+    "weight_kg_m": 159.91,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 959.46
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 25.4,
+    "weight_kg_m": 186.97,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1121.82
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "Sch 140",
+    "wall_thickness_mm": 28.58,
+    "weight_kg_m": 208.14,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1248.84
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 33.32,
+    "weight_kg_m": 238.76,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1432.56
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 49.73,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 298.38
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 8.38,
+    "weight_kg_m": 65.2,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 391.2
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 10.31,
+    "weight_kg_m": 79.73,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 478.38
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "Sch 60",
+    "wall_thickness_mm": 14.27,
+    "weight_kg_m": 108.96,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 653.76
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 17.48,
+    "weight_kg_m": 132.08,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 792.48
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 97.46,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 584.76
+  },
+  {
+    "nps": "12\"",
+    "dn": "DN 300",
+    "outer_diameter_mm": 323.9,
+    "schedule": "XXS",
+    "wall_thickness_mm": 25.4,
+    "weight_kg_m": 186.97,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1121.82
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 81.33,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 487.98
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 54.69,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 328.14
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 100",
+    "wall_thickness_mm": 23.83,
+    "weight_kg_m": 194.96,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1169.76
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 27.79,
+    "weight_kg_m": 224.65,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1347.9
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 140",
+    "wall_thickness_mm": 31.75,
+    "weight_kg_m": 253.56,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1521.36
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 35.71,
+    "weight_kg_m": 281.71,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1690.26
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 7.92,
+    "weight_kg_m": 67.9,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 407.4
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 81.33,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 487.98
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 11.13,
+    "weight_kg_m": 94.55,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 567.3
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 60",
+    "wall_thickness_mm": 15.09,
+    "weight_kg_m": 126.71,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 760.26
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 19.05,
+    "weight_kg_m": 158.1,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 948.6
+  },
+  {
+    "nps": "14\"",
+    "dn": "DN 350",
+    "outer_diameter_mm": 355.6,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 107.39,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 644.34
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 93.27,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 559.62
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 62.64,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 375.84
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 100",
+    "wall_thickness_mm": 26.19,
+    "weight_kg_m": 245.56,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1473.36
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 30.96,
+    "weight_kg_m": 286.64,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1719.84
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 140",
+    "wall_thickness_mm": 36.53,
+    "weight_kg_m": 333.19,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1999.14
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 40.49,
+    "weight_kg_m": 365.35,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2192.1
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 7.92,
+    "weight_kg_m": 77.83,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 466.98
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 93.27,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 559.62
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 123.3,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 739.8
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 60",
+    "wall_thickness_mm": 16.66,
+    "weight_kg_m": 160.12,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 960.72
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 21.44,
+    "weight_kg_m": 203.53,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1221.18
+  },
+  {
+    "nps": "16\"",
+    "dn": "DN 400",
+    "outer_diameter_mm": 406.4,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 123.3,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 739.8
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 105.16,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 630.96
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 70.57,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 423.42
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 100",
+    "wall_thickness_mm": 29.36,
+    "weight_kg_m": 309.62,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1857.72
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 34.93,
+    "weight_kg_m": 363.56,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2181.36
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 140",
+    "wall_thickness_mm": 39.67,
+    "weight_kg_m": 408.26,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2449.56
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 45.24,
+    "weight_kg_m": 459.37,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2756.22
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 7.92,
+    "weight_kg_m": 87.71,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 526.26
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 11.13,
+    "weight_kg_m": 122.38,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 734.28
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 14.27,
+    "weight_kg_m": 155.8,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 934.8
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 60",
+    "wall_thickness_mm": 19.05,
+    "weight_kg_m": 205.74,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1234.44
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 23.88,
+    "weight_kg_m": 254.55,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1527.3
+  },
+  {
+    "nps": "18\"",
+    "dn": "DN 450",
+    "outer_diameter_mm": 457.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 139.15,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 834.9
+  },
+  {
+    "nps": "2\"",
+    "dn": "DN 50",
+    "outer_diameter_mm": 60.3,
+    "schedule": "STD",
+    "wall_thickness_mm": 3.91,
+    "weight_kg_m": 5.44,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 32.64
+  },
+  {
+    "nps": "2\"",
+    "dn": "DN 50",
+    "outer_diameter_mm": 60.3,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 8.74,
+    "weight_kg_m": 11.11,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 66.66
+  },
+  {
+    "nps": "2\"",
+    "dn": "DN 50",
+    "outer_diameter_mm": 60.3,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 3.91,
+    "weight_kg_m": 5.44,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 32.64
+  },
+  {
+    "nps": "2\"",
+    "dn": "DN 50",
+    "outer_diameter_mm": 60.3,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 5.54,
+    "weight_kg_m": 7.48,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 44.88
+  },
+  {
+    "nps": "2\"",
+    "dn": "DN 50",
+    "outer_diameter_mm": 60.3,
+    "schedule": "XS",
+    "wall_thickness_mm": 5.54,
+    "weight_kg_m": 7.48,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 44.88
+  },
+  {
+    "nps": "2\"",
+    "dn": "DN 50",
+    "outer_diameter_mm": 60.3,
+    "schedule": "XXS",
+    "wall_thickness_mm": 11.07,
+    "weight_kg_m": 13.44,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 80.64
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 117.15,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 702.9
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 78.55,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 471.3
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 100",
+    "wall_thickness_mm": 32.54,
+    "weight_kg_m": 381.53,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2289.18
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 38.1,
+    "weight_kg_m": 441.49,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2648.94
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 140",
+    "wall_thickness_mm": 44.45,
+    "weight_kg_m": 508.11,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 3048.66
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 50.01,
+    "weight_kg_m": 564.81,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 3388.86
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 117.15,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 702.9
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 155.12,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 930.72
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 15.09,
+    "weight_kg_m": 183.42,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1100.52
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 60",
+    "wall_thickness_mm": 20.62,
+    "weight_kg_m": 247.83,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1486.98
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 26.19,
+    "weight_kg_m": 311.17,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1867.02
+  },
+  {
+    "nps": "20\"",
+    "dn": "DN 500",
+    "outer_diameter_mm": 508.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 155.12,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 930.72
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 129.13,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 774.78
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 86.54,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 519.24
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "Sch 100",
+    "wall_thickness_mm": 34.93,
+    "weight_kg_m": 451.42,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2708.52
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 41.28,
+    "weight_kg_m": 527.02,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 3162.12
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "Sch 140",
+    "wall_thickness_mm": 47.63,
+    "weight_kg_m": 600.63,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 3603.78
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 53.98,
+    "weight_kg_m": 672.26,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 4033.56
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 129.13,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 774.78
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 171.09,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1026.54
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "Sch 60",
+    "wall_thickness_mm": 22.23,
+    "weight_kg_m": 294.25,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1765.5
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 28.58,
+    "weight_kg_m": 373.83,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2242.98
+  },
+  {
+    "nps": "22\"",
+    "dn": "DN 550",
+    "outer_diameter_mm": 559.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 171.09,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1026.54
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 141.12,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 846.72
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 94.53,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 567.18
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 100",
+    "wall_thickness_mm": 38.89,
+    "weight_kg_m": 547.71,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 3286.26
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 46.02,
+    "weight_kg_m": 640.03,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 3840.18
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 140",
+    "wall_thickness_mm": 52.37,
+    "weight_kg_m": 720.15,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 4320.9
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 59.54,
+    "weight_kg_m": 808.22,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 4849.32
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 141.12,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 846.72
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 14.27,
+    "weight_kg_m": 209.64,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1257.84
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 17.48,
+    "weight_kg_m": 255.41,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1532.46
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 60",
+    "wall_thickness_mm": 24.61,
+    "weight_kg_m": 355.26,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2131.56
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 30.96,
+    "weight_kg_m": 442.08,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2652.48
+  },
+  {
+    "nps": "24\"",
+    "dn": "DN 600",
+    "outer_diameter_mm": 610.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 187.06,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1122.36
+  },
+  {
+    "nps": "26\"",
+    "dn": "DN 650",
+    "outer_diameter_mm": 660.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 152.87,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 917.22
+  },
+  {
+    "nps": "26\"",
+    "dn": "DN 650",
+    "outer_diameter_mm": 660.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 7.92,
+    "weight_kg_m": 127.36,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 764.16
+  },
+  {
+    "nps": "26\"",
+    "dn": "DN 650",
+    "outer_diameter_mm": 660.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 202.72,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1216.32
+  },
+  {
+    "nps": "26\"",
+    "dn": "DN 650",
+    "outer_diameter_mm": 660.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 202.72,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1216.32
+  },
+  {
+    "nps": "28\"",
+    "dn": "DN 700",
+    "outer_diameter_mm": 711.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 164.85,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 989.1
+  },
+  {
+    "nps": "28\"",
+    "dn": "DN 700",
+    "outer_diameter_mm": 711.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 7.92,
+    "weight_kg_m": 137.32,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 823.92
+  },
+  {
+    "nps": "28\"",
+    "dn": "DN 700",
+    "outer_diameter_mm": 711.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 218.69,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1312.14
+  },
+  {
+    "nps": "28\"",
+    "dn": "DN 700",
+    "outer_diameter_mm": 711.0,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 15.88,
+    "weight_kg_m": 271.21,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1627.26
+  },
+  {
+    "nps": "28\"",
+    "dn": "DN 700",
+    "outer_diameter_mm": 711.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 218.69,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1312.14
+  },
+  {
+    "nps": "3\"",
+    "dn": "DN 80",
+    "outer_diameter_mm": 88.9,
+    "schedule": "STD",
+    "wall_thickness_mm": 5.49,
+    "weight_kg_m": 11.29,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 67.74
+  },
+  {
+    "nps": "3\"",
+    "dn": "DN 80",
+    "outer_diameter_mm": 88.9,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 11.13,
+    "weight_kg_m": 21.35,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 128.1
+  },
+  {
+    "nps": "3\"",
+    "dn": "DN 80",
+    "outer_diameter_mm": 88.9,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 5.49,
+    "weight_kg_m": 11.29,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 67.74
+  },
+  {
+    "nps": "3\"",
+    "dn": "DN 80",
+    "outer_diameter_mm": 88.9,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 7.62,
+    "weight_kg_m": 15.27,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 91.62
+  },
+  {
+    "nps": "3\"",
+    "dn": "DN 80",
+    "outer_diameter_mm": 88.9,
+    "schedule": "XS",
+    "wall_thickness_mm": 7.62,
+    "weight_kg_m": 15.27,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 91.62
+  },
+  {
+    "nps": "3\"",
+    "dn": "DN 80",
+    "outer_diameter_mm": 88.9,
+    "schedule": "XXS",
+    "wall_thickness_mm": 15.24,
+    "weight_kg_m": 27.68,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 166.08
+  },
+  {
+    "nps": "3/4\"",
+    "dn": "DN 20",
+    "outer_diameter_mm": 26.7,
+    "schedule": "STD",
+    "wall_thickness_mm": 2.87,
+    "weight_kg_m": 1.69,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 10.14
+  },
+  {
+    "nps": "3/4\"",
+    "dn": "DN 20",
+    "outer_diameter_mm": 26.7,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 5.56,
+    "weight_kg_m": 2.9,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 17.4
+  },
+  {
+    "nps": "3/4\"",
+    "dn": "DN 20",
+    "outer_diameter_mm": 26.7,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 2.87,
+    "weight_kg_m": 1.69,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 10.14
+  },
+  {
+    "nps": "3/4\"",
+    "dn": "DN 20",
+    "outer_diameter_mm": 26.7,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 3.91,
+    "weight_kg_m": 2.2,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 13.2
+  },
+  {
+    "nps": "3/4\"",
+    "dn": "DN 20",
+    "outer_diameter_mm": 26.7,
+    "schedule": "XS",
+    "wall_thickness_mm": 3.91,
+    "weight_kg_m": 2.2,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 13.2
+  },
+  {
+    "nps": "3/4\"",
+    "dn": "DN 20",
+    "outer_diameter_mm": 26.7,
+    "schedule": "XXS",
+    "wall_thickness_mm": 7.82,
+    "weight_kg_m": 3.64,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 21.84
+  },
+  {
+    "nps": "3/8\"",
+    "dn": "DN 10",
+    "outer_diameter_mm": 17.1,
+    "schedule": "STD",
+    "wall_thickness_mm": 2.31,
+    "weight_kg_m": 0.84,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 5.04
+  },
+  {
+    "nps": "3/8\"",
+    "dn": "DN 10",
+    "outer_diameter_mm": 17.1,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 2.31,
+    "weight_kg_m": 0.84,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 5.04
+  },
+  {
+    "nps": "3/8\"",
+    "dn": "DN 10",
+    "outer_diameter_mm": 17.1,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 3.2,
+    "weight_kg_m": 1.1,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 6.6
+  },
+  {
+    "nps": "3/8\"",
+    "dn": "DN 10",
+    "outer_diameter_mm": 17.1,
+    "schedule": "XS",
+    "wall_thickness_mm": 3.2,
+    "weight_kg_m": 1.1,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 6.6
+  },
+  {
+    "nps": "30\"",
+    "dn": "DN 750",
+    "outer_diameter_mm": 762.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 176.84,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1061.04
+  },
+  {
+    "nps": "30\"",
+    "dn": "DN 750",
+    "outer_diameter_mm": 762.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 7.92,
+    "weight_kg_m": 147.28,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 883.68
+  },
+  {
+    "nps": "30\"",
+    "dn": "DN 750",
+    "outer_diameter_mm": 762.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 234.67,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1408.02
+  },
+  {
+    "nps": "30\"",
+    "dn": "DN 750",
+    "outer_diameter_mm": 762.0,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 15.88,
+    "weight_kg_m": 292.18,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1753.08
+  },
+  {
+    "nps": "30\"",
+    "dn": "DN 750",
+    "outer_diameter_mm": 762.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 234.67,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1408.02
+  },
+  {
+    "nps": "32\"",
+    "dn": "DN 800",
+    "outer_diameter_mm": 813.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 188.82,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1132.92
+  },
+  {
+    "nps": "32\"",
+    "dn": "DN 800",
+    "outer_diameter_mm": 813.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 7.92,
+    "weight_kg_m": 157.24,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 943.44
+  },
+  {
+    "nps": "32\"",
+    "dn": "DN 800",
+    "outer_diameter_mm": 813.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 250.64,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1503.84
+  },
+  {
+    "nps": "32\"",
+    "dn": "DN 800",
+    "outer_diameter_mm": 813.0,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 15.88,
+    "weight_kg_m": 312.15,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1872.9
+  },
+  {
+    "nps": "32\"",
+    "dn": "DN 800",
+    "outer_diameter_mm": 813.0,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 17.48,
+    "weight_kg_m": 342.91,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2057.46
+  },
+  {
+    "nps": "32\"",
+    "dn": "DN 800",
+    "outer_diameter_mm": 813.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 250.64,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1503.84
+  },
+  {
+    "nps": "34\"",
+    "dn": "DN 850",
+    "outer_diameter_mm": 864.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 200.31,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1201.86
+  },
+  {
+    "nps": "34\"",
+    "dn": "DN 850",
+    "outer_diameter_mm": 864.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 7.92,
+    "weight_kg_m": 167.2,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1003.2
+  },
+  {
+    "nps": "34\"",
+    "dn": "DN 850",
+    "outer_diameter_mm": 864.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 266.61,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1599.66
+  },
+  {
+    "nps": "34\"",
+    "dn": "DN 850",
+    "outer_diameter_mm": 864.0,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 15.88,
+    "weight_kg_m": 332.12,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1992.72
+  },
+  {
+    "nps": "34\"",
+    "dn": "DN 850",
+    "outer_diameter_mm": 864.0,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 17.48,
+    "weight_kg_m": 364.9,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2189.4
+  },
+  {
+    "nps": "34\"",
+    "dn": "DN 850",
+    "outer_diameter_mm": 864.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 266.61,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1599.66
+  },
+  {
+    "nps": "36\"",
+    "dn": "DN 900",
+    "outer_diameter_mm": 914.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 212.56,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1275.36
+  },
+  {
+    "nps": "36\"",
+    "dn": "DN 900",
+    "outer_diameter_mm": 914.0,
+    "schedule": "Sch 10",
+    "wall_thickness_mm": 7.92,
+    "weight_kg_m": 176.96,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1061.76
+  },
+  {
+    "nps": "36\"",
+    "dn": "DN 900",
+    "outer_diameter_mm": 914.0,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 282.27,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1693.62
+  },
+  {
+    "nps": "36\"",
+    "dn": "DN 900",
+    "outer_diameter_mm": 914.0,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 15.88,
+    "weight_kg_m": 351.7,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2110.2
+  },
+  {
+    "nps": "36\"",
+    "dn": "DN 900",
+    "outer_diameter_mm": 914.0,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 19.05,
+    "weight_kg_m": 420.42,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2522.52
+  },
+  {
+    "nps": "36\"",
+    "dn": "DN 900",
+    "outer_diameter_mm": 914.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 282.27,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1693.62
+  },
+  {
+    "nps": "38\"",
+    "dn": "DN 950",
+    "outer_diameter_mm": 965.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 224.54,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1347.24
+  },
+  {
+    "nps": "38\"",
+    "dn": "DN 950",
+    "outer_diameter_mm": 965.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 298.24,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1789.44
+  },
+  {
+    "nps": "4\"",
+    "dn": "DN 100",
+    "outer_diameter_mm": 114.3,
+    "schedule": "STD",
+    "wall_thickness_mm": 6.02,
+    "weight_kg_m": 16.07,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 96.42
+  },
+  {
+    "nps": "4\"",
+    "dn": "DN 100",
+    "outer_diameter_mm": 114.3,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 11.13,
+    "weight_kg_m": 28.32,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 169.92
+  },
+  {
+    "nps": "4\"",
+    "dn": "DN 100",
+    "outer_diameter_mm": 114.3,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 13.49,
+    "weight_kg_m": 33.54,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 201.24
+  },
+  {
+    "nps": "4\"",
+    "dn": "DN 100",
+    "outer_diameter_mm": 114.3,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 6.02,
+    "weight_kg_m": 16.07,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 96.42
+  },
+  {
+    "nps": "4\"",
+    "dn": "DN 100",
+    "outer_diameter_mm": 114.3,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 8.56,
+    "weight_kg_m": 22.32,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 133.92
+  },
+  {
+    "nps": "4\"",
+    "dn": "DN 100",
+    "outer_diameter_mm": 114.3,
+    "schedule": "XS",
+    "wall_thickness_mm": 8.56,
+    "weight_kg_m": 22.32,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 133.92
+  },
+  {
+    "nps": "4\"",
+    "dn": "DN 100",
+    "outer_diameter_mm": 114.3,
+    "schedule": "XXS",
+    "wall_thickness_mm": 17.12,
+    "weight_kg_m": 41.03,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 246.18
+  },
+  {
+    "nps": "40\"",
+    "dn": "DN 1000",
+    "outer_diameter_mm": 1016.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 236.53,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1419.18
+  },
+  {
+    "nps": "40\"",
+    "dn": "DN 1000",
+    "outer_diameter_mm": 1016.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 314.22,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1885.32
+  },
+  {
+    "nps": "42\"",
+    "dn": "DN 1050",
+    "outer_diameter_mm": 1067.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 248.52,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1491.12
+  },
+  {
+    "nps": "42\"",
+    "dn": "DN 1050",
+    "outer_diameter_mm": 1067.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 330.19,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1981.14
+  },
+  {
+    "nps": "44\"",
+    "dn": "DN 1100",
+    "outer_diameter_mm": 1118.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 260.5,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1563.0
+  },
+  {
+    "nps": "44\"",
+    "dn": "DN 1100",
+    "outer_diameter_mm": 1118.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 346.16,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2076.96
+  },
+  {
+    "nps": "46\"",
+    "dn": "DN 1150",
+    "outer_diameter_mm": 1168.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 272.25,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1633.5
+  },
+  {
+    "nps": "46\"",
+    "dn": "DN 1150",
+    "outer_diameter_mm": 1168.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 351.82,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2110.92
+  },
+  {
+    "nps": "48\"",
+    "dn": "DN 1200",
+    "outer_diameter_mm": 1219.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 284.24,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 1705.44
+  },
+  {
+    "nps": "48\"",
+    "dn": "DN 1200",
+    "outer_diameter_mm": 1219.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 377.79,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 2266.74
+  },
+  {
+    "nps": "5\"",
+    "dn": "DN 125",
+    "outer_diameter_mm": 141.3,
+    "schedule": "STD",
+    "wall_thickness_mm": 6.55,
+    "weight_kg_m": 21.77,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 130.62
+  },
+  {
+    "nps": "5\"",
+    "dn": "DN 125",
+    "outer_diameter_mm": 141.3,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 40.28,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 241.68
+  },
+  {
+    "nps": "5\"",
+    "dn": "DN 125",
+    "outer_diameter_mm": 141.3,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 15.88,
+    "weight_kg_m": 49.11,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 294.66
+  },
+  {
+    "nps": "5\"",
+    "dn": "DN 125",
+    "outer_diameter_mm": 141.3,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 6.55,
+    "weight_kg_m": 21.77,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 130.62
+  },
+  {
+    "nps": "5\"",
+    "dn": "DN 125",
+    "outer_diameter_mm": 141.3,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 30.97,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 185.82
+  },
+  {
+    "nps": "5\"",
+    "dn": "DN 125",
+    "outer_diameter_mm": 141.3,
+    "schedule": "XS",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 30.97,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 185.82
+  },
+  {
+    "nps": "5\"",
+    "dn": "DN 125",
+    "outer_diameter_mm": 141.3,
+    "schedule": "XXS",
+    "wall_thickness_mm": 19.05,
+    "weight_kg_m": 57.43,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 344.58
+  },
+  {
+    "nps": "6\"",
+    "dn": "DN 150",
+    "outer_diameter_mm": 168.3,
+    "schedule": "STD",
+    "wall_thickness_mm": 7.11,
+    "weight_kg_m": 28.26,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 169.56
+  },
+  {
+    "nps": "6\"",
+    "dn": "DN 150",
+    "outer_diameter_mm": 168.3,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 14.27,
+    "weight_kg_m": 54.2,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 325.2
+  },
+  {
+    "nps": "6\"",
+    "dn": "DN 150",
+    "outer_diameter_mm": 168.3,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 18.26,
+    "weight_kg_m": 67.56,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 405.36
+  },
+  {
+    "nps": "6\"",
+    "dn": "DN 150",
+    "outer_diameter_mm": 168.3,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 7.11,
+    "weight_kg_m": 28.26,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 169.56
+  },
+  {
+    "nps": "6\"",
+    "dn": "DN 150",
+    "outer_diameter_mm": 168.3,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 10.97,
+    "weight_kg_m": 42.56,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 255.36
+  },
+  {
+    "nps": "6\"",
+    "dn": "DN 150",
+    "outer_diameter_mm": 168.3,
+    "schedule": "XS",
+    "wall_thickness_mm": 10.97,
+    "weight_kg_m": 42.56,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 255.36
+  },
+  {
+    "nps": "6\"",
+    "dn": "DN 150",
+    "outer_diameter_mm": 168.3,
+    "schedule": "XXS",
+    "wall_thickness_mm": 21.95,
+    "weight_kg_m": 79.22,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 475.32
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "STD",
+    "wall_thickness_mm": 8.18,
+    "weight_kg_m": 42.55,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 255.3
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "Sch 100",
+    "wall_thickness_mm": 15.09,
+    "weight_kg_m": 75.92,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 455.52
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "Sch 120",
+    "wall_thickness_mm": 18.26,
+    "weight_kg_m": 90.44,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 542.64
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "Sch 140",
+    "wall_thickness_mm": 20.62,
+    "weight_kg_m": 100.92,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 605.52
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 23.01,
+    "weight_kg_m": 111.27,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 667.62
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "Sch 20",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 33.31,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 199.86
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "Sch 30",
+    "wall_thickness_mm": 7.04,
+    "weight_kg_m": 36.81,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 220.86
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 8.18,
+    "weight_kg_m": 42.55,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 255.3
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "Sch 60",
+    "wall_thickness_mm": 10.31,
+    "weight_kg_m": 53.08,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 318.48
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 64.64,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 387.84
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "XS",
+    "wall_thickness_mm": 12.7,
+    "weight_kg_m": 64.64,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 387.84
+  },
+  {
+    "nps": "8\"",
+    "dn": "DN 200",
+    "outer_diameter_mm": 219.1,
+    "schedule": "XXS",
+    "wall_thickness_mm": 22.23,
+    "weight_kg_m": 107.92,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 647.52
+  },
+  {
+    "nps": "1-1/2\"",
+    "dn": "DN 40",
+    "outer_diameter_mm": 48.3,
+    "schedule": "STD",
+    "wall_thickness_mm": 3.68,
+    "weight_kg_m": 4.05,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 24.3
+  },
+  {
+    "nps": "1-1/2\"",
+    "dn": "DN 40",
+    "outer_diameter_mm": 48.3,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 7.14,
+    "weight_kg_m": 7.25,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 43.5
+  },
+  {
+    "nps": "1-1/2\"",
+    "dn": "DN 40",
+    "outer_diameter_mm": 48.3,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 3.68,
+    "weight_kg_m": 4.05,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 24.3
+  },
+  {
+    "nps": "1-1/2\"",
+    "dn": "DN 40",
+    "outer_diameter_mm": 48.3,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 5.08,
+    "weight_kg_m": 5.41,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 32.46
+  },
+  {
+    "nps": "1-1/2\"",
+    "dn": "DN 40",
+    "outer_diameter_mm": 48.3,
+    "schedule": "XS",
+    "wall_thickness_mm": 5.08,
+    "weight_kg_m": 5.41,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 32.46
+  },
+  {
+    "nps": "1-1/2\"",
+    "dn": "DN 40",
+    "outer_diameter_mm": 48.3,
+    "schedule": "XXS",
+    "wall_thickness_mm": 10.15,
+    "weight_kg_m": 9.56,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 57.36
+  },
+  {
+    "nps": "1-1/4\"",
+    "dn": "DN 32",
+    "outer_diameter_mm": 42.2,
+    "schedule": "STD",
+    "wall_thickness_mm": 3.56,
+    "weight_kg_m": 3.39,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 20.34
+  },
+  {
+    "nps": "1-1/4\"",
+    "dn": "DN 32",
+    "outer_diameter_mm": 42.2,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 6.35,
+    "weight_kg_m": 5.61,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 33.66
+  },
+  {
+    "nps": "1-1/4\"",
+    "dn": "DN 32",
+    "outer_diameter_mm": 42.2,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 3.56,
+    "weight_kg_m": 3.39,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 20.34
+  },
+  {
+    "nps": "1-1/4\"",
+    "dn": "DN 32",
+    "outer_diameter_mm": 42.2,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 4.85,
+    "weight_kg_m": 4.47,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 26.82
+  },
+  {
+    "nps": "1-1/4\"",
+    "dn": "DN 32",
+    "outer_diameter_mm": 42.2,
+    "schedule": "XS",
+    "wall_thickness_mm": 4.85,
+    "weight_kg_m": 4.47,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 26.82
+  },
+  {
+    "nps": "1-1/4\"",
+    "dn": "DN 32",
+    "outer_diameter_mm": 42.2,
+    "schedule": "XXS",
+    "wall_thickness_mm": 9.7,
+    "weight_kg_m": 7.77,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 46.62
+  },
+  {
+    "nps": "2-1/2\"",
+    "dn": "DN 65",
+    "outer_diameter_mm": 73.0,
+    "schedule": "STD",
+    "wall_thickness_mm": 5.16,
+    "weight_kg_m": 8.63,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 51.78
+  },
+  {
+    "nps": "2-1/2\"",
+    "dn": "DN 65",
+    "outer_diameter_mm": 73.0,
+    "schedule": "Sch 160",
+    "wall_thickness_mm": 9.53,
+    "weight_kg_m": 14.92,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 89.52
+  },
+  {
+    "nps": "2-1/2\"",
+    "dn": "DN 65",
+    "outer_diameter_mm": 73.0,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 5.16,
+    "weight_kg_m": 8.63,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 51.78
+  },
+  {
+    "nps": "2-1/2\"",
+    "dn": "DN 65",
+    "outer_diameter_mm": 73.0,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 7.01,
+    "weight_kg_m": 11.41,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 68.46
+  },
+  {
+    "nps": "2-1/2\"",
+    "dn": "DN 65",
+    "outer_diameter_mm": 73.0,
+    "schedule": "XS",
+    "wall_thickness_mm": 7.01,
+    "weight_kg_m": 11.41,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 68.46
+  },
+  {
+    "nps": "2-1/2\"",
+    "dn": "DN 65",
+    "outer_diameter_mm": 73.0,
+    "schedule": "XXS",
+    "wall_thickness_mm": 14.02,
+    "weight_kg_m": 20.39,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 122.34
+  },
+  {
+    "nps": "3-1/2\"",
+    "dn": "DN 90",
+    "outer_diameter_mm": 101.6,
+    "schedule": "STD",
+    "wall_thickness_mm": 5.74,
+    "weight_kg_m": 13.57,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 81.42
+  },
+  {
+    "nps": "3-1/2\"",
+    "dn": "DN 90",
+    "outer_diameter_mm": 101.6,
+    "schedule": "Sch 40",
+    "wall_thickness_mm": 5.74,
+    "weight_kg_m": 13.57,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 81.42
+  },
+  {
+    "nps": "3-1/2\"",
+    "dn": "DN 90",
+    "outer_diameter_mm": 101.6,
+    "schedule": "Sch 80",
+    "wall_thickness_mm": 8.08,
+    "weight_kg_m": 18.63,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 111.78
+  },
+  {
+    "nps": "3-1/2\"",
+    "dn": "DN 90",
+    "outer_diameter_mm": 101.6,
+    "schedule": "XS",
+    "wall_thickness_mm": 8.08,
+    "weight_kg_m": 18.63,
+    "standard_length_m": 6.0,
+    "weight_kg_stick": 111.78
+  }
+]

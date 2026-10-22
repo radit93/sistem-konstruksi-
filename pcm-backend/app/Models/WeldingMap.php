@@ -18,6 +18,7 @@ class WeldingMap extends Model
         'size',
         'dia_inch',
         'thickness',
+        'length_mm',
         'location',
         'wps_no',
         'mat_a_item',

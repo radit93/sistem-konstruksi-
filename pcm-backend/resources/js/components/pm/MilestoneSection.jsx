@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 
-export function MilestoneSection({ user, onToast }) {
+export function MilestoneSection({ project, user, onToast }) {
     const [milestones, setMilestones] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -29,14 +29,19 @@ export function MilestoneSection({ user, onToast }) {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.get('/project-milestones');
-            setMilestones(Array.isArray(data) ? data : []);
+            const url = project?.id ? `/project-milestones?project_id=${project.id}` : '/project-milestones';
+            const data = await api.get(url);
+            const raw = Array.isArray(data) ? data : [];
+            const filtered = project?.id
+                ? raw.filter(m => Number(m.project_id) === Number(project.id) || (!m.project_id && Number(project.id) === 1))
+                : raw;
+            setMilestones(filtered);
         } catch (err) {
             console.error('Failed to load project milestones:', err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [project?.id]);
 
     useEffect(() => {
         loadData();
@@ -108,11 +113,12 @@ export function MilestoneSection({ user, onToast }) {
 
         setFormLoading(true);
         try {
+            const payload = { ...form, project_id: project?.id };
             if (editingItem) {
-                await api.put(`/project-milestones/${editingItem.id}`, form);
+                await api.put(`/project-milestones/${editingItem.id}`, payload);
                 if (onToast) onToast('Milestone proyek berhasil diperbarui.');
             } else {
-                await api.post('/project-milestones', form);
+                await api.post('/project-milestones', payload);
                 if (onToast) onToast('Milestone baru berhasil ditambahkan.');
             }
             setShowModal(false);

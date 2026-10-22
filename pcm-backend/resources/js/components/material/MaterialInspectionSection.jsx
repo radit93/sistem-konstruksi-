@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { confirmDelete } from '../../confirm';
 
 export function MaterialInspectionSection({ user, onToast }) {
     const [inspections, setInspections] = useState([]);
@@ -154,7 +155,7 @@ export function MaterialInspectionSection({ user, onToast }) {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Hapus laporan inspeksi material ini?')) return;
+        if (!(await confirmDelete('Yakin ingin menghapus laporan inspeksi material ini?'))) return;
         try {
             await api.del(`/material-inspections/${id}`);
             loadData();
@@ -361,7 +362,7 @@ export function MaterialInspectionSection({ user, onToast }) {
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        className="btn btn-sm btn-outline-danger py-1 px-2"
+                                                        className="btn btn-sm btn-danger py-1 px-2"
                                                         onClick={() => handleDelete(item.id)}
                                                     >
                                                         Hapus

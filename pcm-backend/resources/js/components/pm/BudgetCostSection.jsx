@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 
-export function BudgetCostSection({ user, onToast }) {
+export function BudgetCostSection({ project, user, onToast }) {
     const [budgetList, setBudgetList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -32,14 +32,19 @@ export function BudgetCostSection({ user, onToast }) {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.get('/budget-items');
-            setBudgetList(Array.isArray(data) ? data : []);
+            const url = project?.id ? `/budget-items?project_id=${project.id}` : '/budget-items';
+            const data = await api.get(url);
+            const rawList = Array.isArray(data) ? data : [];
+            const filtered = project?.id
+                ? rawList.filter(b => Number(b.project_id) === Number(project.id) || (!b.project_id && Number(project.id) === 1))
+                : rawList;
+            setBudgetList(filtered);
         } catch (err) {
             console.error('Failed to load budget items:', err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [project?.id]);
 
     useEffect(() => {
         loadData();
@@ -114,11 +119,12 @@ export function BudgetCostSection({ user, onToast }) {
 
         setFormLoading(true);
         try {
+            const payload = { ...form, project_id: project?.id };
             if (editingItem) {
-                await api.put(`/budget-items/${editingItem.id}`, form);
+                await api.put(`/budget-items/${editingItem.id}`, payload);
                 if (onToast) onToast('Item Anggaran berhasil diperbarui.');
             } else {
-                await api.post('/budget-items', form);
+                await api.post('/budget-items', payload);
                 if (onToast) onToast('Item Anggaran baru berhasil ditambahkan.');
             }
             setShowModal(false);

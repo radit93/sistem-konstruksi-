@@ -171,6 +171,7 @@ class EngineeringSeeder extends Seeder
                     'size' => '4"',
                     'dia_inch' => 4.00,
                     'thickness' => 'Sch 40 (6.02 mm)',
+                    'length_mm' => 1200,
                     'location' => $location,
                     'wps_no' => 'WPS-PCM-01-GTAW/SMAW',
                     'mat_a_item' => 'Pipe',

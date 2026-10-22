@@ -116,7 +116,7 @@ display name is "Project Manager".
 |---|---|
 | superadmin | all (bypass, column locked in the UI) |
 | project_manager | `dashboard.view` `scope.view` `scope.write` `progress.write` `report.view` `project.view` `user.view` `role.view` `access.view` |
-| engineer | `dashboard.view` `drawing.view` `drawing.write` `project.create` `project.update` |
+| engineer | `dashboard.view` `drawing.view` `drawing.write` |
 | material | `dashboard.view` `stock.view` `stock.write` |
 | construction | `dashboard.view` `joint.view` `joint.write` |
 | qaqc | `dashboard.view` `joint.write` `joint.cross` `inspection.view` `inspection.write` |

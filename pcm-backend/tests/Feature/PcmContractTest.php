@@ -99,6 +99,26 @@ class PcmContractTest extends TestCase
         ], ['Authorization' => "Bearer $eng"])->assertCreated()->json();
         $this->assertSame('W-TEST-01', $wm['joint_no']);
         \App\Models\WeldingMap::where('joint_no', 'W-TEST-01')->delete();
+
+        // Test write pipe-standard
+        $ps = $this->postJson('/api/pipe-standards', [
+            'nps' => '4"', 'dn' => 'DN 100', 'schedule' => 'Sch 40', 'wall_thickness_mm' => 6.02, 'weight_kg_m' => 16.07
+        ], ['Authorization' => "Bearer $eng"])->assertCreated()->json();
+        $this->assertSame('4"', $ps['nps']);
+        \App\Models\PipeStandard::where('nps', '4"')->delete();
+
+        // Test write drawing with fitup_specs
+        $dwg = $this->postJson('/api/drawings', [
+            'drawing_no' => 'DWG-FITUP-01',
+            'title' => 'Test Fitup Drawing',
+            'line_no' => 'TEST-LINE-01',
+            'fitup_specs' => [
+                ['size' => '4"', 'schedule' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B']
+            ]
+        ], ['Authorization' => "Bearer $eng"])->assertCreated()->json();
+        $this->assertSame('DWG-FITUP-01', $dwg['drawing_no']);
+        $this->assertIsArray($dwg['fitup_specs']);
+        \App\Models\Drawing::where('drawing_no', 'DWG-FITUP-01')->delete();
     }
 
     public function test_overview_shape(): void
@@ -128,12 +148,28 @@ class PcmContractTest extends TestCase
         // qaqc dilarang tulis stock (403), boleh tulis inspections
         $this->postJson('/api/stock', ['kind' => 'IN', 'description' => 'X', 'qty' => 1],
             ['Authorization' => "Bearer $qc"])->assertForbidden();
+
+        $consDept = \App\Models\Department::where('code', 'CONS')->value('id');
+        $joint = \App\Models\Joint::create([
+            'joint_no' => 'J-TEST-QC',
+            'drawing_no' => 'DWG-QC',
+            'spool_no' => 'SP-QC',
+            'size' => '4"',
+            'schedule' => 'Sch 40',
+            'joint_type' => 'BW',
+            'location' => 'Shop',
+            'status' => 'FITUP_OK',
+            'dia_inch' => 4.0,
+            'department_id' => $consDept,
+        ]);
+
         $insp = $this->postJson('/api/inspections', [
-            'joint_id' => 1, 'kind' => 'VISUAL', 'result' => 'PASS', 'defect_type' => 'NONE',
+            'joint_id' => $joint->id, 'kind' => 'VISUAL', 'result' => 'PASS', 'defect_type' => 'NONE',
             'report_no' => 'QC-KT', 'insp_date' => '2026-10-12', 'inspector' => 'QC', 'remarks' => 'ok',
         ], ['Authorization' => "Bearer $qc"])->assertCreated()->json();
         $this->assertSame('VISUAL', $insp['kind']);
         \App\Models\Inspection::where('report_no', 'QC-KT')->delete();
+        $joint->delete();
     }
 
     public function test_testpackage_write(): void
@@ -163,28 +199,48 @@ class PcmContractTest extends TestCase
     // scoping, construction tidak lagi menulis ke dua tabel milik PMO.
     public function test_construction_cannot_write_boq(): void
     {
+        $pmoDept = \App\Models\Department::where('code', 'PMO')->value('id');
+        $scope = \App\Models\Scope::create([
+            'scope' => 'Test Scope',
+            'unit' => 'joint',
+            'contract_qty' => 10,
+            'cumulative_qty' => 0,
+            'department_id' => $pmoDept,
+        ]);
+
         $con = $this->token('construction');
         $this->postJson('/api/daily-progress', [
-            'prog_date' => '2026-10-12', 'scope' => 'A1.1. Carbon Steel Piping',
+            'prog_date' => '2026-10-12', 'scope' => 'Test Scope',
             'qty' => 7, 'team' => 'construction',
         ], ['Authorization' => "Bearer $con"])->assertForbidden();
-        $this->putJson('/api/scopes/1', ['cumulative_qty' => 7],
+        $this->putJson("/api/scopes/{$scope->id}", ['cumulative_qty' => 7],
             ['Authorization' => "Bearer $con"])->assertForbidden();
+
+        $scope->delete();
     }
 
     public function test_project_manager_writes_progress(): void
     {
+        $pmoDept = \App\Models\Department::where('code', 'PMO')->value('id');
+        $scope = \App\Models\Scope::create([
+            'scope' => 'Test Scope PM',
+            'unit' => 'joint',
+            'contract_qty' => 10,
+            'cumulative_qty' => 0,
+            'department_id' => $pmoDept,
+        ]);
+
         $pm = $this->token('project_manager');
         $this->postJson('/api/daily-progress', [
-            'prog_date' => '2026-10-12', 'scope' => 'A1.1. Carbon Steel Piping',
+            'prog_date' => '2026-10-12', 'scope' => 'Test Scope PM',
             'qty' => 7, 'team' => 'project_manager',
         ], ['Authorization' => "Bearer $pm"])->assertCreated();
-        $this->putJson('/api/scopes/1', ['cumulative_qty' => 7],
+        $this->putJson("/api/scopes/{$scope->id}", ['cumulative_qty' => 7],
             ['Authorization' => "Bearer $pm"])->assertOk();
-        $cum = $this->getJson('/api/scopes/1', ['Authorization' => "Bearer $pm"])->assertOk()->json('cumulative_qty');
+        $cum = $this->getJson("/api/scopes/{$scope->id}", ['Authorization' => "Bearer $pm"])->assertOk()->json('cumulative_qty');
         $this->assertEquals(7, $cum);
-        \App\Models\DailyProgress::where('scope', 'A1.1. Carbon Steel Piping')->where('qty', 7)->delete();
-        \App\Models\Scope::where('id', 1)->update(['cumulative_qty' => 0]);
+        \App\Models\DailyProgress::where('scope', 'Test Scope PM')->where('qty', 7)->delete();
+        $scope->delete();
     }
 
     public function test_department_scoping_blocks_cross_department_read(): void

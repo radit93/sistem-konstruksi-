@@ -1,32 +1,100 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { confirmDelete } from '../../confirm';
+import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
 
-export function LineServiceSection({ user, projects = [], onToast }) {
+const PRESSURE_UNITS = ['bar', 'psi', 'kPa', 'MPa', 'kg/cm²'];
+const TEMPERATURE_UNITS = ['°C', '°F', 'K'];
+
+function QtyField({ id, label, placeholder, value, unit, units, onValue, onUnit }) {
+    const options = units.includes(unit) ? units : [unit, ...units].filter(Boolean);
+
+    return (
+        <div>
+            <label className="form-label small fw-bold" htmlFor={id}>{label}</label>
+            <div className="input-group input-group-sm pcm-qty">
+                <input
+                    id={id}
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    min="0"
+                    className="form-control form-control-sm"
+                    placeholder={placeholder}
+                    value={value}
+                    onChange={(e) => onValue(e.target.value)}
+                />
+                <select
+                    className="form-select form-select-sm"
+                    value={unit}
+                    onChange={(e) => onUnit(e.target.value)}
+                    aria-label={`Satuan ${label}`}
+                >
+                    {options.map((u) => (
+                        <option key={u} value={u}>{u}</option>
+                    ))}
+                </select>
+            </div>
+        </div>
+    );
+}
+
+export function LineServiceSection({ user, projects = [], activeProject = null, activeProjectId = '', onToast }) {
     const [lines, setLines] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+    const [filterProject, setFilterProject] = useProjectFilter(activeProjectId);
     const [showModal, setShowModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
 
-    const [form, setForm] = useState({
+    const parseValUnit = (str, defaultUnit) => {
+        if (!str) return { val: '', unit: defaultUnit };
+        const parts = String(str).trim().split(/\s+/);
+        if (parts.length >= 2) {
+            return { val: parts[0], unit: parts.slice(1).join(' ') };
+        }
+        return { val: parts[0], unit: defaultUnit };
+    };
+
+    const composeVal = (val, unit) => {
+        const clean = String(val ?? '').trim().replace(',', '.');
+        return clean ? `${clean} ${unit}` : '';
+    };
+
+    const emptyForm = () => ({
         line_no: '',
         service_name: '',
         fluid_code: '',
-        piping_class: 'A1A (Carbon Steel 150#)',
-        design_press: '10.5 bar',
-        design_temp: '120 °C',
-        operating_press: '8.0 bar',
-        operating_temp: '90 °C',
-        test_press: '15.8 bar',
+        piping_class: '',
+        design_press_val: '',
+        design_press_unit: 'bar',
+        design_temp_val: '',
+        design_temp_unit: '°C',
+        operating_press_val: '',
+        operating_press_unit: 'bar',
+        operating_temp_val: '',
+        operating_temp_unit: '°C',
+        test_press_val: '',
+        test_press_unit: 'bar',
         test_medium: 'Hydrostatic (Water)',
         insulation: 'None',
-        project_id: ''
+        project_id: defaultProjectId(activeProjectId, filterProject, projects)
     });
 
+    const [form, setForm] = useState(emptyForm);
+
     const canEdit = can(user, 'drawing.write');
+
+    const projectMap = useMemo(() => {
+        const map = {};
+        (projects || []).forEach(p => {
+            map[p.id] = p;
+        });
+        return map;
+    }, [projects]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -44,51 +112,56 @@ export function LineServiceSection({ user, projects = [], onToast }) {
         loadData();
     }, [loadData]);
 
+    const scopedLines = useMemo(
+        () => scopeRows(lines, activeProjectId, filterProject),
+        [lines, activeProjectId, filterProject]
+    );
+
     const filteredLines = useMemo(() => {
         const q = search.toLowerCase();
-        if (!q) return lines;
-        return lines.filter(l =>
-            (l.line_no || '').toLowerCase().includes(q) ||
-            (l.service_name || '').toLowerCase().includes(q) ||
-            (l.fluid_code || '').toLowerCase().includes(q) ||
-            (l.piping_class || '').toLowerCase().includes(q)
-        );
-    }, [lines, search]);
+        return scopedLines.filter(l => {
+            if (!q) return true;
+            return (
+                (l.line_no || '').toLowerCase().includes(q) ||
+                (l.service_name || '').toLowerCase().includes(q) ||
+                (l.fluid_code || '').toLowerCase().includes(q) ||
+                (l.piping_class || '').toLowerCase().includes(q)
+            );
+        });
+    }, [scopedLines, search]);
 
     const handleOpenModal = (item = null) => {
         setFormError('');
         if (item) {
             setEditingItem(item);
+            const dp = parseValUnit(item.design_press, 'bar');
+            const dt = parseValUnit(item.design_temp, '°C');
+            const op = parseValUnit(item.operating_press, 'bar');
+            const ot = parseValUnit(item.operating_temp, '°C');
+            const tp = parseValUnit(item.test_press, 'bar');
+
             setForm({
                 line_no: item.line_no || '',
                 service_name: item.service_name || '',
                 fluid_code: item.fluid_code || '',
-                piping_class: item.piping_class || 'A1A (Carbon Steel 150#)',
-                design_press: item.design_press || '',
-                design_temp: item.design_temp || '',
-                operating_press: item.operating_press || '',
-                operating_temp: item.operating_temp || '',
-                test_press: item.test_press || '',
+                piping_class: item.piping_class || '',
+                design_press_val: dp.val,
+                design_press_unit: dp.unit || 'bar',
+                design_temp_val: dt.val,
+                design_temp_unit: dt.unit || '°C',
+                operating_press_val: op.val,
+                operating_press_unit: op.unit || 'bar',
+                operating_temp_val: ot.val,
+                operating_temp_unit: ot.unit || '°C',
+                test_press_val: tp.val,
+                test_press_unit: tp.unit || 'bar',
                 test_medium: item.test_medium || 'Hydrostatic (Water)',
                 insulation: item.insulation || 'None',
-                project_id: item.project_id || ''
+                project_id: item.project_id || defaultProjectId(activeProjectId, filterProject, projects)
             });
         } else {
             setEditingItem(null);
-            setForm({
-                line_no: '',
-                service_name: '',
-                fluid_code: '',
-                piping_class: 'A1A (Carbon Steel 150#)',
-                design_press: '10.5 bar',
-                design_temp: '120 °C',
-                operating_press: '8.0 bar',
-                operating_temp: '90 °C',
-                test_press: '15.8 bar',
-                test_medium: 'Hydrostatic (Water)',
-                insulation: 'None',
-                project_id: projects[0]?.id || ''
-            });
+            setForm(emptyForm());
         }
         setShowModal(true);
     };
@@ -101,13 +174,28 @@ export function LineServiceSection({ user, projects = [], onToast }) {
             return;
         }
 
+        const payload = {
+            project_id: form.project_id || null,
+            line_no: form.line_no.toUpperCase().trim(),
+            service_name: form.service_name.trim(),
+            fluid_code: form.fluid_code ? form.fluid_code.toUpperCase().trim() : '',
+            piping_class: form.piping_class ? form.piping_class.toUpperCase().trim() : '',
+            design_press: composeVal(form.design_press_val, form.design_press_unit),
+            design_temp: composeVal(form.design_temp_val, form.design_temp_unit),
+            operating_press: composeVal(form.operating_press_val, form.operating_press_unit),
+            operating_temp: composeVal(form.operating_temp_val, form.operating_temp_unit),
+            test_press: composeVal(form.test_press_val, form.test_press_unit),
+            test_medium: form.test_medium,
+            insulation: form.insulation
+        };
+
         setFormLoading(true);
         try {
             if (editingItem) {
-                await api.put(`/line-services/${editingItem.id}`, form);
+                await api.put(`/line-services/${editingItem.id}`, payload);
                 if (onToast) onToast('Line Service berhasil diperbarui.');
             } else {
-                await api.post('/line-services', form);
+                await api.post('/line-services', payload);
                 if (onToast) onToast('Line Service baru berhasil ditambahkan.');
             }
             setShowModal(false);
@@ -120,7 +208,7 @@ export function LineServiceSection({ user, projects = [], onToast }) {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Yakin ingin menghapus Line Service ini?')) return;
+        if (!(await confirmDelete('Yakin ingin menghapus Line Service ini?'))) return;
         try {
             await api.delete(`/line-services/${id}`);
             if (onToast) onToast('Line Service berhasil dihapus.');
@@ -136,7 +224,7 @@ export function LineServiceSection({ user, projects = [], onToast }) {
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                 <div>
                     <h2 className="h4 fw-bold text-dark mb-1">Line Service Register</h2>
-                    <p className="text-muted small mb-0">
+                    <p className="pcm-cell-sub mb-0">
                         Klasifikasi jalur perpipaan, kode fluida, spesifikasi piping class, dan parameter tekanan/temperatur uji.
                     </p>
                 </div>
@@ -144,7 +232,6 @@ export function LineServiceSection({ user, projects = [], onToast }) {
                     <button
                         type="button"
                         className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                        style={{ borderRadius: '6px' }}
                         onClick={() => handleOpenModal()}
                     >
                         + Tambah Line Service
@@ -154,86 +241,146 @@ export function LineServiceSection({ user, projects = [], onToast }) {
 
             {/* Filter & Summary Card */}
             <div className="row g-3 mb-4">
-                <div className="col-12 col-md-4">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Total Jalur Pipa</span>
-                        <strong className="h3 fw-bold text-primary mb-0">{lines.length}</strong>
-                        <span className="text-muted ms-1 small">line numbers</span>
+                <div className="col-12 col-md-4 col-lg-3">
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Total Jalur Pipa</span>
+                        <strong className="pcm-tile__value pcm-tile__value--primary">
+                            {filteredLines.length}
+                            <span className="pcm-tile__unit">line numbers</span>
+                        </strong>
                     </div>
                 </div>
-                <div className="col-12 col-md-8 d-flex align-items-center">
-                    <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Cari berdasarkan Line No, Service, Fluid Code, Piping Class..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        style={{ borderRadius: '6px', padding: '0.65rem 0.85rem' }}
-                    />
+                <div className="col-12 col-md-8 col-lg-9">
+                    <div className="pcm-toolbar h-100">
+                        <div className="pcm-toolbar__grow">
+                            <div className="pcm-search">
+                                <span className="pcm-search__icon">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                </span>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Cari Line No, Service, Fluid, Piping Class..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                            {!isProjectLocked(activeProjectId) && (
+                                <select
+                                    className="form-select pcm-select"
+                                    value={filterProject}
+                                    onChange={(e) => setFilterProject(e.target.value)}
+                                    aria-label="Filter Project"
+                                >
+                                    <option value="ALL">Semua Proyek ({projects.length})</option>
+                                    {projects.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                        <span className="pcm-count">
+                            Menampilkan <strong>{filteredLines.length}</strong> jalur
+                        </span>
+                    </div>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="pcm-card">
                 <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.875rem' }}>
-                        <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.75rem', letterSpacing: '0.04em' }}>
+                    <table className="table table-hover align-middle pcm-table mb-0">
+                        <thead>
                             <tr>
-                                <th className="ps-3 py-3">Line Number</th>
-                                <th className="py-3">Service Name</th>
-                                <th className="py-3">Fluid</th>
-                                <th className="py-3">Piping Class</th>
-                                <th className="py-3">Design (P/T)</th>
-                                <th className="py-3">Operating (P/T)</th>
-                                <th className="py-3">Test Pressure</th>
-                                <th className="py-3">Insulation</th>
-                                {canEdit && <th className="text-end pe-3 py-3">Aksi</th>}
+                                <th className="text-center" style={{ width: '150px' }}>Line Number</th>
+                                <th style={{ minWidth: '180px' }}>Service Name</th>
+                                <th className="text-center" style={{ width: '90px' }}>Fluid</th>
+                                <th className="text-center" style={{ minWidth: '140px' }}>Piping Class</th>
+                                <th className="text-center" style={{ minWidth: '130px' }}>Design (P / T)</th>
+                                <th className="text-center" style={{ minWidth: '130px' }}>Operating (P / T)</th>
+                                <th className="text-center" style={{ minWidth: '140px' }}>Test Pressure</th>
+                                <th className="text-center" style={{ width: '100px' }}>Insulation</th>
+                                {canEdit && <th className="text-center" style={{ width: '160px' }}>Aksi</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
                                         Memuat data Line Service...
                                     </td>
                                 </tr>
                             ) : filteredLines.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 text-muted">
-                                        Tidak ada data Line Service yang sesuai.
+                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
+                                        Tidak ada data Line Service yang sesuai dengan filter.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredLines.map((l) => (
-                                    <tr key={l.id}>
-                                        <td className="ps-3 fw-bold text-primary font-monospace">{l.line_no}</td>
-                                        <td>{l.service_name}</td>
-                                        <td><span className="badge bg-secondary">{l.fluid_code || '—'}</span></td>
-                                        <td className="font-monospace small">{l.piping_class || '—'}</td>
-                                        <td>{l.design_press || '—'} / {l.design_temp || '—'}</td>
-                                        <td>{l.operating_press || '—'} / {l.operating_temp || '—'}</td>
-                                        <td><span className="badge bg-info text-dark">{l.test_press || '—'}</span> ({l.test_medium || 'Hydro'})</td>
-                                        <td>{l.insulation || 'None'}</td>
-                                        {canEdit && (
-                                            <td className="text-end pe-3">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-outline-primary btn-sm me-1 px-2 py-1"
-                                                    onClick={() => handleOpenModal(l)}
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-outline-danger btn-sm px-2 py-1"
-                                                    onClick={() => handleDelete(l.id)}
-                                                >
-                                                    Hapus
-                                                </button>
+                                filteredLines.map((l) => {
+                                    const proj = projectMap[l.project_id];
+                                    return (
+                                        <tr key={l.id}>
+                                            <td className="text-center">
+                                                <span className="pcm-cell-id d-block">{l.line_no}</span>
+                                                {proj && (
+                                                    <span className="pcm-cell-sub d-block text-truncate" style={{ maxWidth: '140px', margin: '0 auto' }}>
+                                                        {proj.job_no ? `JOB: ${proj.job_no}` : proj.name}
+                                                    </span>
+                                                )}
                                             </td>
-                                        )}
-                                    </tr>
-                                ))
+                                            <td>
+                                                <span className="pcm-cell-strong d-block">{l.service_name}</span>
+                                                {proj && (
+                                                    <span className="pcm-cell-sub">{proj.client || 'Client Umum'}</span>
+                                                )}
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="pcm-chip pcm-chip--primary pcm-code">{l.fluid_code || '—'}</span>
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="pcm-code small d-block font-monospace">{l.piping_class || '—'}</span>
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="d-block pcm-cell-strong">{l.design_press || '—'}</span>
+                                                <span className="d-block pcm-cell-sub">{l.design_temp || '—'}</span>
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="d-block pcm-cell-strong">{l.operating_press || '—'}</span>
+                                                <span className="d-block pcm-cell-sub">{l.operating_temp || '—'}</span>
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="pcm-chip pcm-chip--primary pcm-code mb-1">{l.test_press || '—'}</span>
+                                                <span className="pcm-cell-sub d-block">({l.test_medium || 'Hydro'})</span>
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="pcm-cell-sub">{l.insulation || 'None'}</span>
+                                            </td>
+                                            {canEdit && (
+                                                <td className="text-center text-nowrap">
+                                                    <div className="d-inline-flex align-items-center justify-content-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-primary btn-sm px-3 py-1.5 fw-bold"
+                                                            onClick={() => handleOpenModal(l)}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-danger btn-sm px-3 py-1.5 fw-bold"
+                                                            onClick={() => handleDelete(l.id)}
+                                                        >
+                                                            Hapus
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            )}
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
@@ -242,7 +389,7 @@ export function LineServiceSection({ user, projects = [], onToast }) {
 
             {/* Modal Add / Edit */}
             {showModal && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+                <div className="modal fade show d-block pcm-modal" style={{ zIndex: 1060 }}>
                     <div className="modal-dialog modal-dialog-centered modal-lg">
                         <div className="modal-content border-0 shadow">
                             <form onSubmit={handleSave}>
@@ -256,118 +403,167 @@ export function LineServiceSection({ user, projects = [], onToast }) {
                                     {formError && (
                                         <div className="alert alert-danger py-2 small mb-3">{formError}</div>
                                     )}
-                                    <div className="row g-3">
-                                        <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Line Number *</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="Contoh: 15-MPP-AB"
-                                                value={form.line_no}
-                                                onChange={(e) => setForm({ ...form, line_no: e.target.value })}
-                                                required
-                                            />
+                                    <div className="pcm-form-section">
+                                        <span className="pcm-form-section__title">Identitas Jalur</span>
+                                        <div className="row g-3">
+                                            <div className="col-12">
+                                                <label className="form-label small fw-bold" htmlFor="ls-project">Proyek / Kontrak Terkait *</label>
+                                                <select
+                                                    id="ls-project"
+                                                    className="form-select form-select-sm"
+                                                    value={form.project_id}
+                                                    onChange={(e) => setForm({ ...form, project_id: e.target.value })}
+                                                    disabled={isProjectLocked(activeProjectId)}
+                                                    required
+                                                >
+                                                    <option value="">-- Pilih Proyek Terkait --</option>
+                                                    {projects.map((p) => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="col-12 col-md-6">
+                                                <label className="form-label small fw-bold" htmlFor="ls-line-no">Line Number *</label>
+                                                <input
+                                                    id="ls-line-no"
+                                                    type="text"
+                                                    className="form-control form-control-sm pcm-code text-uppercase"
+                                                    placeholder="Contoh: 15-MPP-AB"
+                                                    value={form.line_no}
+                                                    onChange={(e) => setForm({ ...form, line_no: e.target.value.toUpperCase() })}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-6">
+                                                <label className="form-label small fw-bold" htmlFor="ls-service">Nama Service *</label>
+                                                <input
+                                                    id="ls-service"
+                                                    type="text"
+                                                    className="form-control form-control-sm"
+                                                    placeholder="Contoh: Main Process Piping"
+                                                    value={form.service_name}
+                                                    onChange={(e) => setForm({ ...form, service_name: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-4">
+                                                <label className="form-label small fw-bold" htmlFor="ls-fluid">Kode Fluida</label>
+                                                <input
+                                                    id="ls-fluid"
+                                                    type="text"
+                                                    className="form-control form-control-sm pcm-code text-uppercase"
+                                                    placeholder="Contoh: MPP, FG, CW"
+                                                    value={form.fluid_code}
+                                                    onChange={(e) => setForm({ ...form, fluid_code: e.target.value.toUpperCase() })}
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-4">
+                                                <label className="form-label small fw-bold" htmlFor="ls-piping-class">Piping Class</label>
+                                                <input
+                                                    id="ls-piping-class"
+                                                    type="text"
+                                                    className="form-control form-control-sm pcm-code text-uppercase"
+                                                    placeholder="Contoh: A1A (CS 150#)"
+                                                    value={form.piping_class}
+                                                    onChange={(e) => setForm({ ...form, piping_class: e.target.value.toUpperCase() })}
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-4">
+                                                <label className="form-label small fw-bold" htmlFor="ls-insulation">Insulation</label>
+                                                <input
+                                                    id="ls-insulation"
+                                                    type="text"
+                                                    className="form-control form-control-sm"
+                                                    placeholder="None / Hot / Cold"
+                                                    value={form.insulation}
+                                                    onChange={(e) => setForm({ ...form, insulation: e.target.value })}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Nama Service *</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="Contoh: Main Process Piping"
-                                                value={form.service_name}
-                                                onChange={(e) => setForm({ ...form, service_name: e.target.value })}
-                                                required
-                                            />
+                                    </div>
+
+                                    <div className="pcm-form-section">
+                                        <span className="pcm-form-section__title">Parameter Desain &amp; Operasi</span>
+                                        <div className="row g-3">
+                                            <div className="col-12 col-md-6">
+                                                <QtyField
+                                                    id="ls-design-press"
+                                                    label="Design Pressure"
+                                                    placeholder="10.5"
+                                                    value={form.design_press_val}
+                                                    unit={form.design_press_unit}
+                                                    units={PRESSURE_UNITS}
+                                                    onValue={(v) => setForm({ ...form, design_press_val: v })}
+                                                    onUnit={(u) => setForm({ ...form, design_press_unit: u })}
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-6">
+                                                <QtyField
+                                                    id="ls-design-temp"
+                                                    label="Design Temperature"
+                                                    placeholder="120"
+                                                    value={form.design_temp_val}
+                                                    unit={form.design_temp_unit}
+                                                    units={TEMPERATURE_UNITS}
+                                                    onValue={(v) => setForm({ ...form, design_temp_val: v })}
+                                                    onUnit={(u) => setForm({ ...form, design_temp_unit: u })}
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-6">
+                                                <QtyField
+                                                    id="ls-operating-press"
+                                                    label="Operating Pressure"
+                                                    placeholder="8.0"
+                                                    value={form.operating_press_val}
+                                                    unit={form.operating_press_unit}
+                                                    units={PRESSURE_UNITS}
+                                                    onValue={(v) => setForm({ ...form, operating_press_val: v })}
+                                                    onUnit={(u) => setForm({ ...form, operating_press_unit: u })}
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-6">
+                                                <QtyField
+                                                    id="ls-operating-temp"
+                                                    label="Operating Temperature"
+                                                    placeholder="90"
+                                                    value={form.operating_temp_val}
+                                                    unit={form.operating_temp_unit}
+                                                    units={TEMPERATURE_UNITS}
+                                                    onValue={(v) => setForm({ ...form, operating_temp_val: v })}
+                                                    onUnit={(u) => setForm({ ...form, operating_temp_unit: u })}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Kode Fluida</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="Contoh: MPP, FG, CW"
-                                                value={form.fluid_code}
-                                                onChange={(e) => setForm({ ...form, fluid_code: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Piping Class</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="Contoh: A1A (CS 150#)"
-                                                value={form.piping_class}
-                                                onChange={(e) => setForm({ ...form, piping_class: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Insulation</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="None / Hot / Cold"
-                                                value={form.insulation}
-                                                onChange={(e) => setForm({ ...form, insulation: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-6 col-md-3">
-                                            <label className="form-label small fw-bold">Design Press</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="10.5 bar"
-                                                value={form.design_press}
-                                                onChange={(e) => setForm({ ...form, design_press: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-6 col-md-3">
-                                            <label className="form-label small fw-bold">Design Temp</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="120 °C"
-                                                value={form.design_temp}
-                                                onChange={(e) => setForm({ ...form, design_temp: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-6 col-md-3">
-                                            <label className="form-label small fw-bold">Operating Press</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="8.0 bar"
-                                                value={form.operating_press}
-                                                onChange={(e) => setForm({ ...form, operating_press: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-6 col-md-3">
-                                            <label className="form-label small fw-bold">Operating Temp</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="90 °C"
-                                                value={form.operating_temp}
-                                                onChange={(e) => setForm({ ...form, operating_temp: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Test Pressure</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="15.8 bar"
-                                                value={form.test_press}
-                                                onChange={(e) => setForm({ ...form, test_press: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Test Medium</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="Hydrostatic (Water) / Pneumatic"
-                                                value={form.test_medium}
-                                                onChange={(e) => setForm({ ...form, test_medium: e.target.value })}
-                                            />
+                                    </div>
+
+                                    <div className="pcm-form-section">
+                                        <span className="pcm-form-section__title">Pengujian</span>
+                                        <div className="row g-3">
+                                            <div className="col-12 col-md-6">
+                                                <QtyField
+                                                    id="ls-test-press"
+                                                    label="Test Pressure"
+                                                    placeholder="15.8"
+                                                    value={form.test_press_val}
+                                                    unit={form.test_press_unit}
+                                                    units={PRESSURE_UNITS}
+                                                    onValue={(v) => setForm({ ...form, test_press_val: v })}
+                                                    onUnit={(u) => setForm({ ...form, test_press_unit: u })}
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-6">
+                                                <label className="form-label small fw-bold" htmlFor="ls-test-medium">Test Medium</label>
+                                                <input
+                                                    id="ls-test-medium"
+                                                    type="text"
+                                                    className="form-control form-control-sm"
+                                                    placeholder="Hydrostatic (Water) / Pneumatic"
+                                                    value={form.test_medium}
+                                                    onChange={(e) => setForm({ ...form, test_medium: e.target.value })}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

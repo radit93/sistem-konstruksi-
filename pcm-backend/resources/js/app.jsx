@@ -4,7 +4,7 @@
  * metrics: PCM 2428 Job No · 8 joints · 2 welded · 3 fitup · DWG-2428-ISO-001 · TP-2428-01
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api } from './api';
 import { Sidebar, ROLE_SIDEBAR_MENUS, OPERATIONAL_MENU_IDS, DEPARTMENT_MENUS } from './components/Sidebar';
@@ -75,6 +75,29 @@ function App() {
     const [hseLogs, setHseLogs] = useState([]);
     const [scopes, setScopes] = useState([]);
     const [projects, setProjects] = useState([]);
+    const [activeProjectId, setActiveProjectId] = useState(() => localStorage.getItem('pcm_active_project_id') || '');
+
+    const handleSetActiveProject = (id) => {
+        if (id) {
+            localStorage.setItem('pcm_active_project_id', String(id));
+            setActiveProjectId(String(id));
+        } else {
+            localStorage.removeItem('pcm_active_project_id');
+            setActiveProjectId('');
+        }
+    };
+
+    const activeProject = useMemo(() => {
+        return (projects || []).find((p) => String(p.id) === String(activeProjectId)) || null;
+    }, [projects, activeProjectId]);
+
+    // Bersihkan stale active project di localStorage bila project sudah tidak ada di database
+    useEffect(() => {
+        if (activeProjectId && (!projects.length || !projects.some((p) => String(p.id) === String(activeProjectId)))) {
+            localStorage.removeItem('pcm_active_project_id');
+            setActiveProjectId('');
+        }
+    }, [projects, activeProjectId]);
 
     // Status pemuatan data global, dipakai modul untuk state loading dan error (R-27)
     const [dataLoading, setDataLoading] = useState(false);
@@ -297,6 +320,9 @@ function App() {
                 onSelectTab={setActiveTab}
                 onLogout={handleLogout}
                 onGlobalDashboardLocked={() => setActiveTab('overview')}
+                activeProject={activeProject}
+                activeProjectId={activeProjectId}
+                onSetActiveProject={handleSetActiveProject}
             />
 
             {/* Layout Utama Acorn Template (main > container) */}
@@ -315,6 +341,8 @@ function App() {
                         onSelectTab={setActiveTab}
                         onLogout={handleLogout}
                         onGlobalDashboardLocked={() => setActiveTab('overview')}
+                        activeProject={activeProject}
+                        onSetActiveProject={handleSetActiveProject}
                     />
 
                     {/* Konten Halaman Sesuai Tab Aktif */}
@@ -345,6 +373,9 @@ function App() {
                             currentSection={activeTab}
                             drawings={drawings}
                             projects={projects}
+                            activeProject={activeProject}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
                             loading={dataLoading}
                             error={dataError}
                             user={user}
@@ -420,6 +451,8 @@ function App() {
                     {['schedule', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report'].includes(activeTab) && (
                         <ProjectManagerTab
                             currentSection={activeTab}
+                            projects={projects}
+                            drawings={drawings}
                             scopes={scopes}
                             joints={joints}
                             stockMoves={stockMoves}

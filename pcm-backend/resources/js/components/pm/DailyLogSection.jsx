@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 
-export function DailyLogSection({ scopes = [], user, onReload }) {
+export function DailyLogSection({ scopes = [], project, user, onReload }) {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -22,14 +22,19 @@ export function DailyLogSection({ scopes = [], user, onReload }) {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.get('/daily-progress');
-            setLogs(Array.isArray(data) ? data : []);
+            const url = project?.id ? `/daily-progress?project_id=${project.id}` : '/daily-progress';
+            const data = await api.get(url);
+            const raw = Array.isArray(data) ? data : [];
+            const filtered = project?.id
+                ? raw.filter(l => Number(l.project_id) === Number(project.id) || (!l.project_id && Number(project.id) === 1))
+                : raw;
+            setLogs(filtered);
         } catch (err) {
             console.error('Failed to load daily progress:', err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [project?.id]);
 
     useEffect(() => {
         loadData();
@@ -78,13 +83,15 @@ export function DailyLogSection({ scopes = [], user, onReload }) {
                 prog_date: form.prog_date,
                 scope: selectedScope.scope,
                 qty: Number(form.qty),
-                team: form.team
+                team: form.team,
+                project_id: project?.id
             });
 
             // 2. Increment scope cumulative_qty
             const newCum = (parseFloat(selectedScope.cumulative_qty) || 0) + Number(form.qty);
             await api.put(`/scopes/${selectedScope.id}`, {
-                cumulative_qty: newCum
+                cumulative_qty: newCum,
+                project_id: project?.id || selectedScope.project_id
             });
 
             setShowModal(false);

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
+import { confirmDelete } from '../confirm';
 
 const SECTIONS = ['project', 'users', 'roles', 'access', 'departments'];
 
@@ -232,7 +233,7 @@ export function AdminTab({ section, user, onReload, onToast }) {
     };
 
     const remove = async (path, message) => {
-        if (!window.confirm(`Hapus? ${message}`)) return;
+        if (!(await confirmDelete(message))) return;
         try {
             await api.del(path);
             if (onToast) onToast('Data dihapus');
@@ -348,7 +349,7 @@ export function AdminTab({ section, user, onReload, onToast }) {
                                                     </button>
                                                 )}
                                                 {can('project.delete') && (
-                                                    <button type="button" className="pcm-btn pcm-btn--sm pcm-btn--danger" onClick={() => remove(`/projects/${row.id}`, 'Drawing terkait tidak dihapus, hanya kehilangan folder project ini.')}>
+                                                    <button type="button" className="pcm-btn pcm-btn--sm pcm-btn--danger" onClick={() => remove(`/projects/${row.id}`, 'Yakin ingin menghapus project ini? Drawing terkait tidak dihapus, hanya kehilangan folder project ini.')}>
                                                         Hapus
                                                     </button>
                                                 )}
@@ -427,7 +428,7 @@ export function AdminTab({ section, user, onReload, onToast }) {
                                                     </button>
                                                 )}
                                                 {can('user.delete') && (
-                                                    <button type="button" className="pcm-btn pcm-btn--sm pcm-btn--danger" onClick={() => remove(`/admin/users/${row.id}`, `Hapus user ${row.email}?`)}>
+                                                    <button type="button" className="pcm-btn pcm-btn--sm pcm-btn--danger" onClick={() => remove(`/admin/users/${row.id}`, `Yakin ingin menghapus user ${row.email}?`)}>
                                                         Hapus
                                                     </button>
                                                 )}
@@ -494,7 +495,7 @@ export function AdminTab({ section, user, onReload, onToast }) {
                                                     </button>
                                                 )}
                                                 {can('role.delete') && !row.is_system && (
-                                                    <button type="button" className="pcm-btn pcm-btn--sm pcm-btn--danger" onClick={() => remove(`/admin/roles/${row.id}`, `Hapus role ${row.name}?`)}>
+                                                    <button type="button" className="pcm-btn pcm-btn--sm pcm-btn--danger" onClick={() => remove(`/admin/roles/${row.id}`, `Yakin ingin menghapus role ${row.name}?`)}>
                                                         Hapus
                                                     </button>
                                                 )}
@@ -576,7 +577,7 @@ export function AdminTab({ section, user, onReload, onToast }) {
                                                     </button>
                                                 )}
                                                 {can('department.delete') && (
-                                                    <button type="button" className="pcm-btn pcm-btn--sm pcm-btn--danger" onClick={() => remove(`/admin/departments/${row.id}`, `Hapus department ${row.name}?`)}>
+                                                    <button type="button" className="pcm-btn pcm-btn--sm pcm-btn--danger" onClick={() => remove(`/admin/departments/${row.id}`, `Yakin ingin menghapus department ${row.name}?`)}>
                                                         Hapus
                                                     </button>
                                                 )}

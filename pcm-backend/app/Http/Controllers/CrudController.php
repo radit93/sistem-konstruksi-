@@ -79,6 +79,11 @@ class CrudController extends Controller
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
+        'pipe-standards' => [\App\Models\PipeStandard::class, [
+            'create' => 'drawing.write',
+            'update' => 'drawing.write',
+            'delete' => 'drawing.write',
+        ]],
         'welding-maps' => [\App\Models\WeldingMap::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
@@ -138,10 +143,20 @@ class CrudController extends Controller
     private array $departmentScoped = [
         'drawings', 'joints', 'stock', 'inspections', 'test-packages',
         'hse', 'scopes', 'progress', 'daily-progress',
-        'line-services', 'material-standards', 'welding-maps',
+        'line-services', 'material-standards', 'pipe-standards', 'welding-maps',
         'bill-of-materials', 'engineering-boqs', 'document-controls',
         'project-milestones', 'budget-items',
         'material-receivings', 'material-inspections', 'material-storings', 'material-issuings',
+    ];
+
+    /**
+     * Master data shared across the company. Read access is never narrowed to
+     * the user's department, but the row still keeps its owning department for
+     * audit and for deciding who is allowed to write it.
+     */
+    private array $companyWide = [
+        'material-standards',
+        'pipe-standards',
     ];
 
     /**
@@ -168,6 +183,7 @@ class CrudController extends Controller
         'daily-progress' => 'PMO',
         'line-services' => 'ENG',
         'material-standards' => 'ENG',
+        'pipe-standards' => 'ENG',
         'welding-maps' => 'ENG',
         'bill-of-materials' => 'ENG',
         'engineering-boqs' => 'ENG',
@@ -214,6 +230,13 @@ class CrudController extends Controller
     private function scope(Request $request, Builder $query, string $res): Builder
     {
         $user = $request->user();
+
+        // Material and pipe standards are company-wide reference data. Every
+        // authenticated department reads the same rows so Engineering's master
+        // data can be used by Material, Construction, QA/QC, etc.
+        if (in_array($res, $this->companyWide, true)) {
+            return $query;
+        }
 
         if (! $user || $user->isSuperAdmin()) {
             if ($user && in_array($res, $this->departmentScoped, true)) {
@@ -301,6 +324,10 @@ class CrudController extends Controller
             $q->where($col, 'like', "%{$s}%");
         }
 
+        if ($request->filled('project_id') && \Illuminate\Support\Facades\Schema::hasColumn($q->getModel()->getTable(), 'project_id')) {
+            $q->where($q->getModel()->getTable() . '.project_id', $request->project_id);
+        }
+
         // app.jsx memanggil api.get('/x') lalu memakai hasilnya sebagai array langsung.
         return response()->json($q->orderByDesc('id')->get());
     }
@@ -324,6 +351,9 @@ class CrudController extends Controller
         if ($res === 'drawings' && $request->hasFile('file')) {
             $path = $request->file('file')->store('drawings', 'public');
             $data['scan_path'] = '/storage/'.$path;
+        }
+        if ($res === 'drawings' && isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
+            $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
         }
 
         // Ownership is set by the server, never by the client.
@@ -361,6 +391,13 @@ class CrudController extends Controller
         $obj = $this->scope($request, $model::query(), $res)->findOrFail($id);
 
         $data = $request->all();
+        if ($res === 'drawings' && $request->hasFile('file')) {
+            $path = $request->file('file')->store('drawings', 'public');
+            $data['scan_path'] = '/storage/'.$path;
+        }
+        if ($res === 'drawings' && isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
+            $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
+        }
         if (! $request->user()->isSuperAdmin()) {
             unset($data['department_id']);
         }

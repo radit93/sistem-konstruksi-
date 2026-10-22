@@ -50,6 +50,7 @@ export const DEPARTMENT_MENUS = {
         'document_control'
     ],
     MAT: [
+        'material_standard',
         'mat_receiving',
         'mat_inspection',
         'mat_storing',
@@ -57,8 +58,8 @@ export const DEPARTMENT_MENUS = {
         'mat_openyard',
         'mat_issuing'
     ],
-    CONS: ['fabrication', 'erection'],
-    QAQC: ['qaqc', 'testpackage'],
+    CONS: ['material_standard', 'fabrication', 'erection'],
+    QAQC: ['material_standard', 'qaqc', 'testpackage'],
     HSE: ['hse']
 };
 
@@ -108,7 +109,7 @@ export const ROLE_SIDEBAR_MENUS = [
     {
         id: 'material_standard',
         label: 'Material Standart',
-        perm: 'drawing.view',
+        anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',
         desc: 'Katalog Acuan Standar ASTM'
     },
@@ -279,7 +280,10 @@ export function Sidebar({
     activeTab,
     onSelectTab,
     onLogout,
-    onGlobalDashboardLocked
+    onGlobalDashboardLocked,
+    activeProject = null,
+    activeProjectId = '',
+    onSetActiveProject
 }) {
     const menuRef = useRef(null);
     const allow = (code) => Boolean(user?.is_superadmin) || permissions.includes(code);
@@ -347,6 +351,48 @@ export function Sidebar({
                         <div className="img" style={{ filter: 'brightness(0) invert(1)' }}></div>
                     </a>
                 </div>
+
+                {/* Active Project Workspace Indicator (Bila Proyek Sedang Dibuka) */}
+                {activeProject && (
+                    <div
+                        style={{
+                            margin: '0.5rem 0.85rem',
+                            padding: '0.65rem 0.85rem',
+                            backgroundColor: '#1d4ed8',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 255, 255, 0.25)',
+                            color: '#ffffff'
+                        }}
+                    >
+                        <div style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#cbd5e1' }}>
+                            PROJECT WORKSPACE
+                        </div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 800, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {activeProject.job_no ? `JOB: ${activeProject.job_no}` : activeProject.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {activeProject.client || activeProject.name}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (onSetActiveProject) onSetActiveProject('');
+                            }}
+                            className="btn btn-link p-0 text-decoration-none"
+                            style={{
+                                color: '#ffffff',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                marginTop: '4px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}
+                        >
+                            <span>&larr; Switch Project</span>
+                        </button>
+                    </div>
+                )}
 
                 {/* Navigasi Menu Khusus Role Aktif - Latar Biru, Menu-menunya Putih Kontras Tinggi, Rapat ke Atas */}
                 <div className="menu-container flex-grow-1" style={{ borderRadius: 0, order: 1, marginTop: '0.5rem', backgroundColor: '#1e40af' }}>

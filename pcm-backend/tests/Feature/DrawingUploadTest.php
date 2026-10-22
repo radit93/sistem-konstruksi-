@@ -58,4 +58,23 @@ class DrawingUploadTest extends TestCase
         // Clean up created record for test idempotence
         Drawing::where('drawing_no', '2428-M-15-MPP-AB-SHT2')->delete();
     }
+
+    public function test_engineer_cannot_create_project(): void
+    {
+        $login = $this->postJson('/api/login', [
+            'email' => 'engineer@pcm.local',
+            'password' => 'pcm123',
+        ]);
+        $login->assertOk();
+        $token = $login->json('token');
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson('/api/projects', [
+                'client' => 'PT Test Client',
+                'name' => 'Proyek Test Eng',
+                'job_no' => '9999',
+            ]);
+
+        $response->assertStatus(403);
+    }
 }

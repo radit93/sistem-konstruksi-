@@ -83,6 +83,9 @@ export const api = {
     del(endpoint) {
         return this.request(endpoint, { method: 'DELETE' });
     },
+    delete(endpoint) {
+        return this.del(endpoint);
+    },
     async login(email, password) {
         const res = await this.request('/login', {
             method: 'POST',

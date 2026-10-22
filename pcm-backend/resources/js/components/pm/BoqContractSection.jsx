@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 
-export function BoqContractSection({ scopes = [], user, onReload }) {
+export function BoqContractSection({ scopes = [], project, user, onReload }) {
     const [search, setSearch] = useState('');
     const [filterUnit, setFilterUnit] = useState('ALL');
     const [showModal, setShowModal] = useState(false);
@@ -81,10 +81,11 @@ export function BoqContractSection({ scopes = [], user, onReload }) {
 
         setFormLoading(true);
         try {
+            const payload = { ...form, project_id: project?.id };
             if (editingScope) {
-                await api.put(`/scopes/${editingScope.id}`, form);
+                await api.put(`/scopes/${editingScope.id}`, payload);
             } else {
-                await api.post('/scopes', form);
+                await api.post('/scopes', payload);
             }
             setShowModal(false);
             if (onReload) onReload();
@@ -102,7 +103,7 @@ export function BoqContractSection({ scopes = [], user, onReload }) {
                 <div>
                     <h2 className="h4 fw-bold text-dark mb-1">Kontrak &amp; BOQ Scope Monitoring</h2>
                     <p className="text-muted small mb-0">
-                        Baseline kontrak 18 lingkup pekerjaan piping, target volume kontrak vs realisasi aktual kumulatif (Job 2428).
+                        Baseline kontrak lingkup pekerjaan piping, target volume kontrak vs realisasi aktual kumulatif {project ? `(Job ${project.job_no || '-'} - ${project.name})` : ''}.
                     </p>
                 </div>
                 {canEdit && (

@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\Project;
-use App\Models\Department;
-use App\Models\ProjectMilestone;
 use App\Models\BudgetItem;
+use App\Models\Department;
+use App\Models\Project;
+use App\Models\ProjectMilestone;
+use Illuminate\Database\Seeder;
 
 class ProjectManagementSeeder extends Seeder
 {
@@ -126,7 +126,7 @@ class ProjectManagementSeeder extends Seeder
                 'consumable_cost' => 165939.24,
                 'total_budget' => 758040.67,
                 'actual_cost' => 184500.00,
-                'currency' => 'USD',
+                'currency' => 'IDR',
             ],
             [
                 'item_code' => 'DIR-FAB-P11',
@@ -140,7 +140,7 @@ class ProjectManagementSeeder extends Seeder
                 'consumable_cost' => 19429.05,
                 'total_budget' => 88755.39,
                 'actual_cost' => 12000.00,
-                'currency' => 'USD',
+                'currency' => 'IDR',
             ],
             [
                 'item_code' => 'DIR-FAB-P91',
@@ -154,7 +154,7 @@ class ProjectManagementSeeder extends Seeder
                 'consumable_cost' => 42224.63,
                 'total_budget' => 192889.82,
                 'actual_cost' => 0.00,
-                'currency' => 'USD',
+                'currency' => 'IDR',
             ],
             [
                 'item_code' => 'DIR-FAB-SS',
@@ -168,7 +168,7 @@ class ProjectManagementSeeder extends Seeder
                 'consumable_cost' => 25371.62,
                 'total_budget' => 115902.23,
                 'actual_cost' => 0.00,
-                'currency' => 'USD',
+                'currency' => 'IDR',
             ],
             [
                 'item_code' => 'DIR-ERE-CS',
@@ -182,7 +182,7 @@ class ProjectManagementSeeder extends Seeder
                 'consumable_cost' => 341364.59,
                 'total_budget' => 1559415.52,
                 'actual_cost' => 0.00,
-                'currency' => 'USD',
+                'currency' => 'IDR',
             ],
             [
                 'item_code' => 'DIR-SPT-CS',
@@ -196,7 +196,7 @@ class ProjectManagementSeeder extends Seeder
                 'consumable_cost' => 87659.00,
                 'total_budget' => 407740.00,
                 'actual_cost' => 0.00,
-                'currency' => 'USD',
+                'currency' => 'IDR',
             ],
             [
                 'item_code' => 'INDIR-SITE',
@@ -210,7 +210,7 @@ class ProjectManagementSeeder extends Seeder
                 'consumable_cost' => 150000.00,
                 'total_budget' => 950000.00,
                 'actual_cost' => 85000.00,
-                'currency' => 'USD',
+                'currency' => 'IDR',
             ],
         ];
 

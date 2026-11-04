@@ -2,9 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
+import { MaterialDocumentsModal } from './MaterialDocumentsModal';
+import { MaterialReportModal } from './MaterialReportModal';
 
 export function MaterialStoringSection({ user, onToast }) {
     const [storings, setStorings] = useState([]);
+    const [standards, setStandards] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterCategory, setFilterCategory] = useState('ALL');
@@ -14,11 +17,14 @@ export function MaterialStoringSection({ user, onToast }) {
     const [editingItem, setEditingItem] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
+    const [documentSubject, setDocumentSubject] = useState(null);
+    const [reportType, setReportType] = useState(null);
 
     const [form, setForm] = useState({
         item_code: '',
         item_name: '',
         category: 'PIPE',
+        material_standard_id: '',
         specification: 'ASTM A106 Gr. B',
         size: '4"',
         schedule_rating: 'Sch 40',
@@ -28,9 +34,22 @@ export function MaterialStoringSection({ user, onToast }) {
         stock_out: 0,
         balance: 0,
         unit: 'meter',
-        min_stock_alert: 10,
-        mapping_doc_url: '/docs/mapping-laydown-yard.pdf'
+        min_stock_alert: 10
     });
+
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [transferItem, setTransferItem] = useState(null);
+    const [transferForm, setTransferForm] = useState({
+        storage_type: 'OPEN_YARD',
+        location_detail: '',
+        notes: ''
+    });
+    const [transferLoading, setTransferLoading] = useState(false);
+    const [transferError, setTransferError] = useState('');
+
+    const [showLedgerModal, setShowLedgerModal] = useState(false);
+    const [ledgerItem, setLedgerItem] = useState(null);
+    const [ledgerLoading, setLedgerLoading] = useState(false);
 
     const canEdit = can(user, 'stock.write');
 
@@ -50,16 +69,32 @@ export function MaterialStoringSection({ user, onToast }) {
         loadData();
     }, [loadData]);
 
+    useEffect(() => {
+        let active = true;
+
+        api.get('/material-standards')
+            .then((data) => {
+                if (active) setStandards(Array.isArray(data) ? data : []);
+            })
+            .catch((err) => console.error('Failed to load material standards:', err));
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
     const stats = useMemo(() => {
         const totalItems = storings.length;
         const totalIn = storings.reduce((acc, s) => acc + (parseFloat(s.stock_in) || 0), 0);
         const totalOut = storings.reduce((acc, s) => acc + (parseFloat(s.stock_out) || 0), 0);
-        const lowStock = storings.filter(s => {
+        const lowStockItems = storings.filter(s => {
             const bal = parseFloat(s.balance) || 0;
             const min = parseFloat(s.min_stock_alert) || 0;
             return bal <= min;
-        }).length;
-        return { totalItems, totalIn, totalOut, lowStock };
+        });
+        const lowStock = lowStockItems.length;
+        const outOfStock = lowStockItems.filter(s => (parseFloat(s.balance) || 0) <= 0).length;
+        return { totalItems, totalIn, totalOut, lowStock, outOfStock };
     }, [storings]);
 
     const filtered = useMemo(() => {
@@ -69,6 +104,7 @@ export function MaterialStoringSection({ user, onToast }) {
                 (item.item_code || '').toLowerCase().includes(q) ||
                 (item.item_name || '').toLowerCase().includes(q) ||
                 (item.specification || '').toLowerCase().includes(q) ||
+                (item.material_standard?.code || '').toLowerCase().includes(q) ||
                 (item.location_detail || '').toLowerCase().includes(q);
 
             const matchCat = filterCategory === 'ALL' || item.category === filterCategory;
@@ -90,6 +126,7 @@ export function MaterialStoringSection({ user, onToast }) {
                 item_code: item.item_code || '',
                 item_name: item.item_name || '',
                 category: item.category || 'PIPE',
+                material_standard_id: item.material_standard_id || '',
                 specification: item.specification || '',
                 size: item.size || '',
                 schedule_rating: item.schedule_rating || '',
@@ -99,8 +136,7 @@ export function MaterialStoringSection({ user, onToast }) {
                 stock_out: item.stock_out || 0,
                 balance: item.balance || 0,
                 unit: item.unit || 'meter',
-                min_stock_alert: item.min_stock_alert || 5,
-                mapping_doc_url: item.mapping_doc_url || ''
+                min_stock_alert: item.min_stock_alert || 5
             });
         } else {
             setEditingItem(null);
@@ -108,6 +144,7 @@ export function MaterialStoringSection({ user, onToast }) {
                 item_code: `MAT-STK-${(storings.length + 1).toString().padStart(3, '0')}`,
                 item_name: '',
                 category: 'PIPE',
+                material_standard_id: '',
                 specification: 'ASTM A106 Gr. B',
                 size: '4"',
                 schedule_rating: 'Sch 40',
@@ -117,8 +154,7 @@ export function MaterialStoringSection({ user, onToast }) {
                 stock_out: 0,
                 balance: 0,
                 unit: 'meter',
-                min_stock_alert: 5,
-                mapping_doc_url: '/docs/mapping-laydown-yard.pdf'
+                min_stock_alert: 5
             });
         }
         setShowModal(true);
@@ -130,6 +166,28 @@ export function MaterialStoringSection({ user, onToast }) {
         setFormError('');
     };
 
+    const handleStandardChange = (standardId) => {
+        const standard = standards.find((item) => String(item.id) === String(standardId));
+
+        if (!standard) {
+            setForm((prev) => ({ ...prev, material_standard_id: '' }));
+            return;
+        }
+
+        const isPipe = (standard.category || '').toLowerCase() === 'pipe';
+
+        setForm((prev) => ({
+            ...prev,
+            material_standard_id: standard.id,
+            category: (standard.category || prev.category).toUpperCase(),
+            specification: standard.specification || prev.specification,
+            schedule_rating: standard.schedule && !standard.schedule.includes('/')
+                ? standard.schedule
+                : prev.schedule_rating,
+            unit: isPipe ? 'meter' : (prev.unit === 'meter' ? 'pcs' : prev.unit),
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormLoading(true);
@@ -137,6 +195,7 @@ export function MaterialStoringSection({ user, onToast }) {
 
         const payload = {
             ...form,
+            material_standard_id: form.material_standard_id || null,
             balance: (parseFloat(form.stock_in) || 0) - (parseFloat(form.stock_out) || 0)
         };
 
@@ -167,6 +226,61 @@ export function MaterialStoringSection({ user, onToast }) {
         }
     };
 
+    const handleOpenTransfer = (item) => {
+        setTransferItem(item);
+        setTransferForm({
+            storage_type: item.storage_type || 'OPEN_YARD',
+            location_detail: item.location_detail || '',
+            notes: ''
+        });
+        setTransferError('');
+        setShowTransferModal(true);
+    };
+
+    const handleCloseTransfer = () => {
+        setShowTransferModal(false);
+        setTransferItem(null);
+        setTransferError('');
+    };
+
+    const handleSubmitTransfer = async (e) => {
+        e.preventDefault();
+        setTransferLoading(true);
+        setTransferError('');
+
+        try {
+            await api.post(`/material-storings/${transferItem.id}/transfer`, transferForm);
+            handleCloseTransfer();
+            loadData();
+            if (onToast) onToast();
+        } catch (err) {
+            setTransferError(err.message || 'Gagal memindahkan stok.');
+        } finally {
+            setTransferLoading(false);
+        }
+    };
+
+    const handleOpenLedger = async (item) => {
+        setShowLedgerModal(true);
+        setLedgerLoading(true);
+        setLedgerItem(item);
+
+        try {
+            const detail = await api.get(`/material-storings/${item.id}`);
+            setLedgerItem(detail);
+        } catch (err) {
+            alert('Gagal memuat riwayat stok: ' + err.message);
+            setShowLedgerModal(false);
+        } finally {
+            setLedgerLoading(false);
+        }
+    };
+
+    const handleCloseLedger = () => {
+        setShowLedgerModal(false);
+        setLedgerItem(null);
+    };
+
     return (
         <div className="section-material-storing">
             {/* Header Title & Subtitle */}
@@ -179,16 +293,25 @@ export function MaterialStoringSection({ user, onToast }) {
                         Kode WBS 26-00-MAT-002 (FE) / MAT-008 (BE) — Rekapitulasi mutasi stok material terpadu, batas minimum stok (Safety Stock), dan lampiran denah lokasi penyimpanan (Mapping Material Location).
                     </p>
                 </div>
-                {canEdit && (
+                <div className="d-flex flex-wrap gap-2">
                     <button
                         type="button"
-                        className="btn btn-primary px-3 py-2"
-                        onClick={() => handleOpenModal()}
-                        style={{ backgroundColor: '#1d4ed8', borderColor: '#1d4ed8', fontWeight: 600 }}
+                        className="btn btn-outline-primary px-3 py-2"
+                        onClick={() => setReportType('stock')}
                     >
-                        + Tambah Item Inventaris
+                        Cetak Stock List
                     </button>
-                )}
+                    {canEdit && (
+                        <button
+                            type="button"
+                            className="btn btn-primary px-3 py-2"
+                            onClick={() => handleOpenModal()}
+                            style={{ backgroundColor: '#1d4ed8', borderColor: '#1d4ed8', fontWeight: 600 }}
+                        >
+                            + Tambah Item Inventaris
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Metric KPI Cards */}
@@ -248,24 +371,50 @@ export function MaterialStoringSection({ user, onToast }) {
                             Pemisahan ketat antara Laydown Open Yard (Pipa CS/SS berpenyangga balok kayu) dan Indoor Warehouse ber-AC/kering (Valve, Flange, Gasket, Fastener).
                         </div>
                     </div>
-                    <div className="d-flex gap-2">
+                    <div className="d-flex flex-wrap gap-2">
                         <button
                             type="button"
                             className="btn btn-sm btn-outline-primary"
-                            onClick={() => alert('Membuka dokumen resmi: Mapping Material Location (PDF)\nFile: /docs/mapping-laydown-yard.pdf')}
+                            onClick={() => setReportType('stock')}
                         >
-                            Lihat Denah Yard (PDF)
+                            Cetak Stock List
                         </button>
                         <button
                             type="button"
                             className="btn btn-sm btn-outline-secondary"
-                            onClick={() => alert('Membuka dokumen resmi: Mapping Warehouse Indoor (PDF)\nFile: /docs/mapping-warehouse.pdf')}
+                            onClick={() => setReportType('location-map')}
                         >
-                            Lihat Denah Warehouse (PDF)
+                            Mapping Lokasi (PDF)
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Auto Alert Minimum Stock / Shortage */}
+            {stats.lowStock > 0 && (
+                <div className={`alert ${stats.outOfStock > 0 ? 'alert-danger' : 'alert-warning'} border-0 shadow-sm mb-4`} role="alert">
+                    <div className="d-flex align-items-start gap-3">
+                        <div className="fs-4">{stats.outOfStock > 0 ? '⚠️' : '🔔'}</div>
+                        <div className="flex-grow-1">
+                            <div className="fw-bold">
+                                {stats.outOfStock > 0
+                                    ? `${stats.outOfStock} item stok habis dan ${stats.lowStock - stats.outOfStock} item berada di bawah batas minimum.`
+                                    : `${stats.lowStock} item berada di bawah batas minimum stok.`}
+                            </div>
+                            <div className="small mt-1">
+                                Segera lakukan pengadaan atau koordinasi transfer stok. Sistem akan memperbarui alert ini otomatis setelah receiving ACCEPTED atau issuing dibatalkan.
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-dark text-nowrap"
+                            onClick={() => setFilterStockStatus('LOW')}
+                        >
+                            Lihat Item Kritis
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Filter & Search Bar */}
             <div className="card border-0 shadow-sm mb-4">
@@ -359,6 +508,15 @@ export function MaterialStoringSection({ user, onToast }) {
                                                 </td>
                                                 <td>
                                                     <div className="fw-semibold text-dark">{item.item_name}</div>
+                                                    <div className="text-muted small">
+                                                        {item.line_no ? `Line ${item.line_no}` : 'Tanpa line'}
+                                                        {item.heat_no ? ` • Heat ${item.heat_no}` : ''}
+                                                    </div>
+                                                    {item.receiving && (
+                                                        <div className="text-muted small">
+                                                            Receiving: {item.receiving.shipment_no} / {item.receiving.po_no}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td>
                                                     <span className="badge bg-light text-dark border">
@@ -367,6 +525,11 @@ export function MaterialStoringSection({ user, onToast }) {
                                                 </td>
                                                 <td>
                                                     <span className="text-secondary small">{item.specification}</span>
+                                                    {item.material_standard?.code && (
+                                                        <div className="text-muted small font-monospace mt-1">
+                                                            {item.material_standard.code}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="text-nowrap">
                                                     {item.size} {item.schedule_rating ? `(${item.schedule_rating})` : ''}
@@ -400,18 +563,41 @@ export function MaterialStoringSection({ user, onToast }) {
                                                     <td className="px-3 text-end text-nowrap">
                                                         <button
                                                             type="button"
+                                                            className="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                                                            onClick={() => handleOpenTransfer(item)}
+                                                        >
+                                                            Transfer
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-info me-1 py-1 px-2"
+                                                            onClick={() => handleOpenLedger(item)}
+                                                        >
+                                                            Riwayat
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                                                            onClick={() => setDocumentSubject(item)}
+                                                        >
+                                                            Dokumen {item.documents?.length ? `(${item.documents.length})` : ''}
+                                                        </button>
+                                                        <button
+                                                            type="button"
                                                             className="btn btn-sm btn-outline-secondary me-1 py-1 px-2"
                                                             onClick={() => handleOpenModal(item)}
                                                         >
                                                             Edit
                                                         </button>
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-danger py-1 px-2"
-                                                            onClick={() => handleDelete(item.id)}
-                                                        >
-                                                            Hapus
-                                                        </button>
+                                                        {!item.receiving_id && (parseFloat(item.stock_out) || 0) <= 0 && (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-danger py-1 px-2"
+                                                                onClick={() => handleDelete(item.id)}
+                                                            >
+                                                                Hapus
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 )}
                                             </tr>
@@ -442,6 +628,12 @@ export function MaterialStoringSection({ user, onToast }) {
                                             {formError}
                                         </div>
                                     )}
+                                    {editingItem && (
+                                        <div className="alert alert-info py-2 mb-3 small">
+                                            Qty stok tidak dapat diubah manual. Gunakan tombol Transfer untuk memindahkan lokasi
+                                            dan proses Issuing untuk pengeluaran material.
+                                        </div>
+                                    )}
 
                                     <div className="row g-3">
                                         <div className="col-12 col-md-4">
@@ -450,6 +642,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                                 type="text"
                                                 className="form-control font-monospace"
                                                 required
+                                                disabled={Boolean(editingItem)}
                                                 value={form.item_code}
                                                 onChange={(e) => setForm({ ...form, item_code: e.target.value })}
                                             />
@@ -458,6 +651,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                             <label className="form-label small fw-semibold text-secondary">Kategori Komponen</label>
                                             <select
                                                 className="form-select"
+                                                disabled={Boolean(editingItem?.receiving_id)}
                                                 value={form.category}
                                                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                                             >
@@ -481,12 +675,33 @@ export function MaterialStoringSection({ user, onToast }) {
                                             </select>
                                         </div>
 
+                                        <div className="col-12">
+                                            <label className="form-label small fw-semibold text-secondary">Kode Standar Material</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.material_standard_id}
+                                                onChange={(e) => handleStandardChange(e.target.value)}
+                                                disabled={Boolean(editingItem?.receiving_id) || (parseFloat(editingItem?.stock_out) || 0) > 0}
+                                            >
+                                                <option value="">Tanpa kode standar (cocokkan via teks)</option>
+                                                {standards.map((standard) => (
+                                                    <option key={standard.id} value={standard.id}>
+                                                        {standard.code} — {standard.specification} ({standard.category})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="form-text">
+                                                Stok dari receiving otomatis mengikuti kode standar receiving. Untuk stok manual, pilih kode agar ikut rekonsiliasi BOM.
+                                            </div>
+                                        </div>
+
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Nama Material</label>
                                             <input
                                                 type="text"
                                                 className="form-control"
                                                 required
+                                                disabled={Boolean(editingItem?.receiving_id)}
                                                 value={form.item_name}
                                                 onChange={(e) => setForm({ ...form, item_name: e.target.value })}
                                             />
@@ -509,6 +724,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                                 type="text"
                                                 className="form-control"
                                                 required
+                                                disabled={Boolean(editingItem?.receiving_id)}
                                                 value={form.specification}
                                                 onChange={(e) => setForm({ ...form, specification: e.target.value })}
                                             />
@@ -519,6 +735,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                                 type="text"
                                                 className="form-control"
                                                 required
+                                                disabled={Boolean(editingItem?.receiving_id)}
                                                 value={form.size}
                                                 onChange={(e) => setForm({ ...form, size: e.target.value })}
                                             />
@@ -528,6 +745,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                             <input
                                                 type="text"
                                                 className="form-control"
+                                                disabled={Boolean(editingItem?.receiving_id)}
                                                 value={form.schedule_rating}
                                                 onChange={(e) => setForm({ ...form, schedule_rating: e.target.value })}
                                             />
@@ -540,6 +758,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                                 step="0.01"
                                                 className="form-control"
                                                 required
+                                                disabled={Boolean(editingItem)}
                                                 value={form.stock_in}
                                                 onChange={(e) => setForm({ ...form, stock_in: parseFloat(e.target.value) || 0 })}
                                             />
@@ -551,6 +770,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                                 step="0.01"
                                                 className="form-control"
                                                 required
+                                                disabled={Boolean(editingItem)}
                                                 value={form.stock_out}
                                                 onChange={(e) => setForm({ ...form, stock_out: parseFloat(e.target.value) || 0 })}
                                             />
@@ -561,6 +781,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                                 type="text"
                                                 className="form-control"
                                                 required
+                                                disabled={Boolean(editingItem?.receiving_id)}
                                                 value={form.unit}
                                                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
                                             />
@@ -596,6 +817,191 @@ export function MaterialStoringSection({ user, onToast }) {
                     </div>
                 </div>
             )}
+
+            {/* Modal Transfer Lokasi Stok */}
+            {showTransferModal && transferItem && (
+                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow">
+                            <div className="modal-header border-bottom">
+                                <h5 className="modal-title fw-bold text-dark">Transfer Lokasi Stok</h5>
+                                <button type="button" className="btn-close" onClick={handleCloseTransfer}></button>
+                            </div>
+                            <form onSubmit={handleSubmitTransfer}>
+                                <div className="modal-body p-4">
+                                    {transferError && (
+                                        <div className="alert alert-danger py-2 mb-3 small">
+                                            {transferError}
+                                        </div>
+                                    )}
+                                    <div className="mb-3">
+                                        <div className="fw-semibold text-dark">
+                                            {transferItem.item_code} — {transferItem.item_name}
+                                        </div>
+                                        <div className="text-muted small">
+                                            Lokasi saat ini: {transferItem.location_detail} (
+                                            {transferItem.storage_type === 'OPEN_YARD' ? 'Open Yard' : 'Indoor Warehouse'})
+                                        </div>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label small fw-semibold text-secondary">Tipe Fasilitas Tujuan</label>
+                                        <select
+                                            className="form-select"
+                                            value={transferForm.storage_type}
+                                            onChange={(e) => setTransferForm({ ...transferForm, storage_type: e.target.value })}
+                                        >
+                                            <option value="OPEN_YARD">Open Yard (Luar Ruangan)</option>
+                                            <option value="WAREHOUSE">Warehouse (Dalam Ruangan)</option>
+                                        </select>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label small fw-semibold text-secondary">Lokasi Tujuan</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            required
+                                            placeholder="Contoh: Laydown Yard Bay 02 / Rack B-01"
+                                            value={transferForm.location_detail}
+                                            onChange={(e) => setTransferForm({ ...transferForm, location_detail: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="mb-0">
+                                        <label className="form-label small fw-semibold text-secondary">Catatan Transfer</label>
+                                        <textarea
+                                            className="form-control"
+                                            rows={2}
+                                            placeholder="Alasan pemindahan, kondisi material, dll."
+                                            value={transferForm.notes}
+                                            onChange={(e) => setTransferForm({ ...transferForm, notes: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="modal-footer border-top bg-light">
+                                    <button type="button" className="btn btn-outline-secondary" onClick={handleCloseTransfer}>
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary px-4"
+                                        disabled={transferLoading}
+                                        style={{ backgroundColor: '#1d4ed8', borderColor: '#1d4ed8' }}
+                                    >
+                                        {transferLoading ? 'Memproses...' : 'Transfer Stok'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Riwayat Pergerakan Stok */}
+            {showLedgerModal && ledgerItem && (
+                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)' }}>
+                    <div className="modal-dialog modal-xl modal-dialog-centered">
+                        <div className="modal-content border-0 shadow">
+                            <div className="modal-header border-bottom">
+                                <div>
+                                    <h5 className="modal-title fw-bold text-dark">Riwayat Pergerakan Stok</h5>
+                                    <div className="text-muted small">
+                                        {ledgerItem.item_code} — {ledgerItem.item_name}
+                                    </div>
+                                </div>
+                                <button type="button" className="btn-close" onClick={handleCloseLedger}></button>
+                            </div>
+                            <div className="modal-body p-0">
+                                {ledgerLoading ? (
+                                    <div className="text-center py-4 text-muted">Memuat riwayat stok...</div>
+                                ) : (ledgerItem.movements || []).length === 0 ? (
+                                    <div className="text-center py-4 text-muted">Belum ada pergerakan stok untuk lot ini.</div>
+                                ) : (
+                                    <div className="table-responsive">
+                                        <table className="table table-sm table-hover align-middle mb-0" style={{ fontSize: '0.86rem' }}>
+                                            <thead className="table-light text-muted text-uppercase" style={{ fontSize: '0.72rem' }}>
+                                                <tr>
+                                                    <th className="px-3 py-2">Tanggal</th>
+                                                    <th className="py-2">Tipe</th>
+                                                    <th className="py-2 text-end">Qty</th>
+                                                    <th className="py-2 text-end">Saldo</th>
+                                                    <th className="py-2">Referensi</th>
+                                                    <th className="py-2">Catatan</th>
+                                                    <th className="py-2">Oleh</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(ledgerItem.movements || [])
+                                                    .slice()
+                                                    .sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at))
+                                                    .map((movement) => (
+                                                        <tr key={movement.id}>
+                                                            <td className="px-3 text-nowrap">
+                                                                {movement.occurred_at
+                                                                    ? new Date(movement.occurred_at).toLocaleString('id-ID')
+                                                                    : '-'}
+                                                            </td>
+                                                            <td>
+                                                                <span className={`badge ${
+                                                                    movement.type === 'IN' ? 'bg-success' :
+                                                                    movement.type === 'OUT' ? 'bg-warning text-dark' :
+                                                                    movement.type === 'TRANSFER' ? 'bg-info text-dark' : 'bg-secondary'
+                                                                }`}>
+                                                                    {movement.type}
+                                                                </span>
+                                                            </td>
+                                                            <td className={`text-end text-nowrap ${
+                                                                movement.type === 'IN' ? 'text-success' :
+                                                                movement.type === 'OUT' ? 'text-warning' : 'text-dark'
+                                                            }`}>
+                                                                {movement.type === 'IN' ? '+' : movement.type === 'OUT' ? '-' : ''}
+                                                                {parseFloat(movement.qty || 0).toLocaleString('id-ID')} {movement.unit}
+                                                            </td>
+                                                            <td className="text-end text-nowrap fw-semibold">
+                                                                {parseFloat(movement.balance_after || 0).toLocaleString('id-ID')} {movement.unit}
+                                                            </td>
+                                                            <td className="text-nowrap">
+                                                                {movement.reference_type || '-'}
+                                                                {movement.reference_id ? ` #${movement.reference_id}` : ''}
+                                                            </td>
+                                                            <td className="text-muted small">{movement.notes || '-'}</td>
+                                                            <td className="text-nowrap">{movement.creator?.name || '-'}</td>
+                                                        </tr>
+                                                    ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-footer border-top bg-light">
+                                <button type="button" className="btn btn-outline-secondary" onClick={handleCloseLedger}>
+                                    Tutup
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <MaterialDocumentsModal
+                open={Boolean(documentSubject)}
+                subjectType="storing"
+                subject={documentSubject}
+                canEdit={canEdit}
+                onClose={() => setDocumentSubject(null)}
+                onChanged={loadData}
+            />
+
+            <MaterialReportModal
+                open={Boolean(reportType)}
+                reportType={reportType || 'stock'}
+                initialFilters={reportType === 'location-map'
+                    ? { search }
+                    : {
+                        search,
+                        category: filterCategory,
+                        stock_status: filterStockStatus === 'OK' ? 'NORMAL' : filterStockStatus,
+                    }}
+                onClose={() => setReportType(null)}
+            />
         </div>
     );
 }

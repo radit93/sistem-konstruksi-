@@ -58,6 +58,8 @@ class AccessCatalog
 
             ['stock.view',        'material',     'Lihat Material Control',         30],
             ['stock.write',       'material',     'Ubah Material Control',          31],
+            ['material_inspection.view',  'material', 'Lihat Inspeksi Material',       32],
+            ['material_inspection.write', 'qaqc',     'Ubah Inspeksi Material',        33],
 
             ['joint.view',        'construction', 'Lihat Joint',                    40],
             ['joint.write',       'construction', 'Ubah Joint',                     41],
@@ -130,6 +132,7 @@ class AccessCatalog
             'material' => [
                 'dashboard.view',
                 'stock.view', 'stock.write',
+                'material_inspection.view',
             ],
 
             'construction' => [
@@ -141,6 +144,7 @@ class AccessCatalog
                 'dashboard.view',
                 'joint.write', 'joint.cross',
                 'inspection.view', 'inspection.write',
+                'material_inspection.view', 'material_inspection.write',
             ],
 
             'testpackage' => [
@@ -160,12 +164,12 @@ class AccessCatalog
     {
         return [
             'project_manager' => 'PMO',
-            'engineer'        => 'ENG',
-            'material'        => 'MAT',
-            'construction'    => 'CONS',
-            'qaqc'            => 'QAQC',
-            'testpackage'     => 'QAQC',
-            'hse'             => 'HSE',
+            'engineer' => 'ENG',
+            'material' => 'MAT',
+            'construction' => 'CONS',
+            'qaqc' => 'QAQC',
+            'testpackage' => 'QAQC',
+            'hse' => 'HSE',
         ];
     }
 

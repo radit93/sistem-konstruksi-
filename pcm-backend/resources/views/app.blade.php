@@ -16,10 +16,10 @@
     <link rel="stylesheet" href="/font/CS-Interface/style.css" />
 
     <!-- Acorn & Bootstrap Styles -->
-    <link rel="stylesheet" href="/css/vendor/bootstrap.min.css" />
-    <link rel="stylesheet" href="/css/vendor/OverlayScrollbars.min.css" />
-    <link rel="stylesheet" href="/css/styles.css" />
-    <link rel="stylesheet" href="/css/main.css?v={{ filemtime(public_path('acorn/css/main.css')) }}" />
+    <link rel="stylesheet" href="/css/vendor/bootstrap.min.css?v={{ time() }}" />
+    <link rel="stylesheet" href="/css/vendor/OverlayScrollbars.min.css?v={{ time() }}" />
+    <link rel="stylesheet" href="/css/styles.css?v={{ time() }}" />
+    <link rel="stylesheet" href="/css/main.css?v={{ time() }}" />
 
     <!-- Tailwind Utility Support (tanpa merusak style native Bootstrap/Acorn) -->
     <script src="https://cdn.tailwindcss.com"></script>

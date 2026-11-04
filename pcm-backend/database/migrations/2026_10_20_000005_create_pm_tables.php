@@ -41,7 +41,7 @@ return new class extends Migration
             $table->decimal('consumable_cost', 14, 2)->default(0);
             $table->decimal('total_budget', 14, 2)->default(0);
             $table->decimal('actual_cost', 14, 2)->default(0);
-            $table->string('currency', 16)->default('USD');
+            $table->string('currency', 16)->default('IDR');
             $table->foreignId('department_id')->nullable()->constrained('departments')->nullOnDelete();
             $table->timestamps();
         });

@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class BudgetItem extends Model
 {
+    protected $attributes = [
+        'currency' => 'IDR',
+    ];
+
     protected $fillable = [
         'project_id',
         'item_code',

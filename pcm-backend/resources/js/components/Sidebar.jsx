@@ -17,6 +17,7 @@ export const OPERATIONAL_MENU_IDS = [
     'pm_milestone',
     'report',
     'material',
+    'mat_requirement',
     'mat_receiving',
     'mat_inspection',
     'mat_storing',
@@ -53,6 +54,7 @@ export const DEPARTMENT_MENUS = {
     MAT: [
         'material_standard',
         'pipe_standard',
+        'mat_requirement',
         'mat_receiving',
         'mat_inspection',
         'mat_storing',
@@ -61,7 +63,7 @@ export const DEPARTMENT_MENUS = {
         'mat_issuing'
     ],
     CONS: ['material_standard', 'pipe_standard', 'fabrication', 'erection'],
-    QAQC: ['material_standard', 'pipe_standard', 'qaqc', 'testpackage'],
+    QAQC: ['material_standard', 'pipe_standard', 'qaqc', 'testpackage', 'mat_inspection'],
     HSE: ['hse']
 };
 
@@ -130,6 +132,13 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Riwayat Revisi & Surat Transmittal'
     },
     {
+        id: 'mat_requirement',
+        label: 'Kebutuhan Material',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Rekonsiliasi BOM/MTO vs Issuing vs Stok per Drawing & Spool'
+    },
+    {
         id: 'mat_receiving',
         label: 'Material Receiving',
         perm: 'stock.view',
@@ -139,7 +148,7 @@ export const ROLE_SIDEBAR_MENUS = [
     {
         id: 'mat_inspection',
         label: 'Material Inspection',
-        perm: 'stock.view',
+        perm: 'material_inspection.view',
         group: 'Material Control',
         desc: 'Hold Point Verifikasi QC, Visual, Dimensi, MTC'
     },

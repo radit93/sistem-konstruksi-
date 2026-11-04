@@ -2,10 +2,15 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
+import { MaterialDocumentsModal } from './MaterialDocumentsModal';
+import { MaterialReportModal } from './MaterialReportModal';
 
 export function MaterialIssuingSection({ user, onToast }) {
     const [issuings, setIssuings] = useState([]);
     const [storings, setStorings] = useState([]);
+    const [standards, setStandards] = useState([]);
+    const [drawings, setDrawings] = useState([]);
+    const [boms, setBoms] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
 
@@ -13,20 +18,30 @@ export function MaterialIssuingSection({ user, onToast }) {
     const [editingItem, setEditingItem] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
+    const [documentSubject, setDocumentSubject] = useState(null);
+    const [reportOpen, setReportOpen] = useState(false);
 
     const [form, setForm] = useState({
         issue_date: new Date().toISOString().split('T')[0],
         issue_no: '',
         requestor: 'Workshop Spool Fab - Team A (Foreman Sukardi)',
+        vendor: '',
         target_spool_no: 'SP-01',
         target_line_no: '15-MPP-AB',
         drawing_no: '2428-M-15-MPP-AB-SHT1',
+        drawing_id: '',
+        bom_id: '',
+        material_storing_id: '',
+        material_standard_id: '',
         item_name: 'Pipe Seamless CS 4" Sch 40',
+        description: '',
         specification: 'ASTM A106 Gr. B',
         size: '4"',
+        schedule_rating: 'Sch 40',
         qty: 1,
         unit: 'meter',
         heat_no: 'HT-99421A',
+        mtc_no: '',
         issued_by: 'Material Control (Agus W.)',
         remarks: ''
     });
@@ -36,12 +51,18 @@ export function MaterialIssuingSection({ user, onToast }) {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [issData, stkData] = await Promise.all([
+            const [issData, stkData, standardData, drawingData, bomData] = await Promise.all([
                 api.get('/material-issuings'),
-                api.get('/material-storings')
+                api.get('/material-storings'),
+                api.get('/material-standards'),
+                api.get('/drawings'),
+                api.get('/bill-of-materials')
             ]);
             setIssuings(Array.isArray(issData) ? issData : []);
             setStorings(Array.isArray(stkData) ? stkData : []);
+            setStandards(Array.isArray(standardData) ? standardData : []);
+            setDrawings(Array.isArray(drawingData) ? drawingData : []);
+            setBoms(Array.isArray(bomData) ? bomData : []);
         } catch (err) {
             console.error('Failed to load material issuing data:', err);
         } finally {
@@ -75,9 +96,22 @@ export function MaterialIssuingSection({ user, onToast }) {
                 (item.target_line_no || '').toLowerCase().includes(q) ||
                 (item.drawing_no || '').toLowerCase().includes(q) ||
                 (item.item_name || '').toLowerCase().includes(q) ||
+                (item.material_standard?.code || '').toLowerCase().includes(q) ||
                 (item.heat_no || '').toLowerCase().includes(q);
         });
     }, [issuings, search]);
+
+    const bomOptions = useMemo(() => {
+        if (!form.drawing_id) return boms;
+
+        return boms.filter((bom) => String(bom.drawing_id) === String(form.drawing_id));
+    }, [boms, form.drawing_id]);
+
+    const selectedStock = useMemo(() => (
+        form.material_storing_id
+            ? storings.find((stock) => String(stock.id) === String(form.material_storing_id))
+            : null
+    ), [storings, form.material_storing_id]);
 
     const handleOpenModal = (item = null) => {
         setFormError('');
@@ -87,15 +121,23 @@ export function MaterialIssuingSection({ user, onToast }) {
                 issue_date: item.issue_date || '',
                 issue_no: item.issue_no || '',
                 requestor: item.requestor || '',
+                vendor: item.vendor || '',
                 target_spool_no: item.target_spool_no || '',
                 target_line_no: item.target_line_no || '',
                 drawing_no: item.drawing_no || '',
+                drawing_id: item.drawing_id || '',
+                bom_id: item.bom_id || '',
+                material_storing_id: item.material_storing_id || '',
+                material_standard_id: item.material_standard_id || '',
                 item_name: item.item_name || '',
+                description: item.description || '',
                 specification: item.specification || '',
                 size: item.size || '',
+                schedule_rating: item.schedule_rating || '',
                 qty: item.qty || 1,
                 unit: item.unit || 'meter',
                 heat_no: item.heat_no || '',
+                mtc_no: item.mtc_no || '',
                 issued_by: item.issued_by || 'Material Control',
                 remarks: item.remarks || ''
             });
@@ -105,12 +147,19 @@ export function MaterialIssuingSection({ user, onToast }) {
                 issue_date: new Date().toISOString().split('T')[0],
                 issue_no: `MIS-2428-${(issuings.length + 1).toString().padStart(3, '0')}`,
                 requestor: 'Workshop Spool Fab - Team A (Foreman Sukardi)',
+                vendor: '',
                 target_spool_no: 'SP-01',
                 target_line_no: '15-MPP-AB',
                 drawing_no: '2428-M-15-MPP-AB-SHT1',
+                drawing_id: '',
+                bom_id: '',
+                material_storing_id: '',
+                material_standard_id: '',
                 item_name: 'Pipe Seamless CS 4" Sch 40',
+                description: '',
                 specification: 'ASTM A106 Gr. B',
                 size: '4"',
+                schedule_rating: 'Sch 40',
                 qty: 1,
                 unit: 'meter',
                 heat_no: 'HT-99421A',
@@ -122,16 +171,94 @@ export function MaterialIssuingSection({ user, onToast }) {
     };
 
     const handleSelectStock = (stkId) => {
+        if (!stkId) {
+            setForm(prev => ({ ...prev, material_storing_id: '' }));
+            return;
+        }
+
         const found = storings.find(s => s.id === parseInt(stkId));
         if (found) {
             setForm(prev => ({
                 ...prev,
+                material_storing_id: found.id,
+                material_standard_id: found.material_standard_id || prev.material_standard_id,
                 item_name: found.item_name,
+                description: found.item_name,
                 specification: found.specification,
                 size: found.size,
-                unit: found.unit
+                schedule_rating: found.schedule_rating || prev.schedule_rating,
+                vendor: found.receiving?.vendor || prev.vendor,
+                unit: found.unit,
+                heat_no: found.heat_no || '',
+                mtc_no: found.mtc_no || found.receiving?.mtc_no || prev.mtc_no || ''
             }));
         }
+    };
+
+    const handleSelectDrawing = (drawingId) => {
+        const found = drawings.find((drawing) => String(drawing.id) === String(drawingId));
+
+        setForm((prev) => ({
+            ...prev,
+            drawing_id: found?.id || '',
+            drawing_no: found?.drawing_no || prev.drawing_no,
+            bom_id: '',
+        }));
+    };
+
+    const handleSelectBom = (bomId) => {
+        const found = boms.find((bom) => String(bom.id) === String(bomId));
+
+        if (!found) {
+            setForm((prev) => ({ ...prev, bom_id: '' }));
+            return;
+        }
+
+        // Auto-matching FIFO: Cari stok yang paling sesuai dan balance > 0
+        const availableStorings = storings
+            .filter(s => (parseFloat(s.balance) || 0) > 0)
+            .sort((a, b) => Number(a.id) - Number(b.id));
+        let matchedStock = null;
+
+        if (found.material_standard_id) {
+            matchedStock = availableStorings.find(s => (
+                String(s.material_standard_id) === String(found.material_standard_id)
+                && (!found.unit || String(s.unit).toLowerCase() === String(found.unit).toLowerCase())
+            ));
+        }
+
+        if (!matchedStock) {
+            // Fallback: exact specification, size, and unit; tetap mengambil lot tertua.
+            const normalize = (value) => String(value || '').trim().toLowerCase();
+            matchedStock = availableStorings.find(s => (
+                (!found.material_spec || normalize(s.specification) === normalize(found.material_spec))
+                && (!found.size || normalize(s.size) === normalize(found.size))
+                && (!found.unit || normalize(s.unit) === normalize(found.unit))
+            ));
+        }
+
+        setForm((prev) => {
+            const st = matchedStock;
+            return {
+                ...prev,
+                bom_id: found.id,
+                drawing_id: found.drawing_id || prev.drawing_id,
+                drawing_no: found.drawing?.drawing_no || prev.drawing_no,
+                target_spool_no: found.spool_no || prev.target_spool_no,
+                material_storing_id: st ? st.id : prev.material_storing_id,
+                material_standard_id: st?.material_standard_id || found.material_standard_id || prev.material_standard_id,
+                item_name: st?.item_name || found.description || prev.item_name,
+                description: st?.item_name || found.description || prev.description,
+                specification: st?.specification || found.material_spec || prev.specification,
+                size: st?.size || found.size || prev.size,
+                schedule_rating: st?.schedule_rating || found.rating_sch || prev.schedule_rating,
+                unit: st?.unit || found.unit || prev.unit,
+                vendor: st?.receiving?.vendor || prev.vendor,
+                heat_no: st?.heat_no || prev.heat_no,
+                mtc_no: st?.mtc_no || st?.receiving?.mtc_no || prev.mtc_no,
+                qty: parseFloat(found.qty) || prev.qty,
+            };
+        });
     };
 
     const handleCloseModal = () => {
@@ -145,11 +272,29 @@ export function MaterialIssuingSection({ user, onToast }) {
         setFormLoading(true);
         setFormError('');
 
+        const selectedStock = form.material_storing_id
+            ? storings.find(s => s.id === parseInt(form.material_storing_id))
+            : null;
+        const payload = {
+            ...form,
+            drawing_id: form.drawing_id || null,
+            bom_id: form.bom_id || null,
+            material_storing_id: form.material_storing_id || null,
+            material_standard_id: form.material_standard_id || null,
+        };
+
+        if (!editingItem && selectedStock
+            && (parseFloat(form.qty) || 0) > (parseFloat(selectedStock.balance) || 0)) {
+            setFormError(`Stok tidak cukup. Sisa ${selectedStock.balance} ${selectedStock.unit}.`);
+            setFormLoading(false);
+            return;
+        }
+
         try {
             if (editingItem) {
-                await api.put(`/material-issuings/${editingItem.id}`, form);
+                await api.put(`/material-issuings/${editingItem.id}`, payload);
             } else {
-                await api.post('/material-issuings', form);
+                await api.post('/material-issuings', payload);
             }
             handleCloseModal();
             loadData();
@@ -162,13 +307,13 @@ export function MaterialIssuingSection({ user, onToast }) {
     };
 
     const handleDelete = async (id) => {
-        if (!(await confirmDelete('Yakin ingin menghapus bukti pengeluaran material ini?'))) return;
+        if (!(await confirmDelete('Batalkan issuing ini? Stok akan dikembalikan ke lot asal.'))) return;
         try {
             await api.del(`/material-issuings/${id}`);
             loadData();
             if (onToast) onToast();
         } catch (err) {
-            alert('Gagal menghapus: ' + err.message);
+            alert('Gagal membatalkan: ' + err.message);
         }
     };
 
@@ -184,16 +329,25 @@ export function MaterialIssuingSection({ user, onToast }) {
                         Kode WBS 26-00-MAT-005 (FE) / MAT-011 (BE) — Pengeluaran material ke Workshop Fabrikasi Spool &amp; Ereksi Lapangan berdasarkan nomor Spool, Jalur Pipa, dan Gambar Isometrik.
                     </p>
                 </div>
-                {canEdit && (
+                <div className="d-flex flex-wrap gap-2">
                     <button
                         type="button"
-                        className="btn btn-primary px-3 py-2"
-                        onClick={() => handleOpenModal()}
-                        style={{ backgroundColor: '#1d4ed8', borderColor: '#1d4ed8', fontWeight: 600 }}
+                        className="btn btn-outline-primary px-3 py-2"
+                        onClick={() => setReportOpen(true)}
                     >
-                        + Terbitkan Bukti Pengeluaran (MIS)
+                        Cetak Laporan
                     </button>
-                )}
+                    {canEdit && (
+                        <button
+                            type="button"
+                            className="btn btn-primary px-3 py-2"
+                            onClick={() => handleOpenModal()}
+                            style={{ backgroundColor: '#1d4ed8', borderColor: '#1d4ed8', fontWeight: 600 }}
+                        >
+                            + Terbitkan Bukti Pengeluaran (MIS)
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Metric KPI Cards */}
@@ -313,12 +467,31 @@ export function MaterialIssuingSection({ user, onToast }) {
                                             </td>
                                             <td className="text-nowrap font-monospace small">
                                                 {item.drawing_no || '-'}
+                                                {item.bom_id && (
+                                                    <div className="text-muted small">BOM #{item.bom_id}</div>
+                                                )}
                                             </td>
                                             <td>
                                                 <div className="fw-semibold text-dark">{item.item_name}</div>
+                                                {item.description && item.description !== item.item_name && (
+                                                    <div className="text-muted small">{item.description}</div>
+                                                )}
+                                                {item.material_standard?.code && (
+                                                    <div className="text-muted small font-monospace">
+                                                        {item.material_standard.code}
+                                                    </div>
+                                                )}
+                                                {item.storing && (
+                                                    <div className="text-muted small font-monospace">
+                                                        Lot {item.storing.item_code}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="text-nowrap small text-muted">
-                                                {item.specification} ({item.size})
+                                                {item.specification} ({item.size}{item.schedule_rating ? ` / ${item.schedule_rating}` : ''})
+                                                {item.vendor && (
+                                                    <div className="small">Vendor: {item.vendor}</div>
+                                                )}
                                             </td>
                                             <td className="text-center">
                                                 <span className="badge bg-secondary font-monospace">
@@ -335,6 +508,13 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                 <td className="px-3 text-end text-nowrap">
                                                     <button
                                                         type="button"
+                                                        className="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                                                        onClick={() => setDocumentSubject(item)}
+                                                    >
+                                                        Dokumen {item.documents?.length ? `(${item.documents.length})` : ''}
+                                                    </button>
+                                                    <button
+                                                        type="button"
                                                         className="btn btn-sm btn-outline-secondary me-1 py-1 px-2"
                                                         onClick={() => handleOpenModal(item)}
                                                     >
@@ -345,7 +525,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                         className="btn btn-sm btn-danger py-1 px-2"
                                                         onClick={() => handleDelete(item.id)}
                                                     >
-                                                        Hapus
+                                                        Batalkan
                                                     </button>
                                                 </td>
                                             )}
@@ -412,6 +592,42 @@ export function MaterialIssuingSection({ user, onToast }) {
                                             />
                                         </div>
 
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label small fw-semibold text-secondary">Drawing Isometrik (Master)</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.drawing_id}
+                                                onChange={(e) => handleSelectDrawing(e.target.value)}
+                                            >
+                                                <option value="">-- Pilih drawing / isometrik --</option>
+                                                {drawings.map((drawing) => (
+                                                    <option key={drawing.id} value={drawing.id}>
+                                                        {drawing.drawing_no} — {drawing.line_no || drawing.title || 'Tanpa line'}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label small fw-semibold text-secondary">Baris BOM / MTO</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.bom_id}
+                                                onChange={(e) => handleSelectBom(e.target.value)}
+                                            >
+                                                <option value="">-- Tanpa link BOM / MTO --</option>
+                                                {bomOptions.map((bom) => (
+                                                    <option key={bom.id} value={bom.id}>
+                                                        {bom.spool_no || 'Tanpa spool'} · Item {bom.item_no} — {bom.description}
+                                                        {bom.material_standard?.code ? ` [${bom.material_standard.code}]` : ''}
+                                                        {` (butuh ${parseFloat(bom.qty || 0).toLocaleString('id-ID')} ${bom.unit})`}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="form-text">
+                                                Pilih baris BOM agar issuing ini dihitung pada dashboard Kebutuhan Material.
+                                            </div>
+                                        </div>
+
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Target Spool No</label>
                                             <input
@@ -446,16 +662,32 @@ export function MaterialIssuingSection({ user, onToast }) {
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Pilih dari Master Stok</label>
                                             <select
-                                                className="form-select"
+                                                className={`form-select ${form.material_storing_id ? 'border-success bg-success bg-opacity-10' : ''}`}
+                                                value={form.material_storing_id || ''}
+                                                disabled={Boolean(editingItem)}
                                                 onChange={(e) => handleSelectStock(e.target.value)}
                                             >
                                                 <option value="">-- Isi Manual atau Pilih dari Stok --</option>
                                                 {storings.map(s => (
                                                     <option key={s.id} value={s.id}>
                                                         {s.item_code} - {s.item_name} (Sisa: {s.balance} {s.unit})
+                                                        {s.material_standard?.code ? ` | ${s.material_standard.code}` : ''}
+                                                        {s.heat_no ? ` | Heat ${s.heat_no}` : ''}
                                                     </option>
                                                 ))}
                                             </select>
+                                            {form.bom_id && form.material_storing_id && (
+                                                <div className="text-success small mt-1">
+                                                    <i className="bi bi-check-circle-fill me-1"></i>
+                                                    Otomatis terpilih (FIFO) sesuai BOM
+                                                </div>
+                                            )}
+                                            {form.bom_id && !form.material_storing_id && (
+                                                <div className="text-danger small mt-1">
+                                                    <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                                                    Stok tidak ditemukan di gudang (Shortage)
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Nama Material</label>
@@ -465,6 +697,47 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                 required
                                                 value={form.item_name}
                                                 onChange={(e) => setForm({ ...form, item_name: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="col-12">
+                                            <label className="form-label small fw-semibold text-secondary">Kode Standar Material</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.material_standard_id}
+                                                onChange={(e) => setForm({ ...form, material_standard_id: e.target.value })}
+                                                disabled={Boolean(selectedStock?.material_standard_id || editingItem?.material_standard_id)}
+                                            >
+                                                <option value="">Tanpa kode standar (cocokkan via teks)</option>
+                                                {standards.map((standard) => (
+                                                    <option key={standard.id} value={standard.id}>
+                                                        {standard.code} — {standard.specification} ({standard.category})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="form-text">
+                                                Otomatis mengikuti lot stok/BOM. Kode ini yang dipakai untuk rekonsiliasi kebutuhan.
+                                            </div>
+                                        </div>
+
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label small fw-semibold text-secondary">Vendor / Supplier</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Nama vendor"
+                                                value={form.vendor}
+                                                onChange={(e) => setForm({ ...form, vendor: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label small fw-semibold text-secondary">Deskripsi Material</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Deskripsi sesuai form issuing"
+                                                value={form.description}
+                                                onChange={(e) => setForm({ ...form, description: e.target.value })}
                                             />
                                         </div>
 
@@ -478,7 +751,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                 onChange={(e) => setForm({ ...form, specification: e.target.value })}
                                             />
                                         </div>
-                                        <div className="col-12 col-md-4">
+                                        <div className="col-6 col-md-2">
                                             <label className="form-label small fw-semibold text-secondary">Ukuran Nominal</label>
                                             <input
                                                 type="text"
@@ -486,6 +759,16 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                 required
                                                 value={form.size}
                                                 onChange={(e) => setForm({ ...form, size: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="col-6 col-md-2">
+                                            <label className="form-label small fw-semibold text-secondary">Sch / Class</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Sch 40 / 150#"
+                                                value={form.schedule_rating}
+                                                onChange={(e) => setForm({ ...form, schedule_rating: e.target.value })}
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">
@@ -564,6 +847,22 @@ export function MaterialIssuingSection({ user, onToast }) {
                     </div>
                 </div>
             )}
+
+            <MaterialDocumentsModal
+                open={Boolean(documentSubject)}
+                subjectType="issuing"
+                subject={documentSubject}
+                canEdit={canEdit}
+                onClose={() => setDocumentSubject(null)}
+                onChanged={loadData}
+            />
+
+            <MaterialReportModal
+                open={reportOpen}
+                reportType="issuing"
+                initialFilters={{ search }}
+                onClose={() => setReportOpen(false)}
+            />
         </div>
     );
 }

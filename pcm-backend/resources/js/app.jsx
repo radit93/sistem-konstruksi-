@@ -385,7 +385,7 @@ function App() {
                             }}
                         />
                     )}
-                    {['material', 'mat_receiving', 'mat_inspection', 'mat_storing', 'mat_warehouse', 'mat_openyard', 'mat_issuing'].includes(activeTab) && (
+                    {['material', 'mat_requirement', 'mat_receiving', 'mat_inspection', 'mat_storing', 'mat_warehouse', 'mat_openyard', 'mat_issuing'].includes(activeTab) && (
                         <MaterialTab
                             currentSection={activeTab}
                             stockMoves={stockMoves}

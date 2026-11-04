@@ -2,9 +2,37 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BillOfMaterial;
+use App\Models\BudgetItem;
+use App\Models\DailyProgress;
 use App\Models\Department;
+use App\Models\DocumentControl;
+use App\Models\Drawing;
+use App\Models\EngineeringBoq;
+use App\Models\HseLog;
+use App\Models\Inspection;
+use App\Models\Joint;
+use App\Models\LineService;
+use App\Models\MaterialInspection;
+use App\Models\MaterialIssuing;
+use App\Models\MaterialReceiving;
+use App\Models\MaterialStandard;
+use App\Models\MaterialStoring;
+use App\Models\PipeSchedule;
+use App\Models\PipingClassTemplate;
+use App\Models\Project;
+use App\Models\ProjectMilestone;
+use App\Models\Scope;
+use App\Models\StockMove;
+use App\Models\TestPackage;
+use App\Models\WeldingMap;
+use App\Services\MaterialFlowService;
+use App\Services\MaterialRequirementService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * One generic controller for nine resources. Writes are gated by permission
@@ -18,63 +46,68 @@ use Illuminate\Http\Request;
  */
 class CrudController extends Controller
 {
+    public function __construct(
+        private readonly MaterialFlowService $materialFlow,
+        private readonly MaterialRequirementService $materialRequirements
+    ) {}
+
     private array $map = [
-        'projects' => [\App\Models\Project::class, [
+        'projects' => [Project::class, [
             'create' => 'project.create',
             'update' => 'project.update',
             'delete' => 'project.delete',
         ]],
-        'drawings' => [\App\Models\Drawing::class, [
+        'drawings' => [Drawing::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-        'joints' => [\App\Models\Joint::class, [
+        'joints' => [Joint::class, [
             'create' => 'joint.write',
             'update' => 'joint.write',
             'delete' => 'joint.write',
         ]],
-        'stock' => [\App\Models\StockMove::class, [
+        'stock' => [StockMove::class, [
             'create' => 'stock.write',
             'update' => 'stock.write',
             'delete' => 'stock.write',
         ]],
-        'inspections' => [\App\Models\Inspection::class, [
+        'inspections' => [Inspection::class, [
             'create' => 'inspection.write',
             'update' => 'inspection.write',
             'delete' => 'inspection.write',
         ]],
-        'test-packages' => [\App\Models\TestPackage::class, [
+        'test-packages' => [TestPackage::class, [
             'create' => 'testpackage.write',
             'update' => 'testpackage.write',
             'delete' => 'testpackage.write',
         ]],
-        'hse' => [\App\Models\HseLog::class, [
+        'hse' => [HseLog::class, [
             'create' => 'hse.write',
             'update' => 'hse.write',
             'delete' => 'hse.write',
         ]],
-        'scopes' => [\App\Models\Scope::class, [
+        'scopes' => [Scope::class, [
             'create' => 'scope.write',
             'update' => 'scope.write',
             'delete' => 'scope.write',
         ]],
-        'progress' => [\App\Models\DailyProgress::class, [
+        'progress' => [DailyProgress::class, [
             'create' => 'progress.write',
             'update' => 'progress.write',
             'delete' => 'progress.write',
         ]],
-        'daily-progress' => [\App\Models\DailyProgress::class, [
+        'daily-progress' => [DailyProgress::class, [
             'create' => 'progress.write',
             'update' => 'progress.write',
             'delete' => 'progress.write',
         ]],
-        'line-services' => [\App\Models\LineService::class, [
+        'line-services' => [LineService::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-        'material-standards' => [\App\Models\MaterialStandard::class, [
+        'material-standards' => [MaterialStandard::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
@@ -84,52 +117,62 @@ class CrudController extends Controller
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-        'welding-maps' => [\App\Models\WeldingMap::class, [
+        'piping-class-templates' => [PipingClassTemplate::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-        'bill-of-materials' => [\App\Models\BillOfMaterial::class, [
+        'pipe-schedules' => [PipeSchedule::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-        'engineering-boqs' => [\App\Models\EngineeringBoq::class, [
+        'welding-maps' => [WeldingMap::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-        'document-controls' => [\App\Models\DocumentControl::class, [
+        'bill-of-materials' => [BillOfMaterial::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-        'project-milestones' => [\App\Models\ProjectMilestone::class, [
+        'engineering-boqs' => [EngineeringBoq::class, [
+            'create' => 'drawing.write',
+            'update' => 'drawing.write',
+            'delete' => 'drawing.write',
+        ]],
+        'document-controls' => [DocumentControl::class, [
+            'create' => 'drawing.write',
+            'update' => 'drawing.write',
+            'delete' => 'drawing.write',
+        ]],
+        'project-milestones' => [ProjectMilestone::class, [
             'create' => 'scope.write',
             'update' => 'scope.write',
             'delete' => 'scope.write',
         ]],
-        'budget-items' => [\App\Models\BudgetItem::class, [
+        'budget-items' => [BudgetItem::class, [
             'create' => 'scope.write',
             'update' => 'scope.write',
             'delete' => 'scope.write',
         ]],
-        'material-receivings' => [\App\Models\MaterialReceiving::class, [
+        'material-receivings' => [MaterialReceiving::class, [
             'create' => 'stock.write',
             'update' => 'stock.write',
             'delete' => 'stock.write',
         ]],
-        'material-inspections' => [\App\Models\MaterialInspection::class, [
+        'material-inspections' => [MaterialInspection::class, [
+            'create' => 'material_inspection.write',
+            'update' => 'material_inspection.write',
+            'delete' => 'material_inspection.write',
+        ]],
+        'material-storings' => [MaterialStoring::class, [
             'create' => 'stock.write',
             'update' => 'stock.write',
             'delete' => 'stock.write',
         ]],
-        'material-storings' => [\App\Models\MaterialStoring::class, [
-            'create' => 'stock.write',
-            'update' => 'stock.write',
-            'delete' => 'stock.write',
-        ]],
-        'material-issuings' => [\App\Models\MaterialIssuing::class, [
+        'material-issuings' => [MaterialIssuing::class, [
             'create' => 'stock.write',
             'update' => 'stock.write',
             'delete' => 'stock.write',
@@ -164,6 +207,14 @@ class CrudController extends Controller
      */
     private array $crossDepartment = [
         'joints' => 'joint.cross',
+        // Material Control perlu membaca master Engineering (drawing, katalog
+        // standar, BOM) untuk mencocokkan requirement dengan stok. Hak tulis
+        // tetap dijaga permission drawing.write di checkWrite().
+        'drawings' => 'stock.view',
+        'material-standards' => 'stock.view',
+        'bill-of-materials' => 'stock.view',
+        'material-receivings' => 'material_inspection.write',
+        'material-inspections' => 'material_inspection.write',
     ];
 
     /**
@@ -318,6 +369,81 @@ class CrudController extends Controller
                         ->orWhere('area', 'like', "%{$s}%");
                 });
             }
+        } elseif ($res === 'bill-of-materials') {
+            $q->with(['materialStandard', 'drawing']);
+            if ($request->filled('drawing_id')) {
+                $q->where('drawing_id', $request->drawing_id);
+            }
+            if ($request->filled('project_id')) {
+                $q->where('project_id', $request->project_id);
+            }
+            if ($request->filled('spool_no')) {
+                $q->where('spool_no', $request->spool_no);
+            }
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('description', 'like', "%{$s}%")
+                        ->orWhere('component_type', 'like', "%{$s}%")
+                        ->orWhere('material_spec', 'like', "%{$s}%")
+                        ->orWhere('spool_no', 'like', "%{$s}%")
+                        ->orWhere('tag_number', 'like', "%{$s}%")
+                        ->orWhereHas('materialStandard', fn ($standard) => $standard->where('code', 'like', "%{$s}%"));
+                });
+            }
+        } elseif ($res === 'material-receivings') {
+            $q->with(['storing', 'inspections', 'materialStandard', 'documents']);
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('shipment_no', 'like', "%{$s}%")
+                        ->orWhere('po_no', 'like', "%{$s}%")
+                        ->orWhere('vendor', 'like', "%{$s}%")
+                        ->orWhere('item_name', 'like', "%{$s}%")
+                        ->orWhere('heat_no', 'like', "%{$s}%")
+                        ->orWhere('line_no', 'like', "%{$s}%")
+                        ->orWhereHas('materialStandard', fn ($standard) => $standard->where('code', 'like', "%{$s}%"));
+                });
+            }
+        } elseif ($res === 'material-inspections') {
+            $q->with('receiving.materialStandard');
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('report_no', 'like', "%{$s}%")
+                        ->orWhere('inspector_name', 'like', "%{$s}%")
+                        ->orWhere('item_name', 'like', "%{$s}%")
+                        ->orWhere('heat_no', 'like', "%{$s}%")
+                        ->orWhere('ncr_no', 'like', "%{$s}%");
+                });
+            }
+        } elseif ($res === 'material-storings') {
+            $q->with(['receiving', 'materialStandard', 'documents'])->where('status', '!=', 'VOID');
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('item_code', 'like', "%{$s}%")
+                        ->orWhere('item_name', 'like', "%{$s}%")
+                        ->orWhere('heat_no', 'like', "%{$s}%")
+                        ->orWhere('line_no', 'like', "%{$s}%")
+                        ->orWhere('specification', 'like', "%{$s}%")
+                        ->orWhereHas('materialStandard', fn ($standard) => $standard->where('code', 'like', "%{$s}%"));
+                });
+            }
+        } elseif ($res === 'material-issuings') {
+            $q->with(['storing', 'materialStandard', 'drawing', 'bom', 'documents'])->where('status', '!=', 'CANCELLED');
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('issue_no', 'like', "%{$s}%")
+                        ->orWhere('requestor', 'like', "%{$s}%")
+                        ->orWhere('item_name', 'like', "%{$s}%")
+                        ->orWhere('heat_no', 'like', "%{$s}%")
+                        ->orWhere('target_spool_no', 'like', "%{$s}%")
+                        ->orWhere('drawing_no', 'like', "%{$s}%")
+                        ->orWhereHas('materialStandard', fn ($standard) => $standard->where('code', 'like', "%{$s}%"));
+                });
+            }
         } elseif ($request->filled('search')) {
             $s = $request->search;
             $col = $res === 'stock' ? 'description' : 'id';
@@ -335,7 +461,15 @@ class CrudController extends Controller
     public function show(Request $request, string $res, int $id)
     {
         [$model] = $this->resolve($res);
-        $with = $res === 'joints' ? ['inspections'] : [];
+        $with = match ($res) {
+            'joints' => ['inspections'],
+            'bill-of-materials' => ['materialStandard', 'drawing'],
+            'material-receivings' => ['storing', 'inspections', 'materialStandard', 'documents.uploader:id,name'],
+            'material-inspections' => ['receiving.materialStandard'],
+            'material-storings' => ['movements.creator', 'receiving', 'materialStandard', 'documents.uploader:id,name'],
+            'material-issuings' => ['storing', 'materialStandard', 'drawing', 'bom', 'documents.uploader:id,name'],
+            default => [],
+        };
 
         return response()->json(
             $this->scope($request, $model::with($with), $res)->findOrFail($id)
@@ -354,6 +488,19 @@ class CrudController extends Controller
         }
         if ($res === 'drawings' && isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
             $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
+        }
+
+        if ($res === 'piping-class-templates') {
+            $duplicate = PipingClassTemplate::query()
+                ->where('piping_class', strtoupper(trim((string) ($data['piping_class'] ?? ''))))
+                ->where('component_type', trim((string) ($data['component_type'] ?? '')))
+                ->exists();
+
+            if ($duplicate) {
+                throw ValidationException::withMessages([
+                    'component_type' => 'Komponen ini sudah ada pada piping class tersebut; ubah baris yang sudah ada.',
+                ]);
+            }
         }
 
         // Ownership is set by the server, never by the client.
@@ -375,7 +522,98 @@ class CrudController extends Controller
             }
         }
 
+        if (in_array($res, ['material-receivings', 'material-storings'], true) && empty($data['project_id'])) {
+            // Aplikasi saat ini satu project; isi otomatis supaya stok dan
+            // issuing ber-link BOM tidak terpisah project-nya.
+            $data['project_id'] = Project::query()->orderBy('id')->value('id');
+        }
+
+        if ($res === 'material-receivings') {
+            $data['status'] = 'RECEIVED';
+            unset($data['inspection_requested_at'], $data['stocked_at'], $data['accepted_qty']);
+        }
+
+        if ($res === 'material-storings') {
+            if (! empty($data['receiving_id'])) {
+                throw ValidationException::withMessages([
+                    'receiving_id' => 'Stok dari receiving dibuat otomatis lewat inspeksi QC.',
+                ]);
+            }
+
+            $stockIn = (float) ($data['stock_in'] ?? 0);
+            $stockOut = (float) ($data['stock_out'] ?? 0);
+
+            if ($stockOut > $stockIn) {
+                throw ValidationException::withMessages([
+                    'stock_out' => 'Stock out tidak boleh melebihi stock in.',
+                ]);
+            }
+
+            $data['balance'] = $stockIn - $stockOut;
+            $data['status'] = $data['balance'] > 0 ? 'AVAILABLE' : 'DEPLETED';
+            $data['last_movement_at'] = now();
+        }
+
+        if ($res === 'material-inspections') {
+            if (empty($data['material_receiving_id'])) {
+                throw ValidationException::withMessages([
+                    'material_receiving_id' => 'Inspeksi material harus ditautkan ke batch penerimaan.',
+                ]);
+            }
+
+            $receiving = $this->scope($request, MaterialReceiving::query(), 'material-receivings')
+                ->find($data['material_receiving_id']);
+
+            if (! $receiving) {
+                throw ValidationException::withMessages([
+                    'material_receiving_id' => 'Receiving tidak ditemukan.',
+                ]);
+            }
+
+            if ($receiving->status !== 'REQUESTED') {
+                throw ValidationException::withMessages([
+                    'material_receiving_id' => 'Receiving belum diminta inspeksi oleh Material Control.',
+                ]);
+            }
+
+            $data['department_id'] = $receiving->department_id;
+            $data['project_id'] = $data['project_id'] ?? $receiving->project_id;
+        }
+
+        if ($res === 'material-issuings') {
+            $obj = $this->materialFlow->createIssuing($data, $request->user());
+
+            return response()->json($obj, 201);
+        }
+
+        if ($res === 'material-storings') {
+            $obj = DB::transaction(function () use ($model, $data, $request) {
+                $stock = $model::create($data);
+                $this->materialFlow->recordOpeningStock($stock, $request->user());
+
+                return $stock->refresh();
+            });
+
+            return response()->json($obj, 201);
+        }
+
+        if ($res === 'material-inspections') {
+            $obj = DB::transaction(function () use ($model, $data, $request) {
+                $inspection = $model::create($data);
+                $this->materialFlow->applyInspection($inspection, $request->user());
+
+                return $inspection->fresh()->load('receiving');
+            });
+
+            return response()->json($obj, 201);
+        }
+
+        if ($res === 'bill-of-materials') {
+            $data = PipeSchedule::enrichBom($data);
+        }
+
         $obj = $model::create($data);
+
         if ($res === 'joints') {
             $obj->load('inspections');
         }
@@ -402,6 +640,113 @@ class CrudController extends Controller
             unset($data['department_id']);
         }
 
+        if ($res === 'bill-of-materials' && $obj->issuings()->exists()) {
+            // BOM yang sudah dipakai issuing tidak boleh berubah identitas/qty:
+            // rekonsiliasi kebutuhan vs pengeluaran memakai bom_id ini.
+            foreach ([
+                'project_id', 'drawing_id', 'material_standard_id', 'spool_no',
+                'item_no', 'component_type', 'size', 'material_spec', 'unit',
+            ] as $field) {
+                if (array_key_exists($field, $data) && (string) $data[$field] !== (string) $obj->{$field}) {
+                    throw ValidationException::withMessages([
+                        $field => 'BOM sudah dipakai pada pengeluaran material; identitas material tidak bisa diubah.',
+                    ]);
+                }
+            }
+
+            if (array_key_exists('qty', $data) && abs((float) $data['qty'] - (float) $obj->qty) > 0.0001) {
+                throw ValidationException::withMessages([
+                    'qty' => 'BOM sudah dipakai pada pengeluaran material; qty tidak bisa diubah.',
+                ]);
+            }
+        }
+
+        if ($res === 'material-receivings') {
+            unset($data['status'], $data['inspection_requested_at'], $data['stocked_at'], $data['accepted_qty']);
+
+            if ($obj->storing()->where('status', '!=', 'VOID')->exists()) {
+                foreach ([
+                    'qty', 'unit', 'item_name', 'description', 'specification', 'size',
+                    'schedule_rating', 'heat_no', 'category', 'material_standard_id', 'line_no',
+                    'storage_type', 'storage_location', 'project_id',
+                ] as $field) {
+                    if (array_key_exists($field, $data) && (string) $data[$field] !== (string) $obj->{$field}) {
+                        throw ValidationException::withMessages([
+                            $field => 'Data material sudah masuk stok; perubahan ini harus lewat koreksi stok.',
+                        ]);
+                    }
+                }
+            }
+        }
+
+        if ($res === 'material-storings') {
+            foreach (['stock_in', 'stock_out'] as $field) {
+                if (array_key_exists($field, $data) && abs((float) $data[$field] - (float) $obj->{$field}) > 0.0001) {
+                    throw ValidationException::withMessages([
+                        $field => 'Qty stok tidak bisa diubah manual; gunakan issuing, transfer, atau koreksi stok.',
+                    ]);
+                }
+            }
+
+            if ($obj->receiving_id || (float) $obj->stock_out > 0) {
+                foreach ([
+                    'item_name', 'specification', 'size', 'schedule_rating',
+                    'line_no', 'heat_no', 'category', 'material_standard_id', 'unit', 'project_id',
+                ] as $field) {
+                    if (array_key_exists($field, $data) && (string) $data[$field] !== (string) $obj->{$field}) {
+                        throw ValidationException::withMessages([
+                            $field => 'Data lot stok sudah terikat receiving/issuing; perubahan ini harus lewat koreksi stok.',
+                        ]);
+                    }
+                }
+            }
+
+            unset(
+                $data['stock_in'], $data['stock_out'], $data['balance'], $data['status'],
+                $data['receiving_id'], $data['item_code']
+            );
+
+            $newType = $data['storage_type'] ?? $obj->storage_type;
+            $newLocation = $data['location_detail'] ?? $obj->location_detail;
+            unset($data['storage_type'], $data['location_detail']);
+
+            $obj->update($data);
+
+            if ($newType !== $obj->storage_type || $newLocation !== $obj->location_detail) {
+                $obj = $this->materialFlow->transferStock($obj, $newType, $newLocation, $request->user());
+            }
+
+            return response()->json($obj->fresh());
+        }
+
+        if ($res === 'material-inspections') {
+            if (array_key_exists('material_receiving_id', $data)
+                && (int) $data['material_receiving_id'] !== (int) $obj->material_receiving_id) {
+                throw ValidationException::withMessages([
+                    'material_receiving_id' => 'Receiving tidak bisa diubah; buat laporan inspeksi baru.',
+                ]);
+            }
+
+            $obj = DB::transaction(function () use ($obj, $data, $request) {
+                $obj->update($data);
+                $this->materialFlow->applyInspection($obj->fresh(), $request->user());
+
+                return $obj->fresh()->load('receiving');
+            });
+
+            return response()->json($obj);
+        }
+
+        if ($res === 'material-issuings') {
+            $obj = $this->materialFlow->updateIssuing($obj, $data, $request->user());
+
+            return response()->json($obj);
+        }
+
+        if ($res === 'bill-of-materials') {
+            $data = PipeSchedule::enrichBom($data);
+        }
+
         $obj->update($data);
 
         return response()->json($obj);
@@ -412,9 +757,112 @@ class CrudController extends Controller
         $this->checkWrite($request, $res, 'delete');
         [$model] = $this->resolve($res);
 
-        $this->scope($request, $model::query(), $res)->findOrFail($id)->delete();
+        $obj = $this->scope($request, $model::query(), $res)->findOrFail($id);
+
+        if ($res === 'material-issuings') {
+            $this->materialFlow->cancelIssuing($obj, $request->user());
+
+            return response()->json(['message' => 'OK']);
+        }
+
+        if ($res === 'bill-of-materials' && $obj->issuings()->exists()) {
+            throw ValidationException::withMessages([
+                'bom' => 'BOM sudah dipakai pada pengeluaran material; tidak bisa dihapus.',
+            ]);
+        }
+
+        if ($res === 'material-inspections') {
+            $stock = $obj->receiving?->storing;
+
+            if ($stock && $stock->status !== 'VOID') {
+                throw ValidationException::withMessages([
+                    'inspection' => 'Laporan inspeksi sudah membuat stok; batalkan stok terlebih dahulu.',
+                ]);
+            }
+        }
+
+        if ($res === 'material-receivings') {
+            if ($obj->storing()->exists() || $obj->inspections()->exists()) {
+                throw ValidationException::withMessages([
+                    'receiving' => 'Receiving sudah punya inspeksi/stok; tidak bisa dihapus.',
+                ]);
+            }
+        }
+
+        if ($res === 'material-storings') {
+            if ($obj->receiving_id || $obj->issuings()->exists()) {
+                throw ValidationException::withMessages([
+                    'stock' => 'Stok sudah punya riwayat transaksi; tidak bisa dihapus.',
+                ]);
+            }
+
+            $obj->movements()->delete();
+        }
+
+        $obj->delete();
 
         return response()->json(['message' => 'OK']);
+    }
+
+    public function requestMaterialInspection(Request $request, int $id): JsonResponse
+    {
+        $this->checkWrite($request, 'material-receivings', 'update');
+
+        $receiving = $this->scope($request, MaterialReceiving::query(), 'material-receivings')
+            ->findOrFail($id);
+
+        return response()->json(
+            $this->materialFlow->requestInspection($receiving, $request->user())
+        );
+    }
+
+    public function transferMaterialStock(Request $request, int $id): JsonResponse
+    {
+        $this->checkWrite($request, 'material-storings', 'update');
+
+        $stock = $this->scope($request, MaterialStoring::query(), 'material-storings')
+            ->findOrFail($id);
+
+        $data = $request->validate([
+            'storage_type' => ['required', 'in:WAREHOUSE,OPEN_YARD'],
+            'location_detail' => ['required', 'string', 'max:128'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $stock = $this->materialFlow->transferStock(
+            $stock,
+            $data['storage_type'],
+            $data['location_detail'],
+            $request->user(),
+            $data['notes'] ?? null
+        );
+
+        return response()->json($stock);
+    }
+
+    public function materialRequirements(Request $request): JsonResponse
+    {
+        abort_unless(
+            $request->user()->hasPermission('stock.view'),
+            403,
+            'Akses ditolak: butuh izin stock.view'
+        );
+
+        $filters = $request->validate([
+            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
+            'drawing_id' => ['nullable', 'integer', 'exists:drawings,id'],
+            'spool_no' => ['nullable', 'string', 'max:64'],
+            'status' => ['nullable', 'in:ALL,SHORTAGE,FULFILLED'],
+            'search' => ['nullable', 'string', 'max:128'],
+        ]);
+
+        return response()->json($this->materialRequirements->summarize(
+            BillOfMaterial::query(),
+            $this->scope($request, MaterialIssuing::query(), 'material-issuings'),
+            $this->scope($request, MaterialStoring::query(), 'material-storings'),
+            $this->scope($request, MaterialReceiving::query(), 'material-receivings'),
+            $filters
+        ));
     }
 
     private function isDepartmentScoped(string $res): bool
@@ -425,13 +873,16 @@ class CrudController extends Controller
     // Ringkasan angka untuk Overview. Angka mengikuti departemen user.
     public function overview(Request $request)
     {
-        $joints = $this->scope($request, \App\Models\Joint::query(), 'joints');
-        $inspections = $this->scope($request, \App\Models\Inspection::query(), 'inspections');
-        $stock = $this->scope($request, \App\Models\StockMove::query(), 'stock');
-        $testPackages = $this->scope($request, \App\Models\TestPackage::query(), 'test-packages');
-        $hse = $this->scope($request, \App\Models\HseLog::query(), 'hse');
-        $scopes = $this->scope($request, \App\Models\Scope::query(), 'scopes');
-        $daily = $this->scope($request, \App\Models\DailyProgress::query(), 'daily-progress');
+        // Global dashboard menampilkan ringkasan lintas departemen untuk superadmin dan project manager.
+        $canViewAll = $request->user()->isSuperAdmin() || $request->user()->role === 'project_manager';
+
+        $joints = $canViewAll ? Joint::query() : $this->scope($request, Joint::query(), 'joints');
+        $inspections = $canViewAll ? Inspection::query() : $this->scope($request, Inspection::query(), 'inspections');
+        $stock = $this->scope($request, StockMove::query(), 'stock');
+        $testPackages = $this->scope($request, TestPackage::query(), 'test-packages');
+        $hse = $this->scope($request, HseLog::query(), 'hse');
+        $scopes = $this->scope($request, Scope::query(), 'scopes');
+        $daily = $this->scope($request, DailyProgress::query(), 'daily-progress');
 
         $total = (clone $joints)->count();
         $by = (clone $joints)->selectRaw('status, COUNT(*) c')->groupBy('status')->pluck('c', 'status');

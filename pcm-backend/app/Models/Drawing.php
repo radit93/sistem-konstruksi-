@@ -1,6 +1,9 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
+
 class Drawing extends Model
 {
     protected $fillable = [
@@ -27,5 +30,19 @@ class Drawing extends Model
     protected $casts = [
         'fitup_specs' => 'array',
     ];
-    public function project(){return $this->belongsTo(Project::class);}
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function billOfMaterials()
+    {
+        return $this->hasMany(BillOfMaterial::class);
+    }
+
+    public function materialIssuings()
+    {
+        return $this->hasMany(MaterialIssuing::class);
+    }
 }

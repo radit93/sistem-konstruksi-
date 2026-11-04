@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { formatRupiah } from '../../currency';
 
 export function BudgetCostSection({ project, user, onToast }) {
     const [budgetList, setBudgetList] = useState([]);
@@ -24,7 +25,7 @@ export function BudgetCostSection({ project, user, onToast }) {
         consumable_cost: 0,
         total_budget: 0,
         actual_cost: 0,
-        currency: 'USD'
+        currency: 'IDR'
     });
 
     const canEdit = can(user, 'scope.write');
@@ -87,7 +88,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                 consumable_cost: item.consumable_cost || 0,
                 total_budget: item.total_budget || 0,
                 actual_cost: item.actual_cost || 0,
-                currency: item.currency || 'USD'
+                currency: 'IDR'
             });
         } else {
             setEditingItem(null);
@@ -103,7 +104,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                 consumable_cost: 5000,
                 total_budget: 20000,
                 actual_cost: 0,
-                currency: 'USD'
+                currency: 'IDR'
             });
         }
         setShowModal(true);
@@ -143,7 +144,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                 <div>
                     <h2 className="h4 fw-bold text-dark mb-1">Budget vs Actual Cost Control</h2>
                     <p className="text-muted small mb-0">
-                        Pengendalian biaya proyek (Direct &amp; Indirect Cost): alokasi tenaga kerja (Labor), peralatan (Equipment), dan bahan habis pakai (Consumable).
+                        Pengendalian biaya proyek (Direct &amp; Indirect Cost): alokasi tenaga kerja (Labor), peralatan (Equipment), dan bahan habis pakai (Consumable). Semua nilai dalam Rupiah (IDR).
                     </p>
                 </div>
                 {canEdit && (
@@ -163,22 +164,19 @@ export function BudgetCostSection({ project, user, onToast }) {
                 <div className="col-6 col-md-3">
                     <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
                         <span className="text-muted small text-uppercase fw-bold d-block">Total Anggaran (Budget)</span>
-                        <strong className="h3 fw-bold text-primary mb-0">${stats.totalBudget.toLocaleString()}</strong>
-                        <span className="text-muted ms-1 small">USD</span>
+                        <strong className="h3 fw-bold text-primary mb-0">{formatRupiah(stats.totalBudget)}</strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
                     <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
                         <span className="text-muted small text-uppercase fw-bold d-block">Realisasi Biaya (Actual)</span>
-                        <strong className="h3 fw-bold text-success mb-0">${stats.totalActual.toLocaleString()}</strong>
-                        <span className="text-muted ms-1 small">USD</span>
+                        <strong className="h3 fw-bold text-success mb-0">{formatRupiah(stats.totalActual)}</strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
                     <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
                         <span className="text-muted small text-uppercase fw-bold d-block">Alokasi Manpower/Labor</span>
-                        <strong className="h3 fw-bold text-dark mb-0">${stats.totalLabor.toLocaleString()}</strong>
-                        <span className="text-muted ms-1 small">USD</span>
+                        <strong className="h3 fw-bold text-dark mb-0">{formatRupiah(stats.totalLabor)}</strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
@@ -256,13 +254,13 @@ export function BudgetCostSection({ project, user, onToast }) {
                                             <td><span className="badge bg-secondary">{b.category}</span></td>
                                             <td className="fw-semibold text-dark">{b.scope_description}</td>
                                             <td className="text-center font-monospace">{b.unit}</td>
-                                            <td className="text-end">${parseFloat(b.labor_cost).toLocaleString()}</td>
-                                            <td className="text-end">${parseFloat(b.equipment_cost).toLocaleString()}</td>
-                                            <td className="text-end">${parseFloat(b.consumable_cost).toLocaleString()}</td>
-                                            <td className="text-end fw-bold text-dark">${budget.toLocaleString()}</td>
+                                            <td className="text-end">{formatRupiah(b.labor_cost)}</td>
+                                            <td className="text-end">{formatRupiah(b.equipment_cost)}</td>
+                                            <td className="text-end">{formatRupiah(b.consumable_cost)}</td>
+                                            <td className="text-end fw-bold text-dark">{formatRupiah(budget)}</td>
                                             <td className="text-end fw-bold">
                                                 <span className={isOver ? 'text-danger' : 'text-success'}>
-                                                    ${actual.toLocaleString()}
+                                                    {formatRupiah(actual)}
                                                 </span>
                                             </td>
                                             {canEdit && (
@@ -343,7 +341,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                                             />
                                         </div>
                                         <div className="col-6 col-md-3">
-                                            <label className="form-label small fw-bold">Labor Cost ($)</label>
+                                            <label className="form-label small fw-bold">Labor Cost (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="0.01"
@@ -358,7 +356,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                                             />
                                         </div>
                                         <div className="col-6 col-md-3">
-                                            <label className="form-label small fw-bold">Equipment Cost ($)</label>
+                                            <label className="form-label small fw-bold">Equipment Cost (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="0.01"
@@ -373,7 +371,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                                             />
                                         </div>
                                         <div className="col-6 col-md-3">
-                                            <label className="form-label small fw-bold">Consumables ($)</label>
+                                            <label className="form-label small fw-bold">Consumables (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="0.01"
@@ -388,7 +386,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                                             />
                                         </div>
                                         <div className="col-6 col-md-3">
-                                            <label className="form-label small fw-bold">Total Budget ($)</label>
+                                            <label className="form-label small fw-bold">Total Budget (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="0.01"
@@ -398,7 +396,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                                             />
                                         </div>
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Realisasi Biaya Aktual ($)</label>
+                                            <label className="form-label small fw-bold">Realisasi Biaya Aktual (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="0.01"

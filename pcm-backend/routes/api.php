@@ -5,7 +5,10 @@ use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BomGenerationController;
 use App\Http\Controllers\CrudController;
+use App\Http\Controllers\MaterialDocumentController;
+use App\Http\Controllers\MaterialReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -39,8 +42,27 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/roles/{role}/permissions', [PermissionController::class, 'sync'])->middleware('permission:access.update');
     });
 
-    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|pipe-standards|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|budget-items|material-receivings|material-inspections|material-storings|material-issuings';
+    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|pipe-standards|piping-class-templates|pipe-schedules|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|budget-items|material-receivings|material-inspections|material-storings|material-issuings';
     Route::get('/overview', [CrudController::class, 'overview']);
+    Route::get('/material-requirements', [CrudController::class, 'materialRequirements']);
+
+    Route::prefix('material-reports')->group(function () {
+        Route::get('/receiving', [MaterialReportController::class, 'receiving']);
+        Route::get('/issuing', [MaterialReportController::class, 'issuing']);
+        Route::get('/stock', [MaterialReportController::class, 'stockList']);
+        Route::get('/location-map', [MaterialReportController::class, 'locationMap']);
+    });
+
+    Route::get('/material-documents', [MaterialDocumentController::class, 'index']);
+    Route::post('/material-documents', [MaterialDocumentController::class, 'store']);
+    Route::get('/material-documents/{materialDocument}/download', [MaterialDocumentController::class, 'download']);
+    Route::delete('/material-documents/{materialDocument}', [MaterialDocumentController::class, 'destroy']);
+
+    // Priority C: Auto-generate BOM/MTO dari isometrik drawing & piping class.
+    Route::post('/drawings/{drawing}/generate-bom', [BomGenerationController::class, 'store']);
+
+    Route::post('/material-receivings/{id}/request-inspection', [CrudController::class, 'requestMaterialInspection']);
+    Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);
     Route::get('/{res}', [CrudController::class, 'index'])->where('res', $resRegex);
     Route::get('/{res}/{id}', [CrudController::class, 'show'])->where('res', $resRegex);
     Route::post('/{res}', [CrudController::class, 'store'])->where('res', $resRegex);

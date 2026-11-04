@@ -13,11 +13,12 @@ import { BoqSection } from './engineering/BoqSection';
 import { BomSection } from './engineering/BomSection';
 import { MaterialStandardSection } from './engineering/MaterialStandardSection';
 import { DocumentControlSection } from './engineering/DocumentControlSection';
+import { SearchSelect } from './SearchSelect';
 
 export const ENG_SUB_TABS = [
     { id: 'isometric', label: 'Isometric Drawing' },
-    { id: 'line_service', label: 'Line Service' },
     { id: 'welding_map', label: 'Welding Map' },
+    { id: 'line_service', label: 'Line Service' },
     { id: 'boq', label: 'Bill of Quantity' },
     { id: 'bom', label: 'Bill of Material' },
     { id: 'material_standard', label: 'Material Standart' },
@@ -115,6 +116,7 @@ const emptyDrawingForm = () => ({
     rev: '0',
     total_dia_inch: '',
     total_joints: '',
+    fitup_specs: [],
     distributed_to: 'Workshop Spool Fabrication',
     distribution_date: new Date().toISOString().split('T')[0],
     status: 'active'
@@ -132,29 +134,125 @@ export function EngineeringTab({
     loading = false,
     error = ''
 }) {
-    // Navigasi: bila activeProjectId ada, default ke id tersebut
-    const [selectedProjectId, setSelectedProjectIdState] = useState(() => activeProjectId || null);
+    // Navigasi: persistensi folder aktif ke localStorage agar tahan hard reload
+    const [selectedProjectId, setSelectedProjectIdState] = useState(() => {
+        return activeProjectId || localStorage.getItem('pcm_active_project_id') || localStorage.getItem('pcm_selected_folder_id') || null;
+    });
     const activeEngTab = currentSection === 'engineering' ? 'isometric' : currentSection;
 
     const setSelectedProjectId = (id) => {
-        setSelectedProjectIdState(id);
+        const val = id && id !== 'unassigned' ? String(id) : (id === 'unassigned' ? 'unassigned' : null);
+        setSelectedProjectIdState(val);
+        if (val) {
+            localStorage.setItem('pcm_selected_folder_id', val);
+        } else {
+            localStorage.removeItem('pcm_selected_folder_id');
+        }
         if (onSetActiveProject) {
-            onSetActiveProject(id && id !== 'unassigned' ? String(id) : '');
+            onSetActiveProject(val && val !== 'unassigned' ? val : '');
         }
     };
 
     useEffect(() => {
         if (activeProjectId && activeProjectId !== selectedProjectId) {
             setSelectedProjectIdState(activeProjectId);
+            localStorage.setItem('pcm_selected_folder_id', activeProjectId);
         }
     }, [activeProjectId]);
 
     const [lineServices, setLineServices] = useState([]);
+    const [materialStandards, setMaterialStandards] = useState([]);
+    const [pipeStandards, setPipeStandards] = useState([]);
+
     useEffect(() => {
         api.get('/line-services').then(res => {
             setLineServices(Array.isArray(res) ? res : []);
         }).catch(() => {});
+
+        Promise.all([
+            api.get('/material-standards').catch(() => []),
+            api.get('/pipe-standards').catch(() => [])
+        ]).then(([matRes, pipeRes]) => {
+            setMaterialStandards(Array.isArray(matRes) ? matRes : []);
+            setPipeStandards(Array.isArray(pipeRes) ? pipeRes : []);
+        });
     }, []);
+
+    // Quick fit-up spec states for adding/editing drawing
+    const [quickMatSpec, setQuickMatSpec] = useState('');
+    const [quickNps, setQuickNps] = useState('');
+    const [quickSchedule, setQuickSchedule] = useState('');
+
+    const npsOptions = useMemo(() => {
+        const set = new Set();
+        pipeStandards.forEach(p => { if (p.nps) set.add(p.nps.trim()); });
+        return Array.from(set).sort((a, b) => {
+            const parseVal = (v) => {
+                const clean = String(v).replace(/"/g, '').trim();
+                if (clean.includes('/')) {
+                    const parts = clean.split(' ');
+                    if (parts.length === 2) {
+                        const [w, f] = parts;
+                        const [num, den] = f.split('/');
+                        return parseFloat(w) + (parseFloat(num) / parseFloat(den));
+                    }
+                    const [num, den] = clean.split('/');
+                    return parseFloat(num) / parseFloat(den);
+                }
+                return parseFloat(clean) || 0;
+            };
+            return parseVal(a) - parseVal(b);
+        });
+    }, [pipeStandards]);
+
+    const npsSelectOptions = useMemo(() => {
+        return npsOptions.map(nps => ({ value: nps, label: nps, hint: 'NPS' }));
+    }, [npsOptions]);
+
+    const materialSpecOptions = useMemo(() => {
+        const seen = new Map();
+        materialStandards.forEach((std) => {
+            const spec = std.specification || std.code || '';
+            if (!spec || seen.has(spec)) return;
+            // Tampilkan Spesifikasi Material (ASTM) murni sebagai label & value
+            seen.set(spec, { value: spec, label: spec });
+        });
+        return Array.from(seen.values()).sort((a, b) =>
+            String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: 'base' })
+        );
+    }, [materialStandards]);
+
+    const availableSchedulesFor = (npsVal) => {
+        if (!npsVal) {
+            const set = new Set();
+            pipeStandards.forEach(p => { if (p.schedule) set.add(p.schedule.trim()); });
+            return Array.from(set);
+        }
+        const filtered = pipeStandards.filter(p => (p.nps || '').trim() === npsVal.trim());
+        const set = new Set();
+        filtered.forEach(p => { if (p.schedule) set.add(p.schedule.trim()); });
+        return Array.from(set);
+    };
+
+    const handleAddQuickSpec = () => {
+        if (!quickNps && !quickMatSpec) return;
+        const currentSpecs = Array.isArray(drawingForm.fitup_specs) ? [...drawingForm.fitup_specs] : [];
+        currentSpecs.push({
+            size: quickNps || '',
+            schedule: quickSchedule || '',
+            material_spec: quickMatSpec || ''
+        });
+        setDrawingForm({ ...drawingForm, fitup_specs: currentSpecs });
+        setQuickMatSpec('');
+        setQuickNps('');
+        setQuickSchedule('');
+    };
+
+    const handleRemoveQuickSpec = (index) => {
+        const currentSpecs = Array.isArray(drawingForm.fitup_specs) ? [...drawingForm.fitup_specs] : [];
+        currentSpecs.splice(index, 1);
+        setDrawingForm({ ...drawingForm, fitup_specs: currentSpecs });
+    };
 
     // Filter dan pencarian
     const [searchFolder, setSearchFolder] = useState('');
@@ -480,21 +578,13 @@ export function EngineeringTab({
                     {/* VIEW A: daftar folder proyek client */}
                     {!selectedProjectId && (
                         <div>
-                    <div className="pcm-page-head mb-4">
-                        <div className="pcm-page-head__text">
-                            <span className="pcm-eyebrow">Direktori Folder Proyek Client</span>
-                            <h1 className="pcm-page-head__title">Folder Proyek Client &amp; Manajemen Drawing</h1>
-                            <p className="pcm-page-head__lede">
-                                Drawing dikelompokkan ke dalam folder proyek dari masing-masing client.
-                                Buka folder proyek untuk mengelola berkas drawing isometrik.
-                            </p>
-                        </div>
-                        <div className="pcm-page-head__aside">
-                            <span className="pcm-note">Buka folder proyek untuk mengelola dan mengunggah berkas drawing</span>
-                        </div>
+                    <div className="mb-4">
+                        <h2 className="h3 fw-bolder text-dark mb-0" style={{ letterSpacing: '-0.02em' }}>
+                            Isometric Drawing &amp; Direktori Proyek
+                        </h2>
                     </div>
 
-                    {/* Empat hitungan dari satu kumpulan data, jadi diperlakukan setara (R-14) */}
+                    {/* Empat hitungan dari satu kumpulan data, diperlakukan setara (R-14) */}
                     <div className="row g-3 mb-4">
                         <div className="col-6 col-lg-3">
                             <div className="pcm-tile">
@@ -536,34 +626,19 @@ export function EngineeringTab({
                         </div>
                     </div>
 
-                    <div className="pcm-toolbar mb-4">
-                        <div className="pcm-toolbar__grow">
-                            <div className="pcm-search">
-                                <span className="pcm-search__icon"><IconSearch size="sm" /></span>
-                                <input
-                                    type="text"
-                                    className="form-control form-control-sm"
-                                    placeholder="Cari nama folder proyek, client, job no"
-                                    aria-label="Cari folder proyek"
-                                    value={searchFolder}
-                                    onChange={(e) => setSearchFolder(e.target.value)}
-                                />
-                            </div>
-                            <select
-                                className="form-select form-select-sm pcm-select"
-                                aria-label="Filter client"
-                                value={clientFilter}
-                                onChange={(e) => setClientFilter(e.target.value)}
-                            >
-                                <option value="ALL">Semua Client ({folderList.length})</option>
-                                {clientOptions.map((client) => (
-                                    <option key={client} value={client}>Client: {client}</option>
-                                ))}
-                            </select>
+                    {/* Search Bar Tunggal & Bersih */}
+                    <div className="mb-4">
+                        <div className="pcm-search w-100" style={{ maxWidth: '100%' }}>
+                            <span className="pcm-search__icon"><IconSearch size="sm" /></span>
+                            <input
+                                type="text"
+                                className="form-control form-control-sm pcm-filter-input w-100"
+                                placeholder="Cari nama folder proyek, client, job no..."
+                                aria-label="Cari folder proyek"
+                                value={searchFolder}
+                                onChange={(e) => setSearchFolder(e.target.value)}
+                            />
                         </div>
-                        <span className="pcm-count">
-                            Menampilkan <strong>{filteredFolders.length}</strong> folder proyek
-                        </span>
                     </div>
 
                     {loading && folderList.length === 0 && (
@@ -587,113 +662,72 @@ export function EngineeringTab({
                     {(filteredFolders.length > 0 || unassignedDrawings.length > 0) && (
                         <div className="row g-3">
                             {filteredFolders.map((folder) => (
-                                <div className="col-12 col-md-6 col-xl-4 d-flex" key={folder.id}>
+                                <div className="col-12 col-sm-6 col-lg-4 col-xl-3 d-flex" key={folder.id}>
                                     <button
                                         type="button"
-                                        className="pcm-folder-card h-100"
+                                        className="pcm-folder-square-card h-100 w-100"
                                         onClick={() => setSelectedProjectId(folder.id)}
                                     >
-                                        {/* Bagian Atas: Icon & Judul Proyek di Atas */}
-                                        <div className="pcm-folder-card__header">
-                                            <div className="d-flex align-items-center gap-2 mb-2">
-                                                <span className="pcm-folder-card__icon">
-                                                    <IconFolder size="sm" />
-                                                </span>
-                                                <div className="flex-grow-1 min-w-0">
-                                                    <h3 className="pcm-folder-card__name text-truncate" title={folder.name}>
-                                                        {folder.name}
-                                                    </h3>
-                                                </div>
-                                            </div>
+                                        <div className="d-flex align-items-center justify-content-between mb-3 w-100">
+                                            <span className="pcm-folder-square-card__icon">
+                                                <IconFolder size="sm" />
+                                            </span>
+                                            <span className="pcm-folder-square-card__arrow text-muted">
+                                                <IconChevronRight size="sm" />
+                                            </span>
+                                        </div>
 
-                                            {/* Job No dan Client Sejajar Berdampingan di Bawah Judul */}
-                                            <div className="pcm-folder-card__tags-row">
-                                                <span className="pcm-chip pcm-chip--neutral pcm-code">
-                                                    JOB NO: {folder.job_no || '-'}
-                                                </span>
-                                                <span className="pcm-chip pcm-chip--primary">
-                                                    <IconBuilding size="sm" />
-                                                    <span className="text-truncate" style={{ maxWidth: '160px' }}>
-                                                        {folder.client || 'General Client'}
-                                                    </span>
+                                        <div className="flex-grow-1 d-flex flex-column justify-content-center min-w-0 w-100 my-1">
+                                            <h3 className="pcm-folder-square-card__name text-truncate mb-2" title={folder.name}>
+                                                {folder.name}
+                                            </h3>
+                                            <div className="d-flex align-items-center gap-1.5 text-truncate">
+                                                <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem' }}>
+                                                    {folder.job_no || 'NO JOB'}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* Spesifikasi / Metrics Realistis Dashboard Profesional */}
-                                        <div className="pcm-folder-card__metrics">
-                                            <div className="pcm-folder-card__metric">
-                                                <span className="pcm-folder-card__metric-label">Jumlah Drawing</span>
-                                                <strong className="pcm-folder-card__metric-val">{folder.drawings_count || 0} berkas</strong>
-                                            </div>
-                                            <div className="pcm-folder-card__metric">
-                                                <span className="pcm-folder-card__metric-label">Total Diameter Inch</span>
-                                                <strong className="pcm-folder-card__metric-val pcm-code">
-                                                    {(folder.total_dia_inch || 0).toFixed(2)} DI
-                                                </strong>
-                                            </div>
-                                            <div className="pcm-folder-card__metric">
-                                                <span className="pcm-folder-card__metric-label">Estimasi Total Joint</span>
-                                                <strong className="pcm-folder-card__metric-val">{folder.total_joints || 0} joint</strong>
-                                            </div>
-                                        </div>
-
-                                        {/* Footer Aksi */}
-                                        <div className="pcm-folder-card__cta">
-                                            <span>Buka Folder Drawing</span>
-                                            <IconChevronRight size="sm" />
+                                        <div className="pcm-folder-square-card__footer mt-3 pt-2 w-100 border-top">
+                                            <span className="fw-bold small text-truncate d-block" style={{ color: '#0f172a' }} title={folder.client || 'General Client'}>
+                                                {folder.client || 'General Client'}
+                                            </span>
                                         </div>
                                     </button>
                                 </div>
                             ))}
 
                             {unassignedDrawings.length > 0 && (
-                                <div className="col-12 col-md-6 col-xl-4 d-flex">
+                                <div className="col-12 col-sm-6 col-lg-4 col-xl-3 d-flex">
                                     <button
                                         type="button"
-                                        className="pcm-folder-card pcm-folder-card--warning h-100"
+                                        className="pcm-folder-square-card pcm-folder-square-card--warning h-100 w-100"
                                         onClick={() => setSelectedProjectId('unassigned')}
                                     >
-                                        {/* Bagian Atas: Icon & Judul Drawing Umum */}
-                                        <div className="pcm-folder-card__header">
-                                            <div className="d-flex align-items-center gap-2 mb-2">
-                                                <span className="pcm-folder-card__icon">
-                                                    <IconFolder size="sm" />
-                                                </span>
-                                                <div className="flex-grow-1 min-w-0">
-                                                    <h3 className="pcm-folder-card__name text-truncate">
-                                                        Drawing Tanpa Folder / Umum
-                                                    </h3>
-                                                </div>
-                                            </div>
+                                        <div className="d-flex align-items-center justify-content-between mb-3 w-100">
+                                            <span className="pcm-folder-square-card__icon">
+                                                <IconFolder size="sm" />
+                                            </span>
+                                            <span className="pcm-folder-square-card__arrow text-muted">
+                                                <IconChevronRight size="sm" />
+                                            </span>
+                                        </div>
 
-                                            {/* Status & Job Sejajar Berdampingan di Bawah Judul */}
-                                            <div className="pcm-folder-card__tags-row">
-                                                <span className="pcm-chip pcm-chip--warning">
-                                                    STATUS: BELUM DIPLOT
-                                                </span>
-                                                <span className="pcm-chip pcm-chip--neutral pcm-code">
-                                                    JOB: N/A
+                                        <div className="flex-grow-1 d-flex flex-column justify-content-center min-w-0 w-100 my-1">
+                                            <h3 className="pcm-folder-square-card__name text-truncate mb-2">
+                                                Drawing Tanpa Folder
+                                            </h3>
+                                            <div>
+                                                <span className="pcm-chip pcm-chip--warning" style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem' }}>
+                                                    BELUM DIPLOT
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* Metrics Alokasi */}
-                                        <div className="pcm-folder-card__metrics">
-                                            <div className="pcm-folder-card__metric">
-                                                <span className="pcm-folder-card__metric-label">Jumlah Drawing</span>
-                                                <strong className="pcm-folder-card__metric-val">{unassignedDrawings.length} berkas</strong>
-                                            </div>
-                                            <div className="pcm-folder-card__metric">
-                                                <span className="pcm-folder-card__metric-label">Status Alokasi</span>
-                                                <strong className="pcm-folder-card__metric-val text-warning">Perlu Diplot ke Project</strong>
-                                            </div>
-                                        </div>
-
-                                        {/* Footer Aksi */}
-                                        <div className="pcm-folder-card__cta">
-                                            <span>Buka Berkas Unassigned</span>
-                                            <IconChevronRight size="sm" />
+                                        <div className="pcm-folder-square-card__footer mt-3 pt-2 w-100 border-top">
+                                            <span className="text-muted small">
+                                                {unassignedDrawings.length} berkas drawing
+                                            </span>
                                         </div>
                                     </button>
                                 </div>
@@ -715,79 +749,91 @@ export function EngineeringTab({
                 ============================================================ */}
             {selectedProjectId && activeProject && (
                 <div>
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                        <button
-                            type="button"
-                            className="btn btn-link p-0 text-decoration-none d-inline-flex align-items-center gap-2 fw-bold"
-                            style={{ color: '#1e40af', fontSize: '1rem' }}
-                            onClick={() => setSelectedProjectId(null)}
-                        >
-                            <IconArrowLeft size="sm" />
-                            <span>Back to Projects</span>
-                        </button>
+                    {/* Header Banner Terpadu: Judul Project, Client & Summary Metrics */}
+                    <div className="bg-white border rounded p-4 mb-4 shadow-sm">
+                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div className="d-flex align-items-center gap-3 min-w-0">
+                                <button
+                                    type="button"
+                                    className="pcm-page-nav-btn d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                                    onClick={() => setSelectedProjectId(null)}
+                                    title="Kembali ke Direktori Proyek"
+                                    aria-label="Kembali ke Direktori Proyek"
+                                >
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        width="22"
+                                        height="22"
+                                        fill="none"
+                                        stroke="#000000"
+                                        strokeWidth="2.4"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        aria-hidden="true"
+                                    >
+                                        <polyline points="15 18 9 12 15 6" />
+                                    </svg>
+                                </button>
+                                <div className="min-w-0">
+                                    <h1 className="h3 fw-bolder text-dark mb-1 text-truncate" style={{ letterSpacing: '-0.02em' }}>
+                                        {activeProject.name}
+                                    </h1>
+                                    <div className="d-flex flex-wrap align-items-center gap-2 small">
+                                        <span className="fw-bold text-dark pcm-code bg-light px-2 py-0.5 rounded border">
+                                            JOB NO: {activeProject.job_no || '-'}
+                                        </span>
+                                        <span className="text-muted">&bull;</span>
+                                        <span className="fw-bold" style={{ color: '#0f172a' }}>
+                                            Client: {activeProject.client || 'General Client'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
 
-                        {canEdit && selectedProjectId !== 'unassigned' && (
-                            <button
-                                type="button"
-                                className="btn btn-primary btn-sm fw-bold d-inline-flex align-items-center gap-1.5"
-                                style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
-                                onClick={() => handleOpenCreateDrawing(selectedProjectId)}
-                            >
-                                <IconPlus size="sm" />
-                                <span>Add Isometric Drawing</span>
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="pcm-page-head mb-4">
-                        <div className="pcm-page-head__text">
-                            <h1 className="pcm-page-head__title mb-2">{activeProject.name}</h1>
-                            <div className="d-flex flex-wrap align-items-center gap-2">
-                                <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.8125rem', padding: '0.25rem 0.65rem' }}>
-                                    JOB NO: {activeProject.job_no || '-'}
-                                </span>
-                                <span className="pcm-chip pcm-chip--primary" style={{ fontSize: '0.8125rem', padding: '0.25rem 0.65rem' }}>
-                                    <IconBuilding size="sm" />
-                                    <span>Client: {activeProject.client || 'General Client'}</span>
-                                </span>
+                            {/* 3 Box Metrik Kompak & Simetris */}
+                            <div className="d-flex align-items-center gap-2">
+                                <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
+                                    <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Drawing</span>
+                                    <strong className="h5 fw-bolder text-dark mb-0">{activeProject.drawings_count || 0}</strong>
+                                </div>
+                                <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
+                                    <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Total DI</span>
+                                    <strong className="h5 fw-bolder text-dark mb-0 pcm-code">{(activeProject.total_dia_inch || 0).toFixed(1)}</strong>
+                                </div>
+                                <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
+                                    <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Joints</span>
+                                    <strong className="h5 fw-bolder text-dark mb-0">{activeProject.total_joints || 0}</strong>
+                                </div>
                             </div>
                         </div>
-                        <div className="pcm-page-head__aside">
-                            <span className="pcm-stat">
-                                <span className="pcm-stat__label">Total Drawings</span>
-                                <strong className="pcm-stat__value">{activeProject.drawings_count || 0}</strong>
-                            </span>
-                            <span className="pcm-stat">
-                                <span className="pcm-stat__label">Total DI</span>
-                                <strong className="pcm-stat__value pcm-code">
-                                    {(activeProject.total_dia_inch || 0).toFixed(2)}
-                                </strong>
-                            </span>
-                            <span className="pcm-stat">
-                                <span className="pcm-stat__label">Total Joints</span>
-                                <strong className="pcm-stat__value">{activeProject.total_joints || 0}</strong>
-                            </span>
-                        </div>
                     </div>
 
-                    <div className="pcm-toolbar mb-4">
-                        <div className="pcm-toolbar__grow">
-                            <div className="pcm-search">
+                    {/* Toolbar Bersih: Search di Kiri & Tambah Drawing di Kanan Sejajar */}
+                    <div className="d-flex align-items-center gap-3 mb-4">
+                        <div className="flex-grow-1 min-w-0">
+                            <div className="pcm-search w-100" style={{ maxWidth: '100%' }}>
                                 <span className="pcm-search__icon"><IconSearch size="sm" /></span>
                                 <input
                                     type="text"
-                                    className="form-control form-control-sm"
-                                    placeholder="Search by drawing no, line no, area, title..."
-                                    aria-label="Search drawings in this project"
+                                    className="form-control form-control-sm pcm-filter-input w-100"
+                                    placeholder="Cari nomor drawing, line no, area, judul..."
+                                    aria-label="Cari drawing di proyek ini"
                                     value={searchDrawing}
                                     onChange={(e) => setSearchDrawing(e.target.value)}
                                 />
                             </div>
                         </div>
-                        <span className="pcm-count">
-                            Showing <strong>{activeFolderDrawings.length}</strong> of{' '}
-                            {activeProject.drawings_count || 0} drawings in this project
-                        </span>
+                        {canEdit && selectedProjectId !== 'unassigned' && (
+                            <button
+                                type="button"
+                                className="btn btn-primary btn-sm fw-bold px-3 py-2 text-nowrap d-inline-flex align-items-center gap-1.5"
+                                style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
+                                onClick={() => handleOpenCreateDrawing(selectedProjectId)}
+                            >
+                                <IconPlus size="sm" />
+                                <span>+ Tambah Drawing</span>
+                            </button>
+                        )}
                     </div>
 
                     <div className="pcm-card">
@@ -795,14 +841,32 @@ export function EngineeringTab({
                             <table className="table table-hover align-middle pcm-table mb-0">
                                 <thead>
                                     <tr>
-                                        <th scope="col" className="text-center" style={{ width: '85px' }}>Revision</th>
-                                        <th scope="col" className="text-center" style={{ minWidth: '180px' }}>Drawing Number</th>
-                                        <th scope="col" className="text-center" style={{ minWidth: '170px' }}>Line No &amp; Service</th>
-                                        <th scope="col" className="text-center" style={{ minWidth: '150px' }}>Fit-Up Specs</th>
-                                        <th scope="col" className="text-center" style={{ minWidth: '110px' }}>DI &amp; Joints</th>
-                                        <th scope="col" className="text-center" style={{ width: '110px' }}>CAD / PDF</th>
-                                        <th scope="col" className="text-center" style={{ width: '100px' }}>Status</th>
-                                        {canEdit && <th scope="col" className="text-center" style={{ minWidth: '170px' }}>Actions</th>}
+                                        <th scope="col" className="text-center" style={{ width: '85px' }}>
+                                            <span className="pcm-th-title">Revision</span>
+                                        </th>
+                                        <th scope="col" className="text-center" style={{ minWidth: '180px' }}>
+                                            <span className="pcm-th-title">Drawing Number</span>
+                                        </th>
+                                        <th scope="col" className="text-center" style={{ minWidth: '170px' }}>
+                                            <span className="pcm-th-title">Line No &amp; Service</span>
+                                        </th>
+                                        <th scope="col" className="text-center" style={{ minWidth: '150px' }}>
+                                            <span className="pcm-th-title">Fit-Up Specs</span>
+                                        </th>
+                                        <th scope="col" className="text-center" style={{ minWidth: '110px' }}>
+                                            <span className="pcm-th-title">DI &amp; Joints</span>
+                                        </th>
+                                        <th scope="col" className="text-center" style={{ width: '110px' }}>
+                                            <span className="pcm-th-title">CAD / PDF</span>
+                                        </th>
+                                        <th scope="col" className="text-center" style={{ width: '100px' }}>
+                                            <span className="pcm-th-title">Status</span>
+                                        </th>
+                                        {canEdit && (
+                                            <th scope="col" className="text-center" style={{ minWidth: '170px' }}>
+                                                <span className="pcm-th-title">Actions</span>
+                                            </th>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -832,49 +896,49 @@ export function EngineeringTab({
                                                     key={d.id || idx}
                                                     onClick={() => setSelectedDrawing(d)}
                                                     style={{ cursor: 'pointer' }}
-                                                    title="Click row to view full specifications"
+                                                    title="Klik baris untuk melihat spesifikasi lengkap"
                                                 >
-                                                    <td className="text-center">
-                                                        <span className="pcm-chip pcm-chip--primary pcm-code">REV-{d.rev || 0}</span>
+                                                    <td className="text-center font-monospace">
+                                                        <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem' }}>
+                                                            {d.rev != null ? `Rev ${d.rev}` : '—'}
+                                                        </span>
                                                     </td>
                                                     <td className="text-center">
-                                                        <span className="d-block pcm-cell-id">{d.drawing_no}</span>
-                                                        <span className="d-block pcm-cell-sub">{d.sheet || 'Sheet 1 of 1'}</span>
-                                                        {d.title && (
-                                                            <span className="d-block pcm-cell-sub pcm-cell-clip mx-auto">{d.title}</span>
-                                                        )}
+                                                        <div className="pcm-table-cell-2line fw-bold pcm-code text-center mx-auto" style={{ fontSize: '0.8125rem', color: '#0f172a' }}>
+                                                            {d.drawing_no}
+                                                        </div>
+                                                        <div className="pcm-cell-sub small text-muted">
+                                                            {d.sheet || 'Sheet 1 of 1'}
+                                                        </div>
                                                     </td>
                                                     <td className="text-center">
-                                                        <span className="d-block pcm-code pcm-cell-strong">{d.line_no || '-'}</span>
+                                                        <div className="pcm-code fw-bold text-dark" style={{ fontSize: '0.8125rem' }}>
+                                                            {d.line_no || '—'}
+                                                        </div>
                                                         {d.line_service && (
-                                                            <span className="d-block pcm-cell-sub">{d.line_service}</span>
+                                                            <div className="pcm-cell-sub small text-truncate mx-auto" style={{ maxWidth: '180px' }} title={d.line_service}>
+                                                                {d.line_service}
+                                                            </div>
                                                         )}
-                                                        <span className="d-block pcm-cell-sub">{d.area || 'MPP Area'}</span>
                                                     </td>
                                                     <td className="text-center" onClick={(e) => e.stopPropagation()}>
                                                         <button
                                                             type="button"
-                                                            className={`btn btn-sm ${specCount > 0 ? 'btn-primary' : 'btn-outline-primary'} fw-bold px-2.5 py-1`}
-                                                            style={{
-                                                                borderRadius: '6px',
-                                                                fontSize: '0.75rem',
-                                                                backgroundColor: specCount > 0 ? '#1e40af' : 'transparent',
-                                                                borderColor: '#1e40af',
-                                                                color: specCount > 0 ? '#ffffff' : '#1e40af'
-                                                            }}
+                                                            className="btn btn-outline-secondary btn-sm px-2.5 py-1"
+                                                            style={{ fontSize: '0.75rem', borderRadius: '4px' }}
                                                             onClick={() => handleOpenFitupModal(d)}
                                                             title="Kelola Fit-Up Specifications untuk drawing ini"
                                                         >
-                                                            {specCount > 0 ? `Fit-Up Specs (${specCount})` : '+ Input Fit-Up'}
+                                                            {specCount > 0 ? `${specCount} Specs` : '+ Input Fit-Up'}
                                                         </button>
                                                     </td>
-                                                    <td className="text-center">
-                                                        <span className="d-block pcm-code pcm-cell-strong">
-                                                            {d.total_dia_inch ? `${parseFloat(d.total_dia_inch).toFixed(2)} DI` : '-'}
-                                                        </span>
-                                                        <span className="d-block pcm-cell-sub pcm-code">
-                                                            {d.total_joints ? `${d.total_joints} JTS` : '-'}
-                                                        </span>
+                                                    <td className="text-center pcm-code font-monospace" style={{ fontSize: '0.8125rem' }}>
+                                                        <div className="fw-bold text-dark">
+                                                            {d.total_dia_inch ? `${parseFloat(d.total_dia_inch).toFixed(1)} DI` : '—'}
+                                                        </div>
+                                                        <div className="text-muted small">
+                                                            {d.total_joints ? `${d.total_joints} JTS` : '—'}
+                                                        </div>
                                                     </td>
                                                     <td className="text-center">
                                                         {d.scan_path ? (
@@ -902,7 +966,8 @@ export function EngineeringTab({
                                                             <div className="d-inline-flex align-items-center justify-content-center gap-2">
                                                                 <button
                                                                     type="button"
-                                                                    className="btn btn-outline-primary btn-sm px-3 py-1.5 fw-bold"
+                                                                    className="btn btn-primary btn-sm px-3 py-1.5 fw-bold"
+                                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         handleOpenEditDrawing(d);
@@ -969,8 +1034,13 @@ export function EngineeringTab({
             {/* ============================================================
                 MODUL 6: Material Standart (ENG-005 / ENG-012)
                 ============================================================ */}
-            {activeEngTab === 'material_standard' && (
-                <MaterialStandardSection user={user} onToast={onReload} />
+            {(activeEngTab === 'material_standard' || activeEngTab === 'pipe_standard') && (
+                <MaterialStandardSection
+                    user={user}
+                    onToast={onReload}
+                    initialView={activeEngTab === 'pipe_standard' ? 'pipe' : 'material'}
+                    activeSection={activeEngTab}
+                />
             )}
 
             {/* ============================================================
@@ -992,274 +1062,393 @@ export function EngineeringTab({
                     aria-labelledby="pcm-drawing-modal-title"
                     onMouseDown={closeOnBackdrop(setShowDrawingModal)}
                 >
-                    <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                    <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable" style={{ maxWidth: '1140px', width: '92vw' }}>
                         <form className="modal-content border-0" onSubmit={handleSaveDrawing}>
-                            <div className="modal-header">
-                                    <div>
-                                        <h2 className="modal-title" id="pcm-drawing-modal-title">
-                                            {editingDrawing ? 'Edit Isometrik Drawing Pipa' : 'Input Isometrik Drawing Pipa'}
-                                        </h2>
-                                        <span className="pcm-modal__sub">
-                                            {editingDrawing ? 'Perbarui data spesifikasi atau berkas drawing CAD/PDF' : 'Spesifikasi drawing dan berkas CAD/PDF'}
-                                        </span>
+                            <div className="modal-header py-3 px-4">
+                                <div>
+                                    <h2 className="h4 fw-bold text-dark mb-0" id="pcm-drawing-modal-title">
+                                        {editingDrawing ? 'Edit Isometric Drawing' : 'Tambah Isometric Drawing Baru'}
+                                    </h2>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    aria-label="Tutup"
+                                    onClick={() => setShowDrawingModal(false)}
+                                />
+                            </div>
+
+                            <div className="modal-body p-4">
+                                {drawingError && (
+                                    <div className="alert alert-danger py-2 mb-3" role="alert">{drawingError}</div>
+                                )}
+
+                                {/* Bagian 1: Proyek & Referensi Line Service (3 Kolom) */}
+                                <div className="pcm-form-section mb-4">
+                                    <div className="pcm-form-section__title mb-2">1. Proyek &amp; Referensi Jalur</div>
+                                    <div className="row g-3">
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-project">
+                                                Folder Proyek Client <span className="text-danger">*</span>
+                                            </label>
+                                            <select
+                                                id="pcm-dwg-project"
+                                                className="form-select form-select-sm"
+                                                required
+                                                value={targetProjectId}
+                                                onChange={(e) => setTargetProjectId(e.target.value)}
+                                            >
+                                                <option value="">-- Pilih Folder Proyek --</option>
+                                                {projects.map((p) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.client ? `[${p.client}] ` : ''}{p.job_no ? `(JOB: ${p.job_no}) ` : ''}{p.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-service">
+                                                Line Service
+                                            </label>
+                                            <select
+                                                id="pcm-dwg-service"
+                                                className="form-select form-select-sm"
+                                                value={drawingForm.line_service_id || ''}
+                                                onChange={(e) => {
+                                                    const sId = e.target.value;
+                                                    const chosen = lineServices.find((s) => String(s.id) === String(sId));
+                                                    setDrawingForm({
+                                                        ...drawingForm,
+                                                        line_service_id: sId,
+                                                        line_service: chosen ? chosen.service_name : drawingForm.line_service,
+                                                        line_no: chosen ? chosen.line_no : drawingForm.line_no
+                                                    });
+                                                }}
+                                            >
+                                                <option value="">-- Pilih Line Service --</option>
+                                                {lineServices
+                                                    .filter((s) => !targetProjectId || String(s.project_id) === String(targetProjectId))
+                                                    .map((s) => (
+                                                        <option key={s.id} value={s.id}>
+                                                            {s.line_no} — {s.service_name} {s.fluid_code ? `(${s.fluid_code})` : ''}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-line">
+                                                Line Number <span className="text-danger">*</span>
+                                            </label>
+                                            <input
+                                                id="pcm-dwg-line"
+                                                type="text"
+                                                required
+                                                className="form-control form-control-sm pcm-code"
+                                                placeholder="Contoh: 15-MPP-AB"
+                                                value={drawingForm.line_no}
+                                                onChange={(e) => setDrawingForm({ ...drawingForm, line_no: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
-                                    <button
-                                        type="button"
-                                        className="btn-close"
-                                        aria-label="Tutup"
-                                        onClick={() => setShowDrawingModal(false)}
-                                    />
                                 </div>
 
-                                <div className="modal-body">
-                                    {drawingError && (
-                                        <div className="alert alert-danger py-2 mb-3" role="alert">{drawingError}</div>
-                                    )}
+                                {/* Bagian 2: Identitas Gambar & Distribusi (3 Kolom x 2 Baris) */}
+                                <div className="pcm-form-section mb-4">
+                                    <div className="pcm-form-section__title mb-2">2. Identitas Drawing &amp; Area</div>
+                                    <div className="row g-3">
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-no">
+                                                Isometric Drawing No <span className="text-danger">*</span>
+                                            </label>
+                                            <input
+                                                id="pcm-dwg-no"
+                                                type="text"
+                                                required
+                                                className="form-control form-control-sm pcm-code"
+                                                placeholder="Contoh: 2428-M-15-MPP-AB-SHT1"
+                                                value={drawingForm.drawing_no}
+                                                onChange={(e) => setDrawingForm({ ...drawingForm, drawing_no: e.target.value })}
+                                            />
+                                        </div>
 
-                                    <div className="pcm-form-section mb-3">
-                                        <label className="form-label pcm-form-label" htmlFor="pcm-dwg-project">
-                                            Folder Proyek Client <span className="text-danger">*</span>
-                                        </label>
-                                        <select
-                                            id="pcm-dwg-project"
-                                            className="form-select form-select-sm"
-                                            required
-                                            value={targetProjectId}
-                                            onChange={(e) => setTargetProjectId(e.target.value)}
-                                        >
-                                            <option value="">-- Pilih Folder Proyek --</option>
-                                            {projects.map((p) => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.client ? `[${p.client}] ` : ''}{p.job_no ? `(JOB: ${p.job_no}) ` : ''}{p.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <span className="pcm-hint">
-                                            Drawing akan dikaitkan ke folder proyek client yang dipilih.
-                                        </span>
-                                    </div>
-
-                                    <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">1. Data Pokok Drawing</span>
-                                        <div className="row g-3">
-                                            <div className="col-12 col-sm-6">
-                                                <label className="form-label pcm-form-label" htmlFor="pcm-dwg-service">
-                                                    Line Service (Master Data)
-                                                </label>
-                                                <select
-                                                    id="pcm-dwg-service"
-                                                    className="form-select form-select-sm"
-                                                    value={drawingForm.line_service_id || ''}
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-sheet-num">
+                                                Sheet (Halaman) <span className="text-danger">*</span>
+                                            </label>
+                                            <div className="input-group">
+                                                <span className="input-group-text">Sheet</span>
+                                                <input
+                                                    id="pcm-dwg-sheet-num"
+                                                    type="number"
+                                                    min="1"
+                                                    className="form-control form-control-sm text-center"
+                                                    value={drawingForm.sheet_num || 1}
                                                     onChange={(e) => {
-                                                        const sId = e.target.value;
-                                                        const chosen = lineServices.find((s) => String(s.id) === String(sId));
+                                                        const n = parseInt(e.target.value, 10) || 1;
                                                         setDrawingForm({
                                                             ...drawingForm,
-                                                            line_service_id: sId,
-                                                            line_service: chosen ? chosen.service_name : drawingForm.line_service,
-                                                            line_no: chosen ? chosen.line_no : drawingForm.line_no
+                                                            sheet_num: n,
+                                                            sheet: `Sheet ${n} of ${drawingForm.sheet_total || 1}`
                                                         });
                                                     }}
-                                                >
-                                                    <option value="">-- Pilih Line Service --</option>
-                                                    {lineServices
-                                                        .filter((s) => !targetProjectId || String(s.project_id) === String(targetProjectId))
-                                                        .map((s) => (
-                                                            <option key={s.id} value={s.id}>
-                                                                {s.line_no} — {s.service_name} {s.fluid_code ? `(${s.fluid_code})` : ''}
-                                                            </option>
-                                                        ))}
-                                                </select>
-                                                <span className="pcm-hint">Pilih dari katalog line service untuk otomatis mengisi Line No.</span>
-                                            </div>
-
-                                            <div className="col-12 col-sm-6">
-                                                <label className="form-label pcm-form-label" htmlFor="pcm-dwg-line">
-                                                    Line No <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    id="pcm-dwg-line"
-                                                    type="text"
-                                                    required
-                                                    className="form-control form-control-sm pcm-code"
-                                                    placeholder="Contoh: 15-MPP-AB"
-                                                    value={drawingForm.line_no}
-                                                    onChange={(e) => setDrawingForm({ ...drawingForm, line_no: e.target.value })}
                                                 />
-                                            </div>
-
-                                            <div className="col-12 col-sm-6">
-                                                <label className="form-label pcm-form-label" htmlFor="pcm-dwg-no">
-                                                    Isometric Drawing No <span className="text-danger">*</span>
-                                                </label>
+                                                <span className="input-group-text">of</span>
                                                 <input
-                                                    id="pcm-dwg-no"
-                                                    type="text"
-                                                    required
-                                                    className="form-control form-control-sm pcm-code"
-                                                    placeholder="Contoh: 2428-M-15-MPP-AB-SHT1"
-                                                    value={drawingForm.drawing_no}
-                                                    onChange={(e) => setDrawingForm({ ...drawingForm, drawing_no: e.target.value })}
-                                                />
-                                            </div>
-
-                                            <div className="col-12 col-sm-6">
-                                                <label className="form-label pcm-form-label">
-                                                    Sheet of Berapa <span className="text-danger">*</span>
-                                                </label>
-                                                <div className="d-flex align-items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        className="form-control form-control-sm text-center"
-                                                        style={{ width: '85px' }}
-                                                        value={drawingForm.sheet_num || 1}
-                                                        onChange={(e) => {
-                                                            const n = parseInt(e.target.value, 10) || 1;
-                                                            setDrawingForm({
-                                                                ...drawingForm,
-                                                                sheet_num: n,
-                                                                sheet: `Sheet ${n} of ${drawingForm.sheet_total || 1}`
-                                                            });
-                                                        }}
-                                                    />
-                                                    <span className="pcm-cell-sub fw-bold">of</span>
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        className="form-control form-control-sm text-center"
-                                                        style={{ width: '85px' }}
-                                                        value={drawingForm.sheet_total || 1}
-                                                        onChange={(e) => {
-                                                            const tot = parseInt(e.target.value, 10) || 1;
-                                                            setDrawingForm({
-                                                                ...drawingForm,
-                                                                sheet_total: tot,
-                                                                sheet: `Sheet ${drawingForm.sheet_num || 1} of ${tot}`
-                                                            });
-                                                        }}
-                                                    />
-                                                    <span className="pcm-cell-sub pcm-code ms-1 font-monospace">{drawingForm.sheet}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="col-12 col-sm-6">
-                                                <label className="form-label pcm-form-label" htmlFor="pcm-dwg-title">
-                                                    Title / Keterangan <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    id="pcm-dwg-title"
-                                                    type="text"
-                                                    required
-                                                    className="form-control form-control-sm"
-                                                    placeholder="Contoh: Process Piping Main Header"
-                                                    value={drawingForm.title}
-                                                    onChange={(e) => setDrawingForm({ ...drawingForm, title: e.target.value })}
-                                                />
-                                            </div>
-
-                                            <div className="col-12 col-sm-6">
-                                                <label className="form-label pcm-form-label" htmlFor="pcm-dwg-rev">Revision No</label>
-                                                <select
-                                                    id="pcm-dwg-rev"
-                                                    className="form-select form-select-sm"
-                                                    value={drawingForm.rev}
-                                                    onChange={(e) => setDrawingForm({ ...drawingForm, rev: e.target.value })}
-                                                >
-                                                    <option value="0">Rev 0 (Issued For Construction)</option>
-                                                    <option value="A">Rev A (Internal Review)</option>
-                                                    <option value="B">Rev B (Client Review)</option>
-                                                    <option value="1">Rev 1</option>
-                                                    <option value="2">Rev 2 (As-Built)</option>
-                                                </select>
-                                            </div>
-
-                                            <div className="col-12 col-sm-6">
-                                                <label className="form-label pcm-form-label" htmlFor="pcm-dwg-area">
-                                                    Area <span className="text-danger">*</span>
-                                                </label>
-                                                <input
-                                                    id="pcm-dwg-area"
-                                                    type="text"
-                                                    required
-                                                    className="form-control form-control-sm"
-                                                    placeholder="Contoh: MPP Area"
-                                                    value={drawingForm.area}
-                                                    onChange={(e) => setDrawingForm({ ...drawingForm, area: e.target.value })}
+                                                    id="pcm-dwg-sheet-tot"
+                                                    type="number"
+                                                    min="1"
+                                                    className="form-control form-control-sm text-center"
+                                                    value={drawingForm.sheet_total || 1}
+                                                    onChange={(e) => {
+                                                        const tot = parseInt(e.target.value, 10) || 1;
+                                                        setDrawingForm({
+                                                            ...drawingForm,
+                                                            sheet_total: tot,
+                                                            sheet: `Sheet ${drawingForm.sheet_num || 1} of ${tot}`
+                                                        });
+                                                    }}
                                                 />
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* 2. Estimasi Volume & Sambungan */}
-                                    <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">2. Estimasi Sambungan &amp; Total Volume DI</span>
-                                        <div className="row g-3">
-                                            <div className="col-12 col-sm-6">
-                                                <label className="form-label pcm-form-label" htmlFor="pcm-dwg-joints">
-                                                    Estimasi Total Joint (Titik Las)
-                                                </label>
-                                                <input
-                                                    id="pcm-dwg-joints"
-                                                    type="number"
-                                                    min="0"
-                                                    className="form-control form-control-sm"
-                                                    placeholder="Contoh: 18"
-                                                    value={drawingForm.total_joints}
-                                                    onChange={(e) => setDrawingForm({ ...drawingForm, total_joints: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="col-12 col-sm-6">
-                                                <label className="form-label pcm-form-label" htmlFor="pcm-dwg-di">
-                                                    Total Diameter Inch (DI)
-                                                </label>
-                                                <input
-                                                    id="pcm-dwg-di"
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    className="form-control form-control-sm pcm-code"
-                                                    placeholder="Contoh: 72.00"
-                                                    value={drawingForm.total_dia_inch}
-                                                    onChange={(e) => setDrawingForm({ ...drawingForm, total_dia_inch: e.target.value })}
-                                                />
-                                            </div>
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-rev">
+                                                Revision No <span className="text-danger">*</span>
+                                            </label>
+                                            <select
+                                                id="pcm-dwg-rev"
+                                                className="form-select form-select-sm"
+                                                value={drawingForm.rev}
+                                                onChange={(e) => setDrawingForm({ ...drawingForm, rev: e.target.value })}
+                                            >
+                                                <option value="0">Rev 0 (Issued For Construction)</option>
+                                                <option value="A">Rev A (Internal Review)</option>
+                                                <option value="B">Rev B (Client Review)</option>
+                                                <option value="1">Rev 1</option>
+                                                <option value="2">Rev 2 (As-Built)</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-title">
+                                                Judul / Title <span className="text-danger">*</span>
+                                            </label>
+                                            <input
+                                                id="pcm-dwg-title"
+                                                type="text"
+                                                required
+                                                className="form-control form-control-sm"
+                                                placeholder="Contoh: Process Piping Main Header"
+                                                value={drawingForm.title}
+                                                onChange={(e) => setDrawingForm({ ...drawingForm, title: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-area">
+                                                Plant Area <span className="text-danger">*</span>
+                                            </label>
+                                            <input
+                                                id="pcm-dwg-area"
+                                                type="text"
+                                                required
+                                                className="form-control form-control-sm"
+                                                placeholder="Contoh: MPP Area"
+                                                value={drawingForm.area}
+                                                onChange={(e) => setDrawingForm({ ...drawingForm, area: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-dist">
+                                                Target Distribusi
+                                            </label>
+                                            <input
+                                                id="pcm-dwg-dist"
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="Contoh: Workshop Spool Fabrication"
+                                                value={drawingForm.distributed_to}
+                                                onChange={(e) => setDrawingForm({ ...drawingForm, distributed_to: e.target.value })}
+                                            />
                                         </div>
                                     </div>
+                                </div>
 
-                                    {/* 3. Berkas Software Engineer */}
-                                    <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">3. Berkas Software Engineer</span>
-                                        <label className="form-label pcm-form-label" htmlFor="pcm-dwg-file">
-                                            File Drawing (CAD / PDF / Image) <span className="pcm-cell-sub fw-normal">(Opsional)</span>
-                                        </label>
-                                        <input
-                                            id="pcm-dwg-file"
-                                            type="file"
-                                            accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg,.zip"
-                                            className="form-control form-control-sm"
-                                            onChange={(e) => setDrawingFile(e.target.files[0])}
-                                        />
-                                        <span className="pcm-hint">
-                                            {editingDrawing && editingDrawing.scan_path ? (
-                                                <span>
-                                                    Berkas aktif saat ini: <strong>{editingDrawing.scan_path.split('/').pop()}</strong>. Unggah file baru bila ingin mengganti.
-                                                </span>
-                                            ) : (
-                                                'Format didukung: PDF, AutoCAD (DWG/DXF), ZIP, PNG, JPG (opsional).'
+                                {/* Bagian 3: Estimasi Volume & Berkas CAD/PDF (3 Kolom) */}
+                                <div className="pcm-form-section mb-4">
+                                    <div className="pcm-form-section__title mb-2">3. Estimasi Volume &amp; Berkas CAD/PDF</div>
+                                    <div className="row g-3">
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-joints">
+                                                Estimasi Total Joint (Titik Las)
+                                            </label>
+                                            <input
+                                                id="pcm-dwg-joints"
+                                                type="number"
+                                                min="0"
+                                                className="form-control form-control-sm"
+                                                placeholder="Contoh: 18"
+                                                value={drawingForm.total_joints}
+                                                onChange={(e) => setDrawingForm({ ...drawingForm, total_joints: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-di">
+                                                Total Diameter Inch (DI)
+                                            </label>
+                                            <input
+                                                id="pcm-dwg-di"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                className="form-control form-control-sm pcm-code"
+                                                placeholder="Contoh: 72.00"
+                                                value={drawingForm.total_dia_inch}
+                                                onChange={(e) => setDrawingForm({ ...drawingForm, total_dia_inch: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-file">
+                                                Berkas Drawing (CAD / PDF)
+                                            </label>
+                                            <input
+                                                id="pcm-dwg-file"
+                                                type="file"
+                                                accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg,.zip"
+                                                className="form-control form-control-sm"
+                                                onChange={(e) => setDrawingFile(e.target.files[0])}
+                                            />
+                                            {editingDrawing && editingDrawing.scan_path && (
+                                                <small className="text-muted d-block mt-1 text-truncate">
+                                                    File aktif: <strong>{editingDrawing.scan_path.split('/').pop()}</strong>
+                                                </small>
                                             )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Bagian 4: Spesifikasi Pipa & Fit-Up Specs (Terhubung Langsung ke Master Material & Master Diameter) */}
+                                <div className="pcm-form-section">
+                                    <div className="d-flex align-items-center justify-content-between mb-2">
+                                        <div className="pcm-form-section__title mb-0">4. Spesifikasi Material &amp; Diameter Pipa</div>
+                                        <span className="badge" style={{ backgroundColor: '#1e40af', color: '#ffffff' }}>
+                                            {(drawingForm.fitup_specs || []).length} Spec Terpilih
                                         </span>
                                     </div>
-                                </div>
 
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowDrawingModal(false)}>
-                                        Batal
-                                    </button>
-                                    <button type="submit" className="btn btn-primary btn-sm fw-bold" disabled={drawingLoading}>
-                                        {drawingLoading ? 'Menyimpan...' : (editingDrawing ? 'Perbarui Drawing' : 'Simpan Drawing')}
-                                    </button>
+                                    {/* Picker Master Data */}
+                                    <div className="p-3 border rounded bg-light mb-3">
+                                        <div className="row g-2 align-items-end">
+                                            <div className="col-12 col-md-5">
+                                                <label className="form-label small fw-bold mb-1">Spesifikasi Material (ASTM)</label>
+                                                <SearchSelect
+                                                    value={quickMatSpec}
+                                                    onChange={(val) => setQuickMatSpec(val)}
+                                                    options={materialSpecOptions}
+                                                    placeholder="Pilih spesifikasi ASTM..."
+                                                    allowCustom
+                                                    ariaLabel="Spesifikasi Material ASTM"
+                                                />
+                                            </div>
+                                            <div className="col-6 col-md-3">
+                                                <label className="form-label small fw-bold mb-1">Nominal Size (NPS)</label>
+                                                <SearchSelect
+                                                    value={quickNps}
+                                                    onChange={(val) => {
+                                                        setQuickNps(val);
+                                                        setQuickSchedule('');
+                                                    }}
+                                                    options={npsSelectOptions}
+                                                    placeholder="Cari NPS..."
+                                                    allowCustom
+                                                    ariaLabel="Nominal Size NPS"
+                                                />
+                                            </div>
+                                            <div className="col-6 col-md-2">
+                                                <label className="form-label small fw-bold mb-1">Schedule</label>
+                                                <SearchSelect
+                                                    value={quickSchedule}
+                                                    onChange={(val) => setQuickSchedule(val)}
+                                                    options={availableSchedulesFor(quickNps)}
+                                                    placeholder="Cari schedule..."
+                                                    allowCustom
+                                                    ariaLabel="Schedule Pipa"
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-2">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-primary btn-sm fw-bold w-100"
+                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                                    onClick={handleAddQuickSpec}
+                                                    disabled={!quickNps && !quickMatSpec}
+                                                >
+                                                    + Tambah
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Tabel Ringkas Spec Drawing Terpilih */}
+                                    {(drawingForm.fitup_specs || []).length > 0 && (
+                                        <div className="table-responsive border rounded bg-white">
+                                            <table className="table table-sm align-middle pcm-table mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="ps-3 text-start">Spesifikasi Material</th>
+                                                        <th className="text-center" style={{ width: '130px' }}>Size (NPS)</th>
+                                                        <th className="text-center" style={{ width: '140px' }}>Schedule</th>
+                                                        <th className="text-center" style={{ width: '80px' }}>Aksi</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {(drawingForm.fitup_specs || []).map((spec, idx) => (
+                                                        <tr key={idx}>
+                                                            <td className="ps-2 fw-semibold pcm-code text-dark">{spec.material_spec || '—'}</td>
+                                                            <td className="text-center pcm-code fw-bold text-dark">{spec.size || '—'}</td>
+                                                            <td className="text-center pcm-code text-dark">{spec.schedule || '—'}</td>
+                                                            <td className="text-center">
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-link text-danger p-0 fw-bold fs-6"
+                                                                    onClick={() => handleRemoveQuickSpec(idx)}
+                                                                    title="Hapus spec ini"
+                                                                >
+                                                                    &times;
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
                                 </div>
+                            </div>
+
+                            <div className="modal-footer d-flex justify-content-end gap-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm px-3 py-1.5 fw-bold"
+                                    style={{ backgroundColor: '#475569', borderColor: '#334155', color: '#ffffff' }}
+                                    onClick={() => setShowDrawingModal(false)}
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary btn-sm fw-bold px-3 py-1.5"
+                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                    disabled={drawingLoading}
+                                >
+                                    {drawingLoading ? 'Menyimpan...' : (editingDrawing ? 'Perbarui Drawing' : 'Simpan Drawing')}
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -1283,7 +1472,7 @@ export function EngineeringTab({
                             <div className="modal-header">
                                 <div>
                                     <h4 className="modal-title fw-bold text-dark mb-0">
-                                        Kelola Fit-Up Specs — <span className="pcm-code" style={{ color: '#1e40af' }}>{fitupModalDrawing.drawing_no}</span>
+                                        Kelola Fit-Up Specs — <span className="pcm-code text-dark">{fitupModalDrawing.drawing_no}</span>
                                     </h4>
                                     <span className="pcm-modal__sub">
                                         Line No: <strong>{fitupModalDrawing.line_no || '-'}</strong> • Sheet: <strong>{fitupModalDrawing.sheet || 'Sheet 1 of 1'}</strong>
@@ -1333,7 +1522,7 @@ export function EngineeringTab({
                                                         <tr key={idx}>
                                                             <td className="text-center pcm-cell-sub">{idx + 1}</td>
                                                             <td className="pcm-cell-strong">{sp.material_spec || '-'}</td>
-                                                            <td className="text-center pcm-code fw-bold" style={{ color: '#1e40af' }}>{sp.size}</td>
+                                                            <td className="text-center pcm-code fw-bold text-dark">{sp.size}</td>
                                                             <td className="text-center pcm-code">{sp.schedule}</td>
                                                             <td className="text-center">
                                                                 <button
@@ -1356,41 +1545,41 @@ export function EngineeringTab({
                                 {/* Form Input Tambah Fit-Up Spec Baru */}
                                 <div className="p-3 border rounded bg-light">
                                     <h6 className="fw-bold small text-uppercase mb-2" style={{ color: '#0f172a' }}>
-                                        + Tambah Spesifikasi Pipa Baru
+                                        + Tambah Spesifikasi Pipa Baru (Master Data)
                                     </h6>
                                     <form onSubmit={handleAddFitupRow}>
                                         <div className="row g-2 align-items-end">
                                             <div className="col-12 col-md-5">
-                                                <label className="form-label small fw-bold">Material Specification *</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control form-control-sm"
-                                                    placeholder="Contoh: ASTM A106 Gr. B"
+                                                <label className="form-label small fw-bold">Spesifikasi Material (ASTM) *</label>
+                                                <SearchSelect
                                                     value={fitupForm.material_spec}
-                                                    onChange={(e) => setFitupForm({ ...fitupForm, material_spec: e.target.value })}
-                                                    required
+                                                    onChange={(val) => setFitupForm({ ...fitupForm, material_spec: val })}
+                                                    options={materialSpecOptions}
+                                                    placeholder="Pilih spesifikasi ASTM..."
+                                                    allowCustom
+                                                    ariaLabel="Spesifikasi Material ASTM"
                                                 />
                                             </div>
                                             <div className="col-6 col-md-3">
                                                 <label className="form-label small fw-bold">Size (NPS) *</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control form-control-sm pcm-code"
-                                                    placeholder='Contoh: 4", 2"'
+                                                <SearchSelect
                                                     value={fitupForm.size}
-                                                    onChange={(e) => setFitupForm({ ...fitupForm, size: e.target.value })}
-                                                    required
+                                                    onChange={(val) => setFitupForm({ ...fitupForm, size: val, schedule: '' })}
+                                                    options={npsSelectOptions}
+                                                    placeholder="Cari NPS..."
+                                                    allowCustom
+                                                    ariaLabel="Size NPS"
                                                 />
                                             </div>
                                             <div className="col-6 col-md-2">
                                                 <label className="form-label small fw-bold">Schedule *</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control form-control-sm"
-                                                    placeholder="Contoh: Sch 40"
+                                                <SearchSelect
                                                     value={fitupForm.schedule}
-                                                    onChange={(e) => setFitupForm({ ...fitupForm, schedule: e.target.value })}
-                                                    required
+                                                    onChange={(val) => setFitupForm({ ...fitupForm, schedule: val })}
+                                                    options={availableSchedulesFor(fitupForm.size)}
+                                                    placeholder="Cari schedule..."
+                                                    allowCustom
+                                                    ariaLabel="Schedule Pipa"
                                                 />
                                             </div>
                                             <div className="col-12 col-md-2">
@@ -1407,24 +1596,24 @@ export function EngineeringTab({
                                 </div>
                             </div>
 
-                            <div className="modal-footer d-flex justify-content-between">
-                                <span className="pcm-cell-sub">
-                                    Spesifikasi yang disimpan akan otomatis menjadi pilihan komponen Material A &amp; B pada Welding Map.
-                                </span>
-                                <div className="d-flex gap-2">
-                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFitupModalDrawing(null)}>
-                                        Batal
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary btn-sm fw-bold px-3"
-                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
-                                        onClick={handleSaveFitupModal}
-                                        disabled={fitupSaving}
-                                    >
-                                        {fitupSaving ? 'Menyimpan...' : 'Simpan Fit-Up Specs'}
-                                    </button>
-                                </div>
+                            <div className="modal-footer d-flex justify-content-end gap-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm px-3 py-1.5 fw-bold"
+                                    style={{ backgroundColor: '#475569', borderColor: '#334155', color: '#ffffff' }}
+                                    onClick={() => setFitupModalDrawing(null)}
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm fw-bold px-3 py-1.5"
+                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                    onClick={handleSaveFitupModal}
+                                    disabled={fitupSaving}
+                                >
+                                    {fitupSaving ? 'Menyimpan...' : 'Simpan Fit-Up Specs'}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1445,7 +1634,7 @@ export function EngineeringTab({
                         if (event.target === event.currentTarget) setSelectedDrawing(null);
                     }}
                 >
-                    <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable" style={{ maxWidth: '840px' }}>
+                    <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable" style={{ maxWidth: '1140px', width: '92vw' }}>
                         <div className="modal-content border-0">
                             <div className="modal-header">
                                 <h2 className="modal-title" id="pcm-spec-modal-title">
@@ -1461,7 +1650,8 @@ export function EngineeringTab({
 
                             <div className="modal-body">
                                 <div className="row g-3">
-                                    <div className="col-12 col-sm-6">
+                                    {/* Baris 1: Identitas Pokok & Lokasi (3 Kolom) */}
+                                    <div className="col-12 col-md-4">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Project / Client</span>
                                             <span className="pcm-spec__value">
@@ -1472,43 +1662,49 @@ export function EngineeringTab({
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="col-12 col-sm-6">
-                                        <div className="pcm-spec">
-                                            <span className="pcm-spec__label">Revision No</span>
-                                            <span className="pcm-spec__value pcm-code">REV-{selectedDrawing.rev || 0}</span>
-                                        </div>
-                                    </div>
-                                    <div className="col-12 col-sm-6">
-                                        <div className="pcm-spec">
-                                            <span className="pcm-spec__label">Sheet</span>
-                                            <span className="pcm-spec__value">{selectedDrawing.sheet || 'Sheet 1 of 1'}</span>
-                                        </div>
-                                    </div>
-                                    <div className="col-12 col-sm-6">
+                                    <div className="col-12 col-md-4">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Line Number</span>
                                             <span className="pcm-spec__value pcm-code">{selectedDrawing.line_no || '-'}</span>
                                         </div>
                                     </div>
-                                    <div className="col-12 col-sm-6">
+                                    <div className="col-12 col-md-4">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Plant Area</span>
                                             <span className="pcm-spec__value">{selectedDrawing.area || 'MPP Area'}</span>
                                         </div>
                                     </div>
-                                    <div className="col-12 col-sm-6">
+
+                                    {/* Baris 2: Revisi, Distribusi, & Material (3 Kolom) */}
+                                    <div className="col-12 col-md-4">
+                                        <div className="pcm-spec">
+                                            <span className="pcm-spec__label">Revision &amp; Sheet</span>
+                                            <span className="pcm-spec__value pcm-code">
+                                                REV-{selectedDrawing.rev || 0} &middot; {selectedDrawing.sheet || 'Sheet 1 of 1'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="col-12 col-md-4">
+                                        <div className="pcm-spec">
+                                            <span className="pcm-spec__label">Distribution Target</span>
+                                            <span className="pcm-spec__value">{selectedDrawing.distributed_to || 'Workshop Spool Fabrication'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="col-12 col-md-4">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Material Specification</span>
                                             <span className="pcm-spec__value">{selectedDrawing.material_spec || '-'}</span>
                                         </div>
                                     </div>
-                                    <div className="col-12 col-sm-6">
+
+                                    {/* Baris 3: Ukuran & Volume Pekerjaan (3 Kolom) */}
+                                    <div className="col-12 col-md-4">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Size Range &amp; Schedule</span>
                                             <span className="pcm-spec__value">{selectedDrawing.size_range || '-'}</span>
                                         </div>
                                     </div>
-                                    <div className="col-12 col-sm-6">
+                                    <div className="col-12 col-md-4">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Total Diameter Inch</span>
                                             <span className="pcm-spec__value pcm-code">
@@ -1518,16 +1714,10 @@ export function EngineeringTab({
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="col-12 col-sm-6">
+                                    <div className="col-12 col-md-4">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Total Joint Count</span>
                                             <span className="pcm-spec__value">{selectedDrawing.total_joints || 0} joints</span>
-                                        </div>
-                                    </div>
-                                    <div className="col-12 col-sm-6">
-                                        <div className="pcm-spec">
-                                            <span className="pcm-spec__label">Distribution Target</span>
-                                            <span className="pcm-spec__value">{selectedDrawing.distributed_to || 'Workshop Spool Fabrication'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1577,7 +1767,7 @@ export function EngineeringTab({
                                                             <tr key={idx}>
                                                                 <td className="text-center pcm-cell-sub">{idx + 1}</td>
                                                                 <td className="pcm-cell-strong">{sp.material_spec || '-'}</td>
-                                                                <td className="text-center pcm-code fw-bold" style={{ color: '#1e40af' }}>{sp.size || '-'}</td>
+                                                                <td className="text-center pcm-code fw-bold text-dark">{sp.size || '-'}</td>
                                                                 <td className="text-center pcm-code">{sp.schedule || '-'}</td>
                                                             </tr>
                                                         ))}
@@ -1624,7 +1814,12 @@ export function EngineeringTab({
                                     )}
                                 </div>
                                 <div className="d-flex gap-2">
-                                    <button type="button" className="btn btn-secondary btn-sm px-3 py-1.5" onClick={() => setSelectedDrawing(null)}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm px-3 py-1.5 fw-bold"
+                                        style={{ backgroundColor: '#475569', borderColor: '#334155', color: '#ffffff' }}
+                                        onClick={() => setSelectedDrawing(null)}
+                                    >
                                         Close
                                     </button>
                                     {canEdit && (

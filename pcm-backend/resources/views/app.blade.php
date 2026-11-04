@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="/css/vendor/bootstrap.min.css" />
     <link rel="stylesheet" href="/css/vendor/OverlayScrollbars.min.css" />
     <link rel="stylesheet" href="/css/styles.css" />
-    <link rel="stylesheet" href="/css/main.css" />
+    <link rel="stylesheet" href="/css/main.css?v={{ filemtime(public_path('acorn/css/main.css')) }}" />
 
     <!-- Tailwind Utility Support (tanpa merusak style native Bootstrap/Acorn) -->
     <script src="https://cdn.tailwindcss.com"></script>

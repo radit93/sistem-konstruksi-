@@ -265,7 +265,7 @@ export function QaqcTab({ joints, inspections, user, onReload }) {
                                 ) : (
                                     filteredReports.map((r, idx) => (
                                         <tr key={r.id || idx}>
-                                            <td className="fw-bold text-primary">{r.report_no}</td>
+                                            <td className="fw-bold text-dark">{r.report_no}</td>
                                             <td><span className="badge bg-light text-dark border">{r.kind}</span></td>
                                             <td>
                                                 <span className={`badge ${r.result === 'PASS' ? 'bg-success' : 'bg-danger'}`}>

@@ -252,7 +252,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                                     const isOver = actual > budget;
                                     return (
                                         <tr key={b.id}>
-                                            <td className="ps-3 fw-bold font-monospace text-primary">{b.item_code}</td>
+                                            <td className="ps-3 fw-bold font-monospace text-dark">{b.item_code}</td>
                                             <td><span className="badge bg-secondary">{b.category}</span></td>
                                             <td className="fw-semibold text-dark">{b.scope_description}</td>
                                             <td className="text-center font-monospace">{b.unit}</td>
@@ -269,7 +269,8 @@ export function BudgetCostSection({ project, user, onToast }) {
                                                 <td className="text-end pe-3">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-outline-primary btn-sm px-2 py-1"
+                                                        className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
+                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                                                         onClick={() => handleOpenModal(b)}
                                                     >
                                                         Edit

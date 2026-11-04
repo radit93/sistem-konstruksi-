@@ -609,44 +609,44 @@ html[data-placement=horizontal] .nav-container .logo .img {
 .pcm-tile {
     height: 100%;
     padding: .875rem 1rem;
-    border: 1px solid var(--pcm-line);
+    border: 1px solid #e2e8f0;
     border-radius: var(--pcm-radius-card);
-    background: var(--pcm-surface);
-    box-shadow: var(--pcm-elev-1);
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 .pcm-tile__label {
     display: block;
-    font-size: .75rem;
+    font-size: .6875rem;
     font-weight: 700;
-    letter-spacing: .02em;
+    letter-spacing: .04em;
     text-transform: uppercase;
-    color: var(--pcm-muted);
+    color: #64748b;
 }
 
 .pcm-tile__value {
     display: block;
-    margin-top: .25rem;
+    margin-top: .35rem;
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     font-weight: 800;
     line-height: 1.1;
     color: var(--pcm-ink);
 }
 
 .pcm-tile__value--primary {
-    color: var(--pcm-primary);
+    color: #1e40af;
 }
 
 .pcm-tile__value--warning {
-    color: var(--pcm-warning);
+    color: #d97706;
 }
 
 .pcm-tile__unit {
-    margin-left: .25rem;
+    margin-left: .35rem;
     font-size: .75rem;
     font-weight: 600;
-    color: var(--pcm-muted);
+    color: #94a3b8;
 }
 
 /* --- Toolbar --- */
@@ -726,6 +726,34 @@ html[data-placement=horizontal] .nav-container .logo .img {
 }
 
 /* --- Filter bar: search + dropdowns share the same control height --- */
+/* Custom Styled Theme Select Dropdowns */
+.pcm-select-theme {
+    width: auto !important;
+    min-width: 140px;
+    height: 36px !important;
+    padding: .25rem 2rem .25rem .75rem !important;
+    font-size: .8125rem !important;
+    font-weight: 600 !important;
+    color: #0f172a !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: var(--pcm-radius-control) !important;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pcm-select-theme:hover {
+    background-color: #ffffff !important;
+    border-color: #94a3b8 !important;
+}
+
+.pcm-select-theme:focus {
+    background-color: #ffffff !important;
+    border-color: var(--pcm-primary) !important;
+    box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.15) !important;
+    outline: none !important;
+}
+
 .pcm-filter-bar {
     display: flex;
     flex-wrap: wrap;
@@ -890,6 +918,163 @@ html[data-placement=horizontal] .nav-container .logo .img {
     color: #ffffff !important;
 }
 
+.btn-secondary {
+    background-color: #475569 !important;
+    border-color: #334155 !important;
+    color: #ffffff !important;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+    background-color: #334155 !important;
+    border-color: #1e293b !important;
+    color: #ffffff !important;
+}
+
+.btn-outline-secondary {
+    color: #334155 !important;
+    border-color: #94a3b8 !important;
+    background-color: transparent !important;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:focus {
+    background-color: #475569 !important;
+    border-color: #334155 !important;
+    color: #ffffff !important;
+}
+
+/* --- Top Action: Reload Button (Hanya Icon saja tanpa garis pinggir) --- */
+.page-title-container button.pcm-reload-btn,
+.pcm-reload-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #000000 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    outline: none !important;
+    transition: opacity 0.15s ease, transform 0.15s ease !important;
+    line-height: 1 !important;
+}
+
+.page-title-container button.pcm-reload-btn:hover,
+.pcm-reload-btn:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    opacity: 0.6 !important;
+    transform: scale(1.08);
+}
+
+.page-title-container button.pcm-reload-btn:active,
+.pcm-reload-btn:active {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    opacity: 0.4 !important;
+    transform: scale(0.92);
+}
+
+.page-title-container button.pcm-reload-btn svg,
+.pcm-reload-btn svg {
+    display: block !important;
+    stroke: #000000 !important;
+    color: #000000 !important;
+}
+
+/* ==========================================================================
+   PAGINATION BUTTON CONTROLS (Icon Saja Hitam Tanpa Border/Background Biru)
+   ========================================================================== */
+.pcm-page-nav-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 4px !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #000000 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    outline: none !important;
+    transition: opacity 0.15s ease, transform 0.15s ease !important;
+    line-height: 1 !important;
+}
+
+.pcm-page-nav-btn:hover:not(:disabled) {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    opacity: 0.6 !important;
+    transform: scale(1.08);
+}
+
+.pcm-page-nav-btn:active:not(:disabled) {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    opacity: 0.4 !important;
+    transform: scale(0.92);
+}
+
+.pcm-page-nav-btn:disabled {
+    opacity: 0.25 !important;
+    cursor: not-allowed !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.pcm-page-nav-btn svg {
+    display: block !important;
+    stroke: #000000 !important;
+    color: #000000 !important;
+}
+
+/* --- Status Indicator: Hanya titik hijau (atau amber jika at-risk) --- */
+.pcm-status-dot {
+    width: 10px !important;
+    height: 10px !important;
+    min-width: 10px !important;
+    min-height: 10px !important;
+    border-radius: 50% !important;
+    display: inline-block !important;
+    flex-shrink: 0 !important;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.pcm-status-dot--ok {
+    background-color: #16a34a !important;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.25) !important;
+}
+
+.pcm-status-dot--risk {
+    background-color: #d97706 !important;
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.25) !important;
+}
+
 .text-primary {
     color: #1e40af !important;
 }
@@ -909,6 +1094,73 @@ html[data-placement=horizontal] .nav-container .logo .img {
 }
 
 /* --- Folder card: professional engineering dashboard card (R-32) --- */
+/* --- Folder card: professional engineering square card (persegi 4) --- */
+.pcm-folder-square-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+    min-height: 160px;
+    padding: 1.15rem;
+    text-align: left;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--pcm-radius-card);
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    cursor: pointer;
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.pcm-folder-square-card:hover {
+    transform: translateY(-2px);
+    border-color: #1e40af;
+    box-shadow: 0 8px 20px -4px rgba(15, 23, 42, .08);
+}
+
+.pcm-folder-square-card:hover .pcm-folder-square-card__arrow {
+    color: #1e40af !important;
+    transform: translateX(3px);
+}
+
+.pcm-folder-square-card:hover .pcm-folder-square-card__name {
+    color: #1e40af;
+}
+
+.pcm-folder-square-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid #1e3a8a;
+    border-radius: var(--pcm-radius-control);
+    background: #1e40af;
+    color: #ffffff;
+}
+
+.pcm-folder-square-card__arrow {
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.pcm-folder-square-card__name {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.35;
+    color: #0f172a;
+    margin: 0;
+}
+
+.pcm-folder-square-card--warning {
+    background: #fffdfa;
+    border-color: #fed7aa;
+}
+
+.pcm-folder-square-card--warning:hover {
+    border-color: #f59e0b;
+}
+
 .pcm-folder-card {
     display: flex;
     flex-direction: column;
@@ -919,16 +1171,31 @@ html[data-placement=horizontal] .nav-container .logo .img {
     text-align: left;
     border: 1px solid var(--pcm-line);
     border-radius: var(--pcm-radius-card);
-    background: var(--pcm-surface);
-    box-shadow: var(--pcm-elev-1);
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
     cursor: pointer;
     transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.pcm-folder-card--simple {
+    padding: 1.1rem 1.25rem !important;
+    justify-content: center !important;
+    min-height: 82px;
+}
+
+.pcm-folder-card--simple:hover .pcm-folder-card__arrow {
+    color: var(--pcm-primary) !important;
+    transform: translateX(3px);
+}
+
+.pcm-folder-card__arrow {
+    transition: transform 0.15s ease, color 0.15s ease;
 }
 
 .pcm-folder-card:hover {
     transform: translateY(-2px);
     border-color: var(--pcm-primary);
-    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, .1);
+    box-shadow: 0 8px 20px -4px rgba(15, 23, 42, .08);
 }
 
 .pcm-folder-card:focus-visible {
@@ -938,7 +1205,7 @@ html[data-placement=horizontal] .nav-container .logo .img {
 }
 
 .pcm-folder-card__header {
-    margin-bottom: .875rem;
+    margin-bottom: 1rem;
 }
 
 .pcm-folder-card__icon {
@@ -976,33 +1243,45 @@ html[data-placement=horizontal] .nav-container .logo .img {
 }
 
 .pcm-folder-card__metrics {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: .5rem;
-    padding: .875rem 1rem;
+    padding: .75rem;
     border-radius: var(--pcm-radius-control);
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    margin-bottom: .875rem;
+    margin-bottom: 1rem;
     flex-grow: 1;
 }
 
 .pcm-folder-card__metric {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    gap: .5rem;
-    font-size: .8125rem;
+    justify-content: center;
+    text-align: center;
+    padding: .35rem .25rem;
+    background: #ffffff;
+    border-radius: 6px;
+    border: 1px solid #edf2f7;
 }
 
 .pcm-folder-card__metric-label {
-    font-weight: 600;
-    color: #475569;
+    font-size: .6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    color: #64748b;
+    margin-bottom: .2rem;
+    white-space: nowrap;
 }
 
 .pcm-folder-card__metric-val {
-    font-weight: 700;
-    color: var(--pcm-ink);
+    font-size: .875rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .pcm-folder-card__cta {
@@ -1113,7 +1392,7 @@ html[data-placement=horizontal] .nav-container .logo .img {
 
 .pcm-crumbs__item--current {
     font-weight: 700;
-    color: var(--pcm-primary-dark);
+    color: var(--pcm-ink);
 }
 
 /* --- Table --- */
@@ -1123,22 +1402,86 @@ html[data-placement=horizontal] .nav-container .logo .img {
 }
 
 .pcm-table thead th {
-    padding: .625rem .75rem;
-    border-bottom: 2px solid var(--pcm-line);
-    background: #f1f5f9;
-    font-size: .75rem;
+    padding: .5rem .65rem !important;
+    border-bottom: 2px solid var(--pcm-line) !important;
+    border-right: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
+    font-size: .8125rem !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    color: var(--pcm-ink) !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+}
+
+.pcm-table thead th:last-child {
+    border-right: none !important;
+}
+
+.pcm-th-title {
+    display: block;
+    font-size: .8125rem;
     font-weight: 700;
-    letter-spacing: .03em;
-    text-transform: uppercase;
-    color: var(--pcm-ink);
+    color: #0f172a;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+.pcm-th-unit {
+    display: block;
+    font-size: .6875rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-top: .15rem;
+    line-height: 1.1;
     white-space: nowrap;
 }
 
 .pcm-table tbody td {
     padding: .625rem .75rem;
     border-bottom: 1px solid var(--pcm-line-soft);
+    border-right: 1px solid #f1f5f9;
     vertical-align: middle;
     color: var(--pcm-body);
+    box-sizing: border-box;
+}
+
+.pcm-table tbody td:last-child {
+    border-right: none;
+}
+
+/* Collider / Bounding Cell: Anti-overflow, teks dinamis mengecil jika panjang */
+.pcm-table-cell-collider {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    box-sizing: border-box;
+}
+
+/* Collider / 2-Layer Box: Teks panjang tertata rapi dalam 2 baris (tidak terpotong sepihak) */
+.pcm-table-cell-2line {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    line-height: 1.25 !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    max-height: 2.6em !important;
+    box-sizing: border-box !important;
+}
+
+.pcm-table-cell-2line--dense {
+    font-size: .75rem !important;
+    letter-spacing: -0.01em;
+}
+
+.pcm-table-cell-2line--normal {
+    font-size: .8125rem;
 }
 
 .pcm-table tbody tr:last-child td {
@@ -1159,7 +1502,7 @@ html[data-placement=horizontal] .nav-container .logo .img {
 .pcm-cell-id {
     font-family: var(--pcm-mono);
     font-weight: 700;
-    color: var(--pcm-primary-dark);
+    color: var(--pcm-ink);
 }
 
 .pcm-cell-clip {
@@ -1431,11 +1774,10 @@ html[data-placement=horizontal] .nav-container .logo .img {
     z-index: 4;
     padding: .45rem .6rem;
     border-bottom: 2px solid var(--pcm-line);
-    background: #f1f5f9;
-    font-size: .6875rem;
+    background: #f8fafc;
+    font-size: .8125rem;
     font-weight: 700;
-    letter-spacing: .04em;
-    text-transform: uppercase;
+    letter-spacing: -0.01em;
     color: var(--pcm-ink);
     white-space: nowrap;
 }
@@ -1536,7 +1878,8 @@ html[data-placement=horizontal] .nav-container .logo .img {
 
 .wm-joint {
     font-size: .8125rem;
-    color: var(--pcm-primary-dark);
+    font-weight: 700;
+    color: var(--pcm-ink);
 }
 
 .wm-size {
@@ -1584,7 +1927,7 @@ html[data-placement=horizontal] .nav-container .logo .img {
     font-weight: 700;
     letter-spacing: .04em;
     text-transform: uppercase;
-    color: var(--pcm-primary-dark);
+    color: var(--pcm-ink);
 }
 
 .wm-spec {
@@ -1619,7 +1962,7 @@ html[data-placement=horizontal] .nav-container .logo .img {
     font-weight: 700;
     letter-spacing: .04em;
     text-transform: uppercase;
-    color: var(--pcm-primary-dark);
+    color: var(--pcm-ink);
 }
 
 .wm-calc__row {
@@ -1645,7 +1988,8 @@ html[data-placement=horizontal] .nav-container .logo .img {
 
 .wm-calc__value {
     font-family: var(--pcm-mono);
-    color: var(--pcm-primary-dark) !important;
+    font-weight: 700;
+    color: var(--pcm-ink) !important;
 }
 
 .wm-calc__note {
@@ -1725,7 +2069,7 @@ html[data-placement=horizontal] .nav-container .logo .img {
     border-right: 0;
     border-radius: 8px 0 0 8px;
     background: var(--pcm-canvas);
-    color: var(--pcm-primary-dark);
+    color: var(--pcm-ink);
     font-size: .9375rem;
     font-weight: 700;
     letter-spacing: .02em;
@@ -1774,7 +2118,7 @@ html[data-placement=horizontal] .nav-container .logo .img {
     background: var(--pcm-surface);
     font-size: .6875rem;
     font-weight: 700;
-    color: var(--pcm-primary-dark) !important;
+    color: var(--pcm-ink) !important;
 }
 
 .wm-fitup__spec {
@@ -1843,6 +2187,14 @@ html[data-placement=horizontal] .nav-container .logo .img {
 }
 
 /* --- Form helper classes --- */
+.pcm-form-section {
+    padding: 1.15rem 1.25rem;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--pcm-radius-card);
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
 .pcm-form-section + .pcm-form-section {
     margin-top: 1.25rem;
 }
@@ -1851,12 +2203,12 @@ html[data-placement=horizontal] .nav-container .logo .img {
     display: block;
     padding-bottom: .5rem;
     margin-bottom: .75rem;
-    border-bottom: 1px solid var(--pcm-line-soft);
-    font-size: .6875rem;
-    font-weight: 700;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: .8125rem;
+    font-weight: 800;
     letter-spacing: .03em;
     text-transform: uppercase;
-    color: var(--pcm-primary-dark);
+    color: #0f172a;
 }
 
 .pcm-form-label {
@@ -1880,11 +2232,91 @@ html[data-placement=horizontal] .nav-container .logo .img {
     text-align: center;
 }
 
+/* ==========================================================================
+   EQUALIZED FORM CONTROLS & DROPDOWNS (Sama Rata 1:1)
+   - Menyamaratakan tinggi, padding, font-size, border, dan radius
+   - Memastikan select (dropdown), input, dan input-group memiliki ukuran identik
+   ========================================================================== */
+.pcm-modal input.form-control,
+.pcm-modal select.form-select,
+.pcm-modal input.form-control-sm,
+.pcm-modal select.form-select-sm,
+.pcm-modal .input-group-text,
+.pcm-modal .input-group {
+    height: 40px !important;
+    min-height: 40px !important;
+    font-size: .875rem !important;
+    font-weight: 500 !important;
+    line-height: 1.5 !important;
+    color: var(--pcm-ink) !important;
+    background-color: #ffffff !important;
+    border: 1px solid var(--pcm-line) !important;
+    border-radius: var(--pcm-radius-control) !important;
+    box-sizing: border-box !important;
+}
+
+.pcm-modal input.form-control,
+.pcm-modal input.form-control-sm {
+    padding: .375rem .75rem !important;
+}
+
+.pcm-modal select.form-select,
+.pcm-modal select.form-select-sm {
+    padding: .375rem 2.25rem .375rem .75rem !important;
+    background-position: right .75rem center !important;
+    background-size: 16px 12px !important;
+    cursor: pointer;
+}
+
+.pcm-modal input[type="file"].form-control,
+.pcm-modal input[type="file"].form-control-sm {
+    padding: .3rem .5rem !important;
+    line-height: 1.5 !important;
+}
+
+.pcm-modal .input-group .form-control,
+.pcm-modal .input-group .input-group-text {
+    border-radius: 0 !important;
+    height: 40px !important;
+    min-height: 40px !important;
+}
+
+.pcm-modal .input-group > :first-child {
+    border-top-left-radius: var(--pcm-radius-control) !important;
+    border-bottom-left-radius: var(--pcm-radius-control) !important;
+}
+
+.pcm-modal .input-group > :last-child {
+    border-top-right-radius: var(--pcm-radius-control) !important;
+    border-bottom-right-radius: var(--pcm-radius-control) !important;
+}
+
+.pcm-modal .input-group-text {
+    background-color: #f8fafc !important;
+    color: var(--pcm-muted) !important;
+    font-size: .8125rem !important;
+    padding: .375rem .625rem !important;
+    border: 1px solid var(--pcm-line) !important;
+}
+
+.pcm-modal .form-label.pcm-form-label,
+.pcm-modal label.pcm-form-label {
+    display: block !important;
+    margin-bottom: .375rem !important;
+    font-size: .75rem !important;
+    font-weight: 700 !important;
+    color: var(--pcm-ink) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
 /* Dark-blue focus accent inside modals (replaces Bootstrap bright blue) */
 .pcm-modal .form-control:focus,
 .pcm-modal .form-select:focus {
-    border-color: var(--pcm-primary);
-    box-shadow: 0 0 0 .2rem rgba(30, 64, 175, .16);
+    border-color: var(--pcm-primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 .2rem rgba(30, 64, 175, .16) !important;
 }
 
 .pcm-hint {

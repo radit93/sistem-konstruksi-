@@ -62,30 +62,40 @@ const naturalCompare = (a, b) => String(a).localeCompare(String(b), undefined, {
 
 /* Jumlah sheet mengikuti data ISO, mis. "Sheet 1 of 4" -> 4. */
 const sheetTotalOf = (drawing) => {
+    if (!drawing) return 1;
     const raw = String(drawing?.sheet || '').trim();
-    const match = raw.match(/sheet\s+\d+\s+of\s+(\d+)/i) || raw.match(/\bof\s+(\d+)/i);
+    const matchOf = raw.match(/\bof\s+(\d+)/i);
+    if (matchOf) {
+        return Math.max(Number.parseInt(matchOf[1], 10) || 1, 1);
+    }
+    const matchSheet = raw.match(/sheet\s+(\d+)/i) || raw.match(/^(\d+)$/);
+    if (matchSheet) {
+        return Math.max(Number.parseInt(matchSheet[1], 10) || 1, 1);
+    }
     const explicit = Number.parseInt(drawing?.sheet_total, 10);
-    const total = match ? Number.parseInt(match[1], 10) : explicit;
-    return Math.max(total || 1, 1);
+    return Math.max(explicit || 1, 1);
+};
+
+const getDrawingSheet = (drawing) => {
+    if (!drawing) return 'Sheet 1 of 1';
+    if (drawing.sheet && String(drawing.sheet).trim()) {
+        const raw = String(drawing.sheet).trim();
+        if (/^sheet/i.test(raw)) return raw;
+        if (/^\d+$/.test(raw)) return `Sheet ${raw}`;
+        return raw;
+    }
+    const total = sheetTotalOf(drawing);
+    return `Sheet 1 of ${total}`;
 };
 
 const defaultSheetOf = (drawing) => {
-    const total = sheetTotalOf(drawing);
-    const match = String(drawing?.sheet || '').match(/sheet\s+(\d+)\s+of\s+\d+/i);
-    const current = match ? Number.parseInt(match[1], 10) : 1;
-    return `Sheet ${Math.min(Math.max(current, 1), total)} of ${total}`;
+    return getDrawingSheet(drawing);
 };
 
-/* Samakan nilai lama "Sheet 1 of 1" dengan total sheet ISO yang dipilih. */
+/* Samakan nilai sheet dengan drawing ISO yang dipilih */
 const normalizeSheetFor = (sheet, drawing) => {
-    const total = sheetTotalOf(drawing);
-    const text = String(sheet || '').trim();
-    const match = text.match(/sheet\s+(\d+)\s+of\s+\d+/i);
-    if (match) {
-        const current = Number.parseInt(match[1], 10) || 1;
-        return `Sheet ${Math.min(Math.max(current, 1), total)} of ${total}`;
-    }
-    return text || `Sheet 1 of ${total}`;
+    if (sheet && String(sheet).trim()) return String(sheet).trim();
+    return getDrawingSheet(drawing);
 };
 
 /* Prefix SP-/J- tetap terlihat; user cukup mengetik angka urutnya. */
@@ -184,19 +194,19 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         spool_no: '',
         joint_no: '',
         joint_type: 'BW',
-        size: '4"',
-        dia_inch: 4,
-        thickness: 'Sch 40 (6.02 mm)',
+        size: '',
+        dia_inch: 0,
+        thickness: '',
         length_mm: '',
         location: 'Shop',
-        mat_a_item: 'Pipe',
-        mat_a_spec: 'ASTM A106 Gr. B',
-        mat_a_size: '4"',
-        mat_a_sch: 'Sch 40',
-        mat_b_item: 'Elbow 90 LR',
-        mat_b_spec: 'ASTM A234 WPB',
-        mat_b_size: '4"',
-        mat_b_sch: 'Sch 40',
+        mat_a_item: '',
+        mat_a_spec: '',
+        mat_a_size: '',
+        mat_a_sch: '',
+        mat_b_item: '',
+        mat_b_spec: '',
+        mat_b_size: '',
+        mat_b_sch: '',
         status: 'PLANNED',
         drawing_id: '',
         project_id: defaultProjectId(activeProjectId, filterProject, projects),
@@ -452,12 +462,11 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
     const materialSpecOptions = useMemo(() => {
         const seen = new Map();
         materialStandards.forEach((std) => {
-            const value = std.specification || std.code;
-            if (!value || seen.has(value)) return;
-            const hint = [std.code, std.category, std.material_group].filter(Boolean).join(' · ');
-            seen.set(value, { value, label: value, hint });
+            const spec = std.specification || std.code || '';
+            if (!spec || seen.has(spec)) return;
+            seen.set(spec, { value: spec, label: spec });
         });
-        return Array.from(seen.values()).sort((a, b) => naturalCompare(a.value, b.value));
+        return Array.from(seen.values()).sort((a, b) => naturalCompare(a.label, b.label));
     }, [materialStandards]);
 
     const modalStandard = findStandard(form.mat_a_size, form.mat_a_sch);
@@ -543,11 +552,11 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                 thickness: item.thickness || '',
                 length_mm: item.length_mm ?? '',
                 location: item.location || 'Shop',
-                mat_a_item: item.mat_a_item || 'Pipe',
+                mat_a_item: item.mat_a_item || '',
                 mat_a_spec: item.mat_a_spec || '',
                 mat_a_size: item.mat_a_size || item.size || '',
                 mat_a_sch: item.mat_a_sch || '',
-                mat_b_item: item.mat_b_item || 'Pipe',
+                mat_b_item: item.mat_b_item || '',
                 mat_b_spec: item.mat_b_spec || '',
                 mat_b_size: item.mat_b_size || item.size || '',
                 mat_b_sch: item.mat_b_sch || '',
@@ -564,10 +573,10 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
             setForm({
                 ...base,
                 iso_drawing_no: drawing?.drawing_no || '',
-                drawing_id: drawing?.id || '',
+                drawing_id: drawing?.id ? String(drawing.id) : '',
                 line_no: drawing?.line_no || base.line_no,
                 project_id: drawing?.project_id ? String(drawing.project_id) : base.project_id,
-                sheet: drawing ? defaultSheetOf(drawing) : base.sheet,
+                sheet: drawing ? getDrawingSheet(drawing) : '',
             });
         }
         setShowModal(true);
@@ -621,7 +630,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
 
     /* -------------------------------------------------------------- render */
 
-    const colSpan = canEdit ? 6 : 5;
+    const colSpan = canEdit ? 7 : 6;
     const selectedDrawing = drawings.find(
         (d) => String(d.id) === String(form.drawing_id) || d.drawing_no === form.iso_drawing_no
     );
@@ -654,15 +663,20 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
 
     const sheetTotal = sheetTotalOf(selectedDrawing);
     const sheetOptions = useMemo(() => {
-        const options = Array.from({ length: sheetTotal }, (_, index) => {
-            const label = `Sheet ${index + 1} of ${sheetTotal}`;
-            return { value: label, label };
-        });
+        const total = sheetTotalOf(selectedDrawing);
+        const options = [];
+        for (let index = 0; index < total; index++) {
+            const label = `Sheet ${index + 1} of ${total}`;
+            options.push({ value: label, label });
+        }
+        if (selectedDrawing?.sheet && !options.some((option) => option.value === selectedDrawing.sheet)) {
+            options.push({ value: selectedDrawing.sheet, label: selectedDrawing.sheet });
+        }
         if (form.sheet && !options.some((option) => option.value === form.sheet)) {
             options.push({ value: form.sheet, label: form.sheet });
         }
         return options;
-    }, [sheetTotal, form.sheet]);
+    }, [selectedDrawing, form.sheet]);
 
     const drawingSpoolOptions = useMemo(() => {
         const source = selectedDrawing
@@ -679,115 +693,110 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
             .filter((sequence) => /^\d+$/.test(sequence))
     )).sort(naturalCompare), [drawingSpoolOptions]);
 
+    const currentProject = projects.find(p => String(p.id) === String(activeProjectId)) || null;
+
     return (
         <div>
-            {/* Header & Action Toolbar */}
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                <div>
-                    <h2 className="h4 fw-bold text-dark mb-1">Welding Map &amp; Joint Register</h2>
-                    <p className="pcm-cell-sub mb-0">
-                        Register joint per ISO drawing &amp; spool. Buka baris joint untuk melihat deskripsi material
-                        dan hasil perhitungan panjang ke berat.
-                    </p>
-                </div>
-                {canEdit && (
-                    <button
-                        type="button"
-                        className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                        onClick={() => handleOpenModal()}
-                    >
-                        + Tambah Joint Mapping
-                    </button>
-                )}
-            </div>
+            {/* Header Banner Terpadu: Judul Project, Client & Summary Metric */}
+            <div className="bg-white border rounded p-4 mb-4 shadow-sm">
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="h3 fw-bolder text-dark mb-1 text-truncate" style={{ letterSpacing: '-0.02em' }}>
+                            {currentProject ? currentProject.name : 'Welding Map & Joint Register'}
+                        </h1>
+                        <div className="d-flex flex-wrap align-items-center gap-2 small">
+                            {currentProject ? (
+                                <>
+                                    <span className="fw-bold text-dark pcm-code bg-light px-2 py-0.5 rounded border">
+                                        JOB NO: {currentProject.job_no || '-'}
+                                    </span>
+                                    <span className="text-muted">&bull;</span>
+                                    <span className="fw-bold" style={{ color: '#0f172a' }}>
+                                        Client: {currentProject.client || 'General Client'}
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="text-muted">
+                                    Pemetaan detail sambungan las, spool fabrication, dan penomoran joint
+                                </span>
+                            )}
+                        </div>
+                    </div>
 
-            {/* Metric Summary Cards */}
-            <div className="row g-3 mb-4">
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Joint Pipa</span>
-                        <strong className="pcm-tile__value pcm-tile__value--primary">{stats.total}</strong>
-                        <span className="pcm-tile__unit">titik sambungan</span>
-                    </div>
-                </div>
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Dia-Inch</span>
-                        <strong className="pcm-tile__value text-success">{stats.totalDia.toFixed(1)}</strong>
-                        <span className="pcm-tile__unit">diameter inch</span>
-                    </div>
-                </div>
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile">
-                        <span className="pcm-tile__label">ISO / Spool</span>
-                        <strong className="pcm-tile__value">{stats.isoCount} / {stats.spools}</strong>
-                        <span className="pcm-tile__unit">drawing / spool</span>
-                    </div>
-                </div>
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile">
-                        <span className="pcm-tile__label">Alokasi Lokasi</span>
-                        <div className="d-flex gap-2 mt-2">
-                            <span className="pcm-chip pcm-chip--primary">{stats.shopCount} Shop</span>
-                            <span className="pcm-chip pcm-chip--warning">{stats.fieldCount} Field</span>
+                    {/* 4 Box Metrik Kompak Simetris */}
+                    <div className="d-flex align-items-center gap-2">
+                        <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
+                            <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Total Joint</span>
+                            <strong className="h5 fw-bolder text-dark mb-0">{stats.total}</strong>
+                        </div>
+                        <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
+                            <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Total DI</span>
+                            <strong className="h5 fw-bolder text-dark mb-0 pcm-code">{stats.totalDia.toFixed(1)}</strong>
+                        </div>
+                        <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
+                            <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>ISO / Spool</span>
+                            <strong className="h5 fw-bolder text-dark mb-0">{stats.isoCount} / {stats.spools}</strong>
+                        </div>
+                        <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
+                            <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Shop / Field</span>
+                            <strong className="h5 fw-bolder text-dark mb-0">{stats.shopCount} / {stats.fieldCount}</strong>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Filter Toolbar */}
-            <div className="pcm-filter-bar">
-                <div className="pcm-filter-search">
-                    <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        placeholder="Cari Joint No, Spool, Drawing, Line, Material..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+            {/* Toolbar Sejajar: Search, Tambah, Spool, Lokasi, dan Tombol Arrow Buka/Tutup */}
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
+                {/* 1. Search */}
+                <div className="flex-grow-1 min-w-0" style={{ minWidth: '220px' }}>
+                    <div className="pcm-search w-100" style={{ maxWidth: '100%' }}>
+                        <span className="pcm-search__icon">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </span>
+                        <input
+                            type="text"
+                            className="form-control form-control-sm pcm-filter-input w-100"
+                            placeholder="Cari Joint No, Spool, Drawing, Line..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
                 </div>
-                {!isProjectLocked(activeProjectId) && (
-                    <select
-                        className="form-select form-select-sm"
-                        value={filterProject}
-                        onChange={(e) => setFilterProject(e.target.value)}
-                        style={{ width: 'auto' }}
+
+                {/* 2. Tambah Joint Mapping */}
+                {canEdit && (
+                    <button
+                        type="button"
+                        className="btn btn-primary btn-sm fw-bold px-3 py-2 text-nowrap d-inline-flex align-items-center gap-1.5"
+                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
+                        onClick={() => handleOpenModal()}
                     >
-                        <option value="ALL">Semua Proyek ({projects.length})</option>
-                        {projects.map((p) => (
-                            <option key={p.id} value={p.id}>
-                                {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
-                            </option>
-                        ))}
-                    </select>
+                        <span>+ Tambah Joint</span>
+                    </button>
                 )}
+
+                {/* 3. Dropdown Spool */}
                 <select
-                    className="form-select form-select-sm"
+                    className="form-select form-select-sm pcm-select-theme"
                     value={filterSpool}
                     onChange={(e) => setFilterSpool(e.target.value)}
-                    style={{ width: 'auto' }}
+                    aria-label="Filter Spool"
                 >
                     <option value="ALL">Semua Spool ({spoolOptions.length})</option>
                     {spoolOptions.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
+
+                {/* 4. Dropdown Lokasi */}
                 <select
-                    className="form-select form-select-sm"
+                    className="form-select form-select-sm pcm-select-theme"
                     value={filterLocation}
                     onChange={(e) => setFilterLocation(e.target.value)}
-                    style={{ width: 'auto' }}
+                    aria-label="Filter Lokasi"
                 >
                     <option value="ALL">Semua Lokasi</option>
                     <option value="Shop">Shop (Workshop)</option>
                     <option value="Field">Field (Lapangan)</option>
                 </select>
-                <button
-                    type="button"
-                    className="btn btn-sm wm-collapse-btn"
-                    onClick={toggleAllGroups}
-                    disabled={grouped.length === 0}
-                >
-                    {allCollapsed ? 'Buka semua' : 'Tutup semua'}
-                </button>
             </div>
 
             {/* Accordion grid: ISO > Spool > Joint */}
@@ -802,12 +811,68 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                             <table className="wm-table">
                                 <thead>
                                     <tr>
-                                        <th style={{ minWidth: '190px' }}>Joint / Tipe</th>
-                                        <th className="text-center" style={{ width: '86px' }}>Size</th>
-                                        <th className="text-center" style={{ width: '86px' }}>DI</th>
-                                        <th className="text-center" style={{ width: '120px' }}>Status</th>
-                                        <th style={{ minWidth: '160px' }}>Lokasi</th>
-                                        {canEdit && <th className="text-end" style={{ width: '120px' }}>Aksi</th>}
+                                        <th style={{ minWidth: '190px' }}>
+                                            <span className="pcm-th-title">Joint / Tipe</span>
+                                        </th>
+                                        <th className="text-center" style={{ width: '86px' }}>
+                                            <span className="pcm-th-title">Size</span>
+                                        </th>
+                                        <th className="text-center" style={{ width: '86px' }}>
+                                            <span className="pcm-th-title">DI</span>
+                                        </th>
+                                        <th className="text-center" style={{ width: '120px' }}>
+                                            <span className="pcm-th-title">Status</span>
+                                        </th>
+                                        <th className="text-center" style={{ width: '120px' }}>
+                                            <span className="pcm-th-title">Lokasi</span>
+                                        </th>
+                                        {canEdit && (
+                                            <th className="text-center" style={{ width: '140px' }}>
+                                                <span className="pcm-th-title">Aksi</span>
+                                            </th>
+                                        )}
+                                        <th className="text-center pe-3" style={{ width: '70px' }}>
+                                            <div className="d-inline-flex align-items-center gap-1 justify-content-center" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    type="button"
+                                                    className="pcm-page-nav-btn"
+                                                    style={{
+                                                        width: '28px',
+                                                        height: '28px',
+                                                        backgroundColor: '#ffffff',
+                                                        border: '1px solid #cbd5e1',
+                                                        borderRadius: '4px'
+                                                    }}
+                                                    onClick={() => { if (allCollapsed) toggleAllGroups(); }}
+                                                    disabled={grouped.length === 0}
+                                                    title="Buka Semua Group (Expand All)"
+                                                    aria-label="Buka Semua Group"
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="6 9 12 15 18 9" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="pcm-page-nav-btn"
+                                                    style={{
+                                                        width: '28px',
+                                                        height: '28px',
+                                                        backgroundColor: '#ffffff',
+                                                        border: '1px solid #cbd5e1',
+                                                        borderRadius: '4px'
+                                                    }}
+                                                    onClick={() => { if (!allCollapsed) toggleAllGroups(); }}
+                                                    disabled={grouped.length === 0}
+                                                    title="Tutup Semua Group (Collapse All)"
+                                                    aria-label="Tutup Semua Group"
+                                                >
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="18 15 12 9 6 15" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -821,17 +886,29 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     <td colSpan={colSpan}>
                                                         <button
                                                             type="button"
-                                                            className="wm-group__btn"
+                                                            className="wm-group__btn d-flex align-items-center"
                                                             onClick={() => toggleGroup(isoKey)}
                                                             aria-expanded={!isoCollapsed}
                                                         >
                                                             <span className={`wm-chevron${isoCollapsed ? '' : ' wm-chevron--open'}`}>&#9656;</span>
-                                                            <span className="wm-group__label">ISO {iso.iso}</span>
-                                                            {iso.line && <span className="wm-group__meta">{iso.line}</span>}
-                                                            <span className="wm-group__spacer" />
-                                                            <span className="wm-group__meta">
-                                                                {iso.count} joint · {iso.spools.length} spool · {iso.di.toFixed(1)} DI
-                                                            </span>
+                                                            <span className="wm-group__label me-2">ISO {iso.iso}</span>
+                                                            {iso.line && (
+                                                                <span className="pcm-chip pcm-chip--neutral pcm-code me-2" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}>
+                                                                    {iso.line}
+                                                                </span>
+                                                            )}
+                                                            {/* Badge Metrik Rapi Menempel di Samping Judul ISO */}
+                                                            <div className="d-inline-flex align-items-center gap-1.5 ms-1">
+                                                                <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}>
+                                                                    {iso.spools.length} Spool
+                                                                </span>
+                                                                <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}>
+                                                                    {iso.count} Joint
+                                                                </span>
+                                                                <span className="pcm-chip pcm-chip--neutral pcm-code fw-bold text-dark" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}>
+                                                                    {iso.di.toFixed(1)} DI
+                                                                </span>
+                                                            </div>
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -846,16 +923,22 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                 <td colSpan={colSpan}>
                                                                     <button
                                                                         type="button"
-                                                                        className="wm-group__btn"
+                                                                        className="wm-group__btn d-flex align-items-center"
                                                                         onClick={() => toggleGroup(spoolKey)}
                                                                         aria-expanded={!spoolCollapsed}
                                                                     >
                                                                         <span className={`wm-chevron${spoolCollapsed ? '' : ' wm-chevron--open'}`}>&#9656;</span>
-                                                                        <span className="wm-group__label">Spool {spool.spool}</span>
-                                                                        <span className="wm-group__spacer" />
-                                                                        <span className="wm-group__meta">
-                                                                            {spool.count} joint · {spool.di.toFixed(1)} DI
-                                                                        </span>
+                                                                        <span className="wm-group__label me-2">Spool {spool.spool}</span>
+                                                                        
+                                                                        {/* Badge Metrik Rapi Menempel di Samping Judul Spool */}
+                                                                        <div className="d-inline-flex align-items-center gap-1.5 ms-1">
+                                                                            <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}>
+                                                                                {spool.count} Joint
+                                                                            </span>
+                                                                            <span className="pcm-chip pcm-chip--neutral pcm-code fw-bold text-dark" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}>
+                                                                                {spool.di.toFixed(1)} DI
+                                                                            </span>
+                                                                        </div>
                                                                     </button>
                                                                 </td>
                                                             </tr>
@@ -905,24 +988,43 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                             <td className="text-center">
                                                                                 <span className={`pcm-chip ${statusChip(m.status)}`}>{m.status || 'PLANNED'}</span>
                                                                             </td>
-                                                                            <td>
-                                                                                <span className={`pcm-chip ${m.location === 'Shop' ? 'pcm-chip--primary' : 'pcm-chip--warning'}`}>
+                                                                            <td className="text-center" style={{ width: '120px' }}>
+                                                                                <span
+                                                                                    className={`pcm-chip ${m.location === 'Shop' ? 'pcm-chip--primary' : 'pcm-chip--warning'}`}
+                                                                                    style={{ padding: '.25rem .7rem', fontSize: '.8125rem' }}
+                                                                                >
                                                                                     {m.location || 'Shop'}
                                                                                 </span>
                                                                             </td>
                                                                             {canEdit && (
-                                                                                <td className="text-end" onClick={(e) => e.stopPropagation()}>
-                                                                                    <div className="d-inline-flex gap-1">
+                                                                                <td className="text-center" style={{ width: '140px' }} onClick={(e) => e.stopPropagation()}>
+                                                                                    <div className="d-inline-flex gap-1.5 justify-content-center">
                                                                                         <button
                                                                                             type="button"
-                                                                                            className="btn btn-outline-primary btn-sm px-2 py-0 fw-bold"
+                                                                                            className="pcm-chip fw-bold border-0"
+                                                                                            style={{
+                                                                                                backgroundColor: '#1e40af',
+                                                                                                color: '#ffffff',
+                                                                                                cursor: 'pointer',
+                                                                                                lineHeight: 1.4,
+                                                                                                padding: '.25rem .7rem',
+                                                                                                fontSize: '.8125rem'
+                                                                                            }}
                                                                                             onClick={() => handleOpenModal(m)}
                                                                                         >
                                                                                             Edit
                                                                                         </button>
                                                                                         <button
                                                                                             type="button"
-                                                                                            className="btn btn-danger btn-sm px-2 py-0 fw-bold"
+                                                                                            className="pcm-chip fw-bold border-0"
+                                                                                            style={{
+                                                                                                backgroundColor: '#dc2626',
+                                                                                                color: '#ffffff',
+                                                                                                cursor: 'pointer',
+                                                                                                lineHeight: 1.4,
+                                                                                                padding: '.25rem .7rem',
+                                                                                                fontSize: '.8125rem'
+                                                                                            }}
                                                                                             onClick={() => handleDelete(m.id)}
                                                                                         >
                                                                                             Hapus
@@ -930,6 +1032,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                                     </div>
                                                                                 </td>
                                                                             )}
+                                                                            <td className="text-center" style={{ width: '70px' }}>&nbsp;</td>
                                                                         </tr>
 
                                                                         {isOpen && (
@@ -1032,7 +1135,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                             iso_drawing_no: dwg ? dwg.drawing_no : '',
                                                             line_no: dwg ? dwg.line_no : form.line_no,
                                                             project_id: dwg?.project_id ? String(dwg.project_id) : form.project_id,
-                                                            sheet: dwg ? defaultSheetOf(dwg) : 'Sheet 1 of 1',
+                                                            sheet: dwg ? getDrawingSheet(dwg) : '',
                                                         });
                                                     }}
                                                     required
@@ -1174,7 +1277,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                 <input
                                                     type="text"
                                                     className="form-control"
-                                                    placeholder="Pipe, Flange WN..."
+                                                    placeholder=""
                                                     value={form.mat_a_item}
                                                     onChange={(e) => setForm({ ...form, mat_a_item: e.target.value })}
                                                 />
@@ -1229,7 +1332,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                 <input
                                                     type="text"
                                                     className="form-control"
-                                                    placeholder="Elbow, Pipe, Reducer..."
+                                                    placeholder=""
                                                     value={form.mat_b_item}
                                                     onChange={(e) => setForm({ ...form, mat_b_item: e.target.value })}
                                                 />
@@ -1303,13 +1406,13 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Diameter-Inch (auto)</label>
-                                                <div className="form-control bg-light pcm-code">
+                                                <div className="form-control bg-light pcm-code fw-bold d-flex align-items-center">
                                                     {fmt(form.dia_inch, 1)} DI
                                                 </div>
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Berat (auto)</label>
-                                                <div className="form-control bg-light pcm-code">
+                                                <div className="form-control bg-light pcm-code fw-bold d-flex align-items-center">
                                                     {modalWeight != null ? `${fmt(modalWeight, 3)} kg` : '—'}
                                                 </div>
                                             </div>

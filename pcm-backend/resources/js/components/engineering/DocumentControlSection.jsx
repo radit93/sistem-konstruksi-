@@ -293,7 +293,7 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
                             ) : (
                                 filteredDocs.map((d) => (
                                     <tr key={d.id}>
-                                        <td className="ps-3 fw-bold pcm-code text-primary">{d.document_no}</td>
+                                        <td className="ps-3 fw-bold pcm-code text-dark">{d.document_no}</td>
                                         <td className="pcm-code fw-semibold">{d.drawing_no}</td>
                                         <td className="pcm-cell-strong">{d.title}</td>
                                         <td><span className="pcm-chip pcm-chip--neutral pcm-code">Rev {d.rev_no}</span></td>
@@ -310,14 +310,15 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
                                             <td className="text-end pe-3">
                                                 <button
                                                     type="button"
-                                                    className="btn btn-outline-primary btn-sm me-1 px-2 py-1"
+                                                    className="btn btn-primary btn-sm me-1 px-2.5 py-1 fw-bold"
+                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                                                     onClick={() => handleOpenModal(d)}
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="btn btn-danger btn-sm px-2 py-1"
+                                                    className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
                                                     onClick={() => handleDelete(d.id)}
                                                 >
                                                     Hapus

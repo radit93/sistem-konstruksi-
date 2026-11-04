@@ -322,20 +322,21 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                         <td className="pcm-code">{b.size}</td>
                                         <td>{b.rating_sch || '—'}</td>
                                         <td className="small pcm-cell-sub">{b.material_spec}</td>
-                                        <td className="fw-bold text-primary pcm-code">{parseFloat(b.qty).toFixed(1)} {b.unit}</td>
+                                        <td className="fw-bold text-dark pcm-code">{parseFloat(b.qty).toFixed(1)} {b.unit}</td>
                                         <td className="pcm-code small">{b.tag_number || '—'}</td>
                                         {canEdit && (
                                             <td className="text-end pe-3">
                                                 <button
                                                     type="button"
-                                                    className="btn btn-outline-primary btn-sm me-1 px-2 py-1"
+                                                    className="btn btn-primary btn-sm me-1 px-2.5 py-1 fw-bold"
+                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                                                     onClick={() => handleOpenModal(b)}
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="btn btn-danger btn-sm px-2 py-1"
+                                                    className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
                                                     onClick={() => handleDelete(b.id)}
                                                 >
                                                     Hapus

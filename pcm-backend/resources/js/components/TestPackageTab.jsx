@@ -114,7 +114,7 @@ export function TestPackageTab({ testPackages, joints, user, onReload }) {
                                 (testPackages || []).map((tp, idx) => (
                                     <tr key={tp.id || idx}>
                                         <td className="text-muted">{idx + 1}</td>
-                                        <td className="fw-bold text-primary">{tp.pkg_no}</td>
+                                        <td className="fw-bold text-dark">{tp.pkg_no}</td>
                                         <td>{tp.system_name || tp.line_no || '-'}</td>
                                         <td><span className="badge bg-light text-dark border">{tp.test_kind}</span></td>
                                         <td className="fw-bold text-dark">{tp.test_pressure_bar ?? '-'} Bar</td>

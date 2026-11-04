@@ -269,7 +269,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                             ) : (
                                 filteredBoq.map((b) => (
                                     <tr key={b.id}>
-                                        <td className="ps-3 fw-bold pcm-code text-primary">{b.item_code}</td>
+                                        <td className="ps-3 fw-bold pcm-code text-dark">{b.item_code}</td>
                                         <td className="pcm-cell-strong">{b.work_scope}</td>
                                         <td><span className="pcm-chip pcm-chip--neutral">{b.material_group}</span></td>
                                         <td className="fw-bold pcm-code">{parseFloat(b.dia_inch_total).toFixed(1)} DI</td>
@@ -285,14 +285,15 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                             <td className="text-end pe-3 text-nowrap">
                                                 <button
                                                     type="button"
-                                                    className="btn btn-outline-primary btn-sm me-1 px-2 py-1"
+                                                    className="btn btn-primary btn-sm me-1 px-2.5 py-1 fw-bold"
+                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                                                     onClick={() => handleOpenModal(b)}
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="btn btn-danger btn-sm px-2 py-1"
+                                                    className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
                                                     onClick={() => handleDelete(b.id)}
                                                 >
                                                     Hapus

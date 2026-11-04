@@ -181,6 +181,8 @@ export function OverviewTab({
     const [selectedDrawing, setSelectedDrawing] = useState(null);
     const [searchIso, setSearchIso] = useState('');
     const [filterArea, setFilterArea] = useState('ALL');
+    const [showAllDrawings, setShowAllDrawings] = useState(false);
+    const [showAllScopes, setShowAllScopes] = useState(false);
     const closeRef = useRef(null);
 
     // The drawing modal closes three ways: control, Escape, backdrop (section 9).
@@ -368,7 +370,7 @@ export function OverviewTab({
                         {clientName ? ` · ${clientName}` : ''}
                     </span>
                     <h1 className="pcm-page-head__title">Global Project Control Dashboard</h1>
-                    <div className="pcm-page-head__aside mt-3">
+                    <div className="pcm-page-head__aside mt-2.5">
                         <span className="pcm-note">ASME B31.3 Process Piping</span>
                         <span className="pcm-note">
                             {scopeLabel || (user?.is_superadmin
@@ -395,15 +397,6 @@ export function OverviewTab({
                         <span className="pcm-stat__label">Joint terdaftar</span>
                         <span className="pcm-stat__value">{totalJoints > 0 ? totalJoints : <Dash />}</span>
                     </div>
-                    <button
-                        type="button"
-                        className="btn btn-outline-light btn-sm"
-                        onClick={onReload}
-                        disabled={loading}
-                    >
-                        <IconReload size="sm" />
-                        <span className="ms-2">{loading ? 'Memuat' : 'Muat ulang'}</span>
-                    </button>
                 </div>
             </header>
 
@@ -575,14 +568,14 @@ export function OverviewTab({
                         </div>
                     </section>
 
-                    {/* ---------- Weight model + drawing register | operational panels ---------- */}
+                    {/* ---------- Row 1: Weight model & Quick Nav ---------- */}
                     <div className="row g-4 mb-4">
                         <div className="col-12 col-xl-8">
-                            <section className="pcm-card mb-4" aria-labelledby="weight-title">
+                            <section className="pcm-card h-100 mb-0" aria-labelledby="weight-title">
                                 <div className="pcm-card__head">
                                     <div>
                                         <h2 className="pcm-card__title" id="weight-title">Bobot Progres Fisik</h2>
-                                        <small className="pcm-card__sub">Bobot kontrak, dihitung dari register joint.</small>
+                                        <small className="pcm-card__sub">Bobot kontrak, dihitung dari register joint aktual.</small>
                                     </div>
                                     <span className="pcm-chip pcm-chip--primary">
                                         {fmt(weightedProgress)}% terbobot
@@ -590,7 +583,7 @@ export function OverviewTab({
                                 </div>
                                 <div className="pcm-card__body pcm-card__body--flush">
                                     <div className="table-responsive">
-                                        <table className="table pcm-table align-middle">
+                                        <table className="table pcm-table align-middle mb-0">
                                             <thead>
                                                 <tr>
                                                     <th className="ps-3">Milestone</th>
@@ -622,47 +615,14 @@ export function OverviewTab({
                                     </div>
                                 </div>
                             </section>
-
-                            <section className="pcm-card" aria-labelledby="tp-title">
-                                <div className="pcm-card__head">
-                                    <div>
-                                        <h2 className="pcm-card__title" id="tp-title">Status Hydrotest</h2>
-                                        <small className="pcm-card__sub">{tpReady} paket siap uji</small>
-                                    </div>
-                                    <span className="pcm-chip pcm-chip--neutral">{tpList.length} paket</span>
-                                </div>
-                                <div className="pcm-card__body">
-                                    {tpList.length === 0 ? (
-                                        <p className="pcm-card__sub mb-0">Belum ada test package.</p>
-                                    ) : (
-                                        tpList.map((tp, index) => (
-                                            <div key={tp.id || index} className="pcm-row">
-                                                <div className="pcm-row__top">
-                                                    <span className="pcm-row__id">{tp.pkg_no || <Dash />}</span>
-                                                    <span className="pcm-chip pcm-chip--neutral">
-                                                        {tp.status || <Dash />}
-                                                    </span>
-                                                </div>
-                                                <div className="pcm-row__meta">
-                                                    <span>{tp.system_name || <Dash />}</span>
-                                                    <span>
-                                                        <strong>{tp.test_pressure_bar ? `${fmt(tp.test_pressure_bar, 2)} bar` : '-'}</strong>
-                                                        {' · '}
-                                                        {tp.schedule_date || '-'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </section>
                         </div>
 
                         <div className="col-12 col-xl-4">
-                            <section className="pcm-card" aria-labelledby="nav-title">
+                            <section className="pcm-card h-100 mb-0" aria-labelledby="nav-title">
                                 <div className="pcm-card__head">
                                     <div>
                                         <h2 className="pcm-card__title" id="nav-title">Navigasi Modul</h2>
+                                        <small className="pcm-card__sub">Akses cepat ke modul aktif</small>
                                     </div>
                                 </div>
                                 <div className="pcm-card__body">
@@ -687,163 +647,91 @@ export function OverviewTab({
                         </div>
                     </div>
 
-                    <div className="row">
-                        <div className="col-12">
-                            <section className="pcm-card" aria-labelledby="registry-title">
+                    {/* ---------- Row 2: Status Hydrotest & Mutasi Material (2 Kolom Seimbang) ---------- */}
+                    <div className="row g-4 mb-4">
+                        <div className="col-12 col-lg-6">
+                            <section className="pcm-card h-100 mb-0" aria-labelledby="tp-title">
                                 <div className="pcm-card__head">
                                     <div>
-                                        <h2 className="pcm-card__title" id="registry-title">Master Drawing Registry</h2>
+                                        <h2 className="pcm-card__title" id="tp-title">Status Hydrotest &amp; Uji Tekan</h2>
+                                        <small className="pcm-card__sub">{tpReady} paket siap uji</small>
                                     </div>
-                                    <div className="d-flex flex-wrap gap-2">
-                                        <span className="pcm-chip pcm-chip--neutral">
-                                            {drawingList.length} isometrik
-                                        </span>
-                                        {availableAreas.length > 0 && (
-                                            <select
-                                                className="form-select form-select-sm"
-                                                style={{ width: '11rem' }}
-                                                value={filterArea}
-                                                onChange={(e) => setFilterArea(e.target.value)}
-                                                aria-label="Filter area"
-                                            >
-                                                <option value="ALL">Semua Area</option>
-                                                {availableAreas.map((area) => (
-                                                    <option key={area} value={area}>{area}</option>
-                                                ))}
-                                            </select>
-                                        )}
-                                        <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            style={{ minWidth: '12rem' }}
-                                            placeholder="Cari isometrik, line..."
-                                            value={searchIso}
-                                            onChange={(e) => setSearchIso(e.target.value)}
-                                            aria-label="Cari isometrik"
-                                        />
+                                    <div className="d-flex align-items-center gap-2">
+                                        <span className="pcm-chip pcm-chip--neutral">{tpList.length} paket</span>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-primary btn-sm px-2.5 py-1 fw-bold"
+                                            onClick={() => onSelectTab('testpackage')}
+                                        >
+                                            Buka Paket Uji &rarr;
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="table-responsive">
-                                    <table className="table pcm-table align-middle">
-                                        <thead>
-                                            <tr>
-                                                <th className="ps-3">Rev / Sheet</th>
-                                                <th>Drawing Isometrik</th>
-                                                <th>Line No</th>
-                                                <th>Material Spec</th>
-                                                <th className="text-end">Total DI</th>
-                                                <th className="pe-3 text-end">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredDrawings.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="6" className="text-center py-4 pcm-cell-sub">
-                                                        Tidak ada isometrik yang cocok dengan pencarian.
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                filteredDrawings.map((d, index) => (
-                                                    <tr key={d.id || index}>
-                                                        <td className="ps-3">
-                                                            <span className="pcm-chip pcm-chip--neutral pcm-code">
-                                                                REV {d.rev || 0}
-                                                            </span>
-                                                            <span className="pcm-cell-sub d-block mt-1">
-                                                                {d.sheet || <Dash />}
-                                                            </span>
-                                                        </td>
-                                                        <td>
-                                                            <span className="pcm-cell-id">{d.drawing_no}</span>
-                                                            <span className="pcm-cell-sub d-block pcm-cell-clip">
-                                                                {d.title || <Dash />}
-                                                            </span>
-                                                        </td>
-                                                        <td>
-                                                            <span className="pcm-cell-strong">{d.line_no || <Dash />}</span>
-                                                            <span className="pcm-cell-sub d-block">{d.area || <Dash />}</span>
-                                                        </td>
-                                                        <td>
-                                                            {d.material_spec || <Dash />}
-                                                            <span className="pcm-cell-sub d-block">
-                                                                {d.size_range || '-'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="text-end pcm-cell-strong">
-                                                            {d.total_dia_inch ? `${fmt(d.total_dia_inch, 2)} DI` : <Dash />}
-                                                        </td>
-                                                        <td className="pe-3 text-end">
-                                                            <div className="d-flex justify-content-end gap-1">
-                                                                {d.scan_path && (
-                                                                    <a
-                                                                        href={d.scan_path}
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        className="btn btn-outline-primary btn-sm"
-                                                                        aria-label={`Buka berkas isometrik ${d.drawing_no}`}
-                                                                        title="Buka berkas isometrik"
-                                                                    >
-                                                                        <IconDoc size="sm" />
-                                                                    </a>
-                                                                )}
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-light btn-sm border"
-                                                                    onClick={() => setSelectedDrawing(d)}
-                                                                >
-                                                                    Detail
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
+                                <div className="pcm-card__body">
+                                    {tpList.length === 0 ? (
+                                        <p className="pcm-card__sub mb-0 py-3 text-center">Belum ada test package terdaftar.</p>
+                                    ) : (
+                                        <div className="d-flex flex-column gap-2">
+                                            {tpList.slice(0, 5).map((tp, index) => (
+                                                <div key={tp.id || index} className="pcm-row">
+                                                    <div className="pcm-row__top">
+                                                        <span className="pcm-row__id">{tp.pkg_no || <Dash />}</span>
+                                                        <span className={`pcm-chip ${tp.status === 'READY_FOR_TEST' ? 'pcm-chip--success' : 'pcm-chip--neutral'}`}>
+                                                            {tp.status || <Dash />}
+                                                        </span>
+                                                    </div>
+                                                    <div className="pcm-row__meta">
+                                                        <span>{tp.system_name || <Dash />}</span>
+                                                        <span>
+                                                            <strong>{tp.test_pressure_bar ? `${fmt(tp.test_pressure_bar, 2)} bar` : '-'}</strong>
+                                                            {' · '}
+                                                            {tp.schedule_date || '-'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </section>
                         </div>
-                    </div>
 
-                    <div className="row g-4 mb-4">
-                        <div className="col-12">
-                            <section className="pcm-card" aria-labelledby="sm-title">
+                        <div className="col-12 col-lg-6">
+                            <section className="pcm-card h-100 mb-0" aria-labelledby="sm-title">
                                 <div className="pcm-card__head">
                                     <div>
-                                        <h2 className="pcm-card__title" id="sm-title">Mutasi Material</h2>
-                                        <small className="pcm-card__sub">6 terakhir.</small>
+                                        <h2 className="pcm-card__title" id="sm-title">Mutasi Material Terkini</h2>
+                                        <small className="pcm-card__sub">{smList.length} total mutasi gudang &amp; yard</small>
                                     </div>
                                     <button
                                         type="button"
-                                        className="btn btn-link btn-sm p-0"
+                                        className="btn btn-outline-primary btn-sm px-2.5 py-1 fw-bold"
                                         onClick={() => onSelectTab('material')}
                                     >
-                                        Kelola
+                                        Buka Material &rarr;
                                     </button>
                                 </div>
                                 <div className="pcm-card__body">
                                     {smList.length === 0 ? (
-                                        <p className="pcm-card__sub mb-0">Belum ada transaksi material.</p>
+                                        <p className="pcm-card__sub mb-0 py-3 text-center">Belum ada transaksi mutasi material.</p>
                                     ) : (
-                                        <div className="row row-cols-1 row-cols-md-2 row-cols-xxl-3 g-3">
-                                            {smList.slice(0, 6).map((sm, index) => (
-                                                <div className="col" key={sm.id || index}>
-                                                    <div className="pcm-row h-100">
-                                                        <div className="pcm-row__top">
-                                                            <span className="pcm-cell-strong">{sm.description || <Dash />}</span>
-                                                            <span className="pcm-cell-strong pcm-code">
-                                                                {sm.qty !== null && sm.qty !== undefined
-                                                                    ? `${fmt(sm.qty, 2)} ${sm.unit || ''}`.trim()
-                                                                    : <Dash />}
-                                                            </span>
-                                                        </div>
-                                                        <div className="pcm-row__meta">
-                                                            <span>
-                                                                {sm.kind || '-'}
-                                                                {' · '}Heat {sm.heat_no || '-'}
-                                                            </span>
-                                                            <span>{sm.location || '-'} · {sm.move_date || '-'}</span>
-                                                        </div>
+                                        <div className="d-flex flex-column gap-2">
+                                            {smList.slice(0, 5).map((sm, index) => (
+                                                <div key={sm.id || index} className="pcm-row">
+                                                    <div className="pcm-row__top">
+                                                        <span className="pcm-cell-strong">{sm.description || <Dash />}</span>
+                                                        <span className="pcm-cell-strong pcm-code">
+                                                            {sm.qty !== null && sm.qty !== undefined
+                                                                ? `${fmt(sm.qty, 2)} ${sm.unit || ''}`.trim()
+                                                                : <Dash />}
+                                                        </span>
+                                                    </div>
+                                                    <div className="pcm-row__meta">
+                                                        <span>
+                                                            {sm.kind || '-'}
+                                                            {' · '}Heat {sm.heat_no || '-'}
+                                                        </span>
+                                                        <span>{sm.location || '-'} · {sm.move_date || '-'}</span>
                                                     </div>
                                                 </div>
                                             ))}
@@ -854,11 +742,12 @@ export function OverviewTab({
                         </div>
                     </div>
 
-                    {/* ---------- Contract BOQ ---------- */}
-                    <section className="pcm-card" aria-labelledby="boq-title">
+                    {/* ---------- Row 3: Monitoring BOQ Pipa (Compact & Expandable) ---------- */}
+                    <section className="pcm-card mb-4" aria-labelledby="boq-title">
                         <div className="pcm-card__head">
                             <div>
-                                <h2 className="pcm-card__title" id="boq-title">Monitoring BOQ Pipa</h2>
+                                <h2 className="pcm-card__title" id="boq-title">Monitoring BOQ Kontrak Pipa</h2>
+                                <small className="pcm-card__sub">Realisasi kumulatif terhadap baseline kontrak</small>
                             </div>
                             <div className="d-flex align-items-center gap-2">
                                 <span className="pcm-chip pcm-chip--neutral">
@@ -866,24 +755,25 @@ export function OverviewTab({
                                 </span>
                                 <button
                                     type="button"
-                                    className="btn btn-primary btn-sm"
+                                    className="btn btn-primary btn-sm fw-bold px-3 py-1.5"
+                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                                     onClick={() => onSelectTab('schedule')}
                                 >
-                                    Buka Kurva S
+                                    Buka Kurva S &amp; BOQ &rarr;
                                 </button>
                             </div>
                         </div>
                         <div className="table-responsive">
-                            <table className="table pcm-table align-middle">
+                            <table className="table pcm-table align-middle mb-0">
                                 <thead>
                                     <tr>
-                                        <th className="ps-3">No</th>
-                                        <th>Item Scope</th>
-                                        <th className="text-center">Satuan</th>
-                                        <th className="text-end">Target Kontrak</th>
-                                        <th className="text-end">Realisasi</th>
+                                        <th className="ps-3" style={{ width: '45px' }}>No</th>
+                                        <th>Item Scope Pekerjaan</th>
+                                        <th className="text-center" style={{ width: '80px' }}>Satuan</th>
+                                        <th className="text-end" style={{ width: '130px' }}>Target Kontrak</th>
+                                        <th className="text-end" style={{ width: '130px' }}>Realisasi</th>
                                         <th style={{ minWidth: '12rem' }}>Persentase</th>
-                                        <th className="pe-3 text-end">Status</th>
+                                        <th className="pe-3 text-end" style={{ width: '120px' }}>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -894,7 +784,7 @@ export function OverviewTab({
                                             </td>
                                         </tr>
                                     ) : (
-                                        scopeList.map((scope, index) => {
+                                        (showAllScopes ? scopeList : scopeList.slice(0, 5)).map((scope, index) => {
                                             const contractQty = parseFloat(scope.contract_qty) || 0;
                                             const cumulativeQty = parseFloat(scope.cumulative_qty) || 0;
                                             const pct = contractQty > 0 ? Math.min(100, (cumulativeQty / contractQty) * 100) : 0;
@@ -912,7 +802,7 @@ export function OverviewTab({
                                                             <div className="pcm-bar flex-grow-1">
                                                                 <span style={{ width: `${pct}%` }}></span>
                                                             </div>
-                                                            <span className="pcm-cell-sub" style={{ minWidth: '3rem' }}>
+                                                            <span className="pcm-cell-sub" style={{ minWidth: '3.2rem' }}>
                                                                 {fmt(pct)}%
                                                             </span>
                                                         </div>
@@ -927,6 +817,158 @@ export function OverviewTab({
                                 </tbody>
                             </table>
                         </div>
+                        {scopeList.length > 5 && (
+                            <div className="d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light">
+                                <span className="pcm-cell-sub small">
+                                    Menampilkan {showAllScopes ? scopeList.length : 5} dari {scopeList.length} item scope kontrak
+                                </span>
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-link text-decoration-none fw-bold p-0"
+                                    style={{ color: '#1e40af' }}
+                                    onClick={() => setShowAllScopes(prev => !prev)}
+                                >
+                                    {showAllScopes ? 'Tampilkan 5 Teratas ▲' : `Tampilkan Seluruh ${scopeList.length} Scope ▼`}
+                                </button>
+                            </div>
+                        )}
+                    </section>
+
+                    {/* ---------- Row 4: Drawing Isometrik Registry (Compact & Expandable) ---------- */}
+                    <section className="pcm-card mb-4" aria-labelledby="registry-title">
+                        <div className="pcm-card__head">
+                            <div>
+                                <h2 className="pcm-card__title" id="registry-title">Isometrik Drawing Prioritas</h2>
+                                <small className="pcm-card__sub">{drawingList.length} total drawing isometrik terdaftar</small>
+                            </div>
+                            <div className="d-flex flex-wrap align-items-center gap-2">
+                                {availableAreas.length > 0 && (
+                                    <select
+                                        className="form-select form-select-sm"
+                                        style={{ width: '10rem' }}
+                                        value={filterArea}
+                                        onChange={(e) => setFilterArea(e.target.value)}
+                                        aria-label="Filter area"
+                                    >
+                                        <option value="ALL">Semua Area</option>
+                                        {availableAreas.map((area) => (
+                                            <option key={area} value={area}>{area}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <input
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    style={{ minWidth: '11rem' }}
+                                    placeholder="Cari isometrik, line..."
+                                    value={searchIso}
+                                    onChange={(e) => setSearchIso(e.target.value)}
+                                    aria-label="Cari isometrik"
+                                />
+                                <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm fw-bold px-3 py-1.5 text-nowrap"
+                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                    onClick={() => onSelectTab('engineering')}
+                                >
+                                    Buka Engineering &rarr;
+                                </button>
+                            </div>
+                        </div>
+                        <div className="table-responsive">
+                            <table className="table pcm-table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th className="ps-3" style={{ width: '110px' }}>Rev / Sheet</th>
+                                        <th>Drawing Isometrik</th>
+                                        <th style={{ width: '180px' }}>Line No &amp; Area</th>
+                                        <th style={{ width: '200px' }}>Material Spec</th>
+                                        <th className="text-end" style={{ width: '110px' }}>Total DI</th>
+                                        <th className="pe-3 text-end" style={{ width: '130px' }}>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredDrawings.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="6" className="text-center py-4 pcm-cell-sub">
+                                                Tidak ada isometrik yang cocok dengan pencarian.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        (showAllDrawings ? filteredDrawings : filteredDrawings.slice(0, 5)).map((d, index) => (
+                                            <tr key={d.id || index}>
+                                                <td className="ps-3">
+                                                    <span className="pcm-chip pcm-chip--neutral pcm-code">
+                                                        REV {d.rev || 0}
+                                                    </span>
+                                                    <span className="pcm-cell-sub d-block mt-1 font-monospace">
+                                                        {d.sheet || <Dash />}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className="pcm-cell-id">{d.drawing_no}</span>
+                                                    <span className="pcm-cell-sub d-block pcm-cell-clip">
+                                                        {d.title || <Dash />}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className="pcm-cell-strong pcm-code">{d.line_no || <Dash />}</span>
+                                                    <span className="pcm-cell-sub d-block">{d.area || <Dash />}</span>
+                                                </td>
+                                                <td>
+                                                    <span className="pcm-cell-strong">{d.material_spec || <Dash />}</span>
+                                                    <span className="pcm-cell-sub d-block pcm-code">
+                                                        {d.size_range || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="text-end pcm-cell-strong pcm-code">
+                                                    {d.total_dia_inch ? `${fmt(d.total_dia_inch, 2)} DI` : <Dash />}
+                                                </td>
+                                                <td className="pe-3 text-end">
+                                                    <div className="d-flex justify-content-end gap-1.5">
+                                                        {d.scan_path && (
+                                                            <a
+                                                                href={d.scan_path}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="btn btn-outline-primary btn-sm px-2 py-1"
+                                                                aria-label={`Buka berkas isometrik ${d.drawing_no}`}
+                                                                title="Buka berkas isometrik"
+                                                            >
+                                                                <IconDoc size="sm" />
+                                                            </a>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
+                                                            style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                                            onClick={() => setSelectedDrawing(d)}
+                                                        >
+                                                            Detail
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {filteredDrawings.length > 5 && (
+                            <div className="d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light">
+                                <span className="pcm-cell-sub small">
+                                    Menampilkan {showAllDrawings ? filteredDrawings.length : 5} dari {filteredDrawings.length} drawing isometrik
+                                </span>
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-link text-decoration-none fw-bold p-0"
+                                    style={{ color: '#1e40af' }}
+                                    onClick={() => setShowAllDrawings(prev => !prev)}
+                                >
+                                    {showAllDrawings ? 'Tampilkan 5 Teratas ▲' : `Tampilkan Seluruh ${filteredDrawings.length} Isometrik ▼`}
+                                </button>
+                            </div>
+                        )}
                     </section>
                 </>
             )}

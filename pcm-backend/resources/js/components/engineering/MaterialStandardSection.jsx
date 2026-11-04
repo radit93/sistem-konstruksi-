@@ -49,8 +49,231 @@ const computedStickWeight = (perMeter, length) => {
     return (w * l).toFixed(2);
 };
 
-export function MaterialStandardSection({ user, onToast }) {
-    const [activeStandardView, setActiveStandardView] = useState('material'); // 'material' | 'pipe'
+/* Warna solid prima ber-kontras tinggi, tidak neon & berbeda jelas (R-01, R-29) */
+const getMaterialGroupBadgeStyle = (group) => {
+    switch (group) {
+        case 'Carbon Steel':
+            return { backgroundColor: '#1e293b', borderColor: '#0f172a', color: '#ffffff' }; // Solid Dark Charcoal / Hitam Baja
+        case 'Stainless Steel':
+            return { backgroundColor: '#1d4ed8', borderColor: '#1e40af', color: '#ffffff' }; // Solid Royal Blue / Biru Prima
+        case 'Alloy Steel':
+            return { backgroundColor: '#b91c1c', borderColor: '#991b1b', color: '#ffffff' }; // Solid Crimson Red / Merah Prima
+        default:
+            return { backgroundColor: '#334155', borderColor: '#1e293b', color: '#ffffff' }; // Solid Slate
+    }
+};
+
+/* Warna solid prima untuk 6 Kategori Material - Berbeda jelas satu sama lain, tidak terlalu cerah/neon */
+const getCategoryBadgeStyle = (cat) => {
+    switch (cat) {
+        case 'Pipe':
+            return { backgroundColor: '#1e40af', borderColor: '#1e3a8a', color: '#ffffff' }; // Solid Deep Navy Blue
+        case 'Fitting':
+            return { backgroundColor: '#b45309', borderColor: '#92400e', color: '#ffffff' }; // Solid Warm Amber Gold
+        case 'Flange':
+            return { backgroundColor: '#0f766e', borderColor: '#115e59', color: '#ffffff' }; // Solid Deep Teal Ocean
+        case 'Valve':
+            return { backgroundColor: '#15803d', borderColor: '#166534', color: '#ffffff' }; // Solid Forest Green
+        case 'Bolt':
+            return { backgroundColor: '#475569', borderColor: '#334155', color: '#ffffff' }; // Solid Steel Slate Gray
+        case 'Gasket':
+            return { backgroundColor: '#6b21a8', borderColor: '#581c87', color: '#ffffff' }; // Solid Rich Purple / Ungu Prima
+        default:
+            return { backgroundColor: '#334155', borderColor: '#1e293b', color: '#ffffff' };
+    }
+};
+
+/* Parser untuk memisahkan Rating Tekanan (#) dan Pressure Class bila ada data gabungan lama */
+const parseRatingClass = (val) => {
+    if (!val || val === 'N/A' || val === '—' || val === '-') {
+        return { rating: '—', classVal: '—' };
+    }
+    const s = String(val).trim();
+    const ratingMatches = s.match(/\d+#/g);
+    if (ratingMatches && ratingMatches.length > 0) {
+        const ratingStr = ratingMatches.join(' / ');
+        const nums = ratingMatches.map(r => r.replace('#', ''));
+        const classStr = 'Class ' + nums.join(' / ');
+        return { rating: ratingStr, classVal: classStr };
+    }
+    if (/class/i.test(s)) {
+        return { rating: '—', classVal: s };
+    }
+    return { rating: s, classVal: '—' };
+};
+
+/* Helper untuk mengambil nilai Pressure Class yang bersih dan baku */
+const getPressureClassDisplay = (item) => {
+    if (item.class && item.class !== 'N/A' && item.class !== '—') {
+        return item.class;
+    }
+    if (item.rating && item.rating !== 'N/A' && item.rating !== '—') {
+        return item.rating.includes('Class') ? item.rating : `Class ${item.rating.replace('#', '')}`;
+    }
+    if (item.rating_class && item.rating_class !== 'N/A' && item.rating_class !== '—') {
+        const parsed = parseRatingClass(item.rating_class);
+        if (parsed.classVal !== '—') return parsed.classVal;
+        if (parsed.rating !== '—') return parsed.rating;
+        return item.rating_class;
+    }
+    return '—';
+};
+
+/* Render Schedule: Selalu 1 baris (nowrap, no wrap). Ukuran chip & teks otomatis mengecil jika banyak */
+const renderDynamicSchedule = (schedule) => {
+    if (!schedule || schedule === 'N/A' || schedule === '—' || schedule === '-') {
+        return <span className="pcm-cell-sub">—</span>;
+    }
+    const items = String(schedule)
+        .split('/')
+        .map(it => it.trim())
+        .filter(Boolean);
+
+    if (items.length === 0) return <span className="pcm-cell-sub">—</span>;
+
+    // 1 item: ukuran normal
+    if (items.length === 1) {
+        return (
+            <div className="d-flex align-items-center justify-content-center" style={{ whiteSpace: 'nowrap' }}>
+                <span
+                    className="pcm-chip pcm-chip--neutral pcm-code"
+                    style={{ fontSize: '0.8125rem', padding: '0.15rem 0.55rem', whiteSpace: 'nowrap' }}
+                >
+                    {items[0]}
+                </span>
+            </div>
+        );
+    }
+
+    // 2 item: tetap 1 baris, font & padding agak mengecil
+    if (items.length === 2) {
+        return (
+            <div className="d-flex align-items-center justify-content-center gap-1" style={{ whiteSpace: 'nowrap' }}>
+                {items.map((it, idx) => (
+                    <span
+                        key={idx}
+                        className="pcm-chip pcm-chip--neutral pcm-code"
+                        style={{ fontSize: '0.71875rem', padding: '0.12rem 0.4rem', whiteSpace: 'nowrap' }}
+                    >
+                        {it}
+                    </span>
+                ))}
+            </div>
+        );
+    }
+
+    // 3 item ke atas: tetap mutlak 1 baris horizontal, font & padding ultra-kompak
+    return (
+        <div className="d-flex align-items-center justify-content-center gap-1" style={{ whiteSpace: 'nowrap' }}>
+            {items.map((it, idx) => (
+                <span
+                    key={idx}
+                    className="pcm-chip pcm-chip--neutral pcm-code"
+                    style={{
+                        fontSize: items.length >= 4 ? '0.625rem' : '0.65625rem',
+                        padding: '0.08rem 0.3rem',
+                        whiteSpace: 'nowrap',
+                        lineHeight: 1.15
+                    }}
+                >
+                    {it}
+                </span>
+            ))}
+        </div>
+    );
+};
+
+const PAGE_SIZE = 10;
+
+/* Komponen Pagination Navigasi: Hanya Icon Arrow Hitam Maju dan Mundur (Ukuran sama dengan Reload: 36x36px, SVG 20px) */
+function ModernPagination({ currentPage, totalPages, totalItems, itemName = 'data', onPageChange }) {
+    if (totalItems === 0) return null;
+
+    const startIdx = (currentPage - 1) * PAGE_SIZE + 1;
+    const endIdx = Math.min(currentPage * PAGE_SIZE, totalItems);
+
+    return (
+        <div
+            className="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-top bg-light"
+            style={{
+                borderBottomLeftRadius: 'var(--pcm-radius-card)',
+                borderBottomRightRadius: 'var(--pcm-radius-card)'
+            }}
+        >
+            <div className="pcm-cell-sub" style={{ fontSize: '0.8125rem', color: '#1e293b' }}>
+                Menampilkan <strong>{startIdx}</strong> &ndash; <strong>{endIdx}</strong> dari <strong>{totalItems}</strong> {itemName}
+                <span className="ms-2 text-muted fw-normal">(Halaman <strong>{currentPage}</strong> dari <strong>{totalPages}</strong>)</span>
+            </div>
+
+            <div className="d-flex align-items-center gap-1.5">
+                {/* Arrow Hitam Kiri / Mundur — Icon saja tanpa background/border biru */}
+                <button
+                    type="button"
+                    className="pcm-page-nav-btn d-inline-flex align-items-center justify-content-center"
+                    disabled={currentPage <= 1}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) onPageChange(currentPage - 1);
+                    }}
+                    title="Mundur (Halaman Sebelumnya)"
+                    aria-label="Mundur"
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        width="20"
+                        height="20"
+                        fill="none"
+                        stroke="#000000"
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                    >
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                </button>
+
+                {/* Arrow Hitam Kanan / Maju — Icon saja tanpa background/border biru */}
+                <button
+                    type="button"
+                    className="pcm-page-nav-btn d-inline-flex align-items-center justify-content-center"
+                    disabled={currentPage >= totalPages}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) onPageChange(currentPage + 1);
+                    }}
+                    title="Maju (Halaman Selanjutnya)"
+                    aria-label="Maju"
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        width="20"
+                        height="20"
+                        fill="none"
+                        stroke="#000000"
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                    >
+                        <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    );
+}
+
+export function MaterialStandardSection({ user, onToast, initialView = 'material', activeSection }) {
+    const [activeStandardView, setActiveStandardView] = useState(initialView);
+
+    useEffect(() => {
+        if (activeSection === 'pipe_standard') {
+            setActiveStandardView('pipe');
+        } else if (activeSection === 'material_standard') {
+            setActiveStandardView('material');
+        }
+    }, [activeSection]);
 
     // 1. Material Standards State
     const [standards, setStandards] = useState([]);
@@ -67,7 +290,7 @@ export function MaterialStandardSection({ user, onToast }) {
         category: 'Pipe',
         specification: '',
         material_group: 'Carbon Steel',
-        rating_class: '',
+        pressure_class: '',
         schedule: '',
         size_range: '',
         description: ''
@@ -160,17 +383,47 @@ export function MaterialStandardSection({ user, onToast }) {
         ));
     }, [pipeStandards, pipeSearch]);
 
+    // Pagination: Maksimal 10 baris per halaman (lebih ringkas & pas di layar)
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pipeCurrentPage, setPipeCurrentPage] = useState(1);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, filterCategory]);
+
+    useEffect(() => {
+        setPipeCurrentPage(1);
+    }, [pipeSearch]);
+
+    const totalStandardPages = Math.ceil(filteredStandards.length / PAGE_SIZE) || 1;
+    const paginatedStandards = useMemo(() => {
+        const start = (currentPage - 1) * PAGE_SIZE;
+        return filteredStandards.slice(start, start + PAGE_SIZE);
+    }, [filteredStandards, currentPage]);
+
+    const totalPipePages = Math.ceil(filteredPipes.length / PAGE_SIZE) || 1;
+    const paginatedPipes = useMemo(() => {
+        const start = (pipeCurrentPage - 1) * PAGE_SIZE;
+        return filteredPipes.slice(start, start + PAGE_SIZE);
+    }, [filteredPipes, pipeCurrentPage]);
+
     // Material Standards Handlers
     const handleOpenModal = (item = null) => {
         setFormError('');
         if (item) {
             setEditingItem(item);
+            const pClass = item.class && item.class !== 'N/A' && item.class !== '—'
+                ? item.class
+                : (item.rating && item.rating !== 'N/A' && item.rating !== '—'
+                    ? (item.rating.includes('Class') ? item.rating : `Class ${item.rating.replace('#', '')}`)
+                    : (item.rating_class && item.rating_class !== 'N/A' ? item.rating_class : ''));
+
             setForm({
                 code: item.code || '',
                 category: item.category || 'Pipe',
                 specification: item.specification || '',
                 material_group: item.material_group || 'Carbon Steel',
-                rating_class: item.rating_class || '',
+                pressure_class: pClass,
                 schedule: item.schedule || '',
                 size_range: item.size_range || '',
                 description: item.description || ''
@@ -190,13 +443,25 @@ export function MaterialStandardSection({ user, onToast }) {
             return;
         }
 
+        const pClassVal = form.pressure_class && form.pressure_class.trim() ? form.pressure_class.trim() : 'N/A';
+        // Ekstrak angka pound untuk sinkronisasi kompatibilitas
+        const nums = pClassVal.match(/\d+/g);
+        const ratingVal = nums ? nums.map(n => `${n}#`).join(' / ') : (pClassVal === 'N/A' ? 'N/A' : pClassVal);
+
+        const payload = {
+            ...form,
+            class: pClassVal,
+            rating: ratingVal,
+            rating_class: pClassVal
+        };
+
         setFormLoading(true);
         try {
             if (editingItem) {
-                await api.put(`/material-standards/${editingItem.id}`, form);
+                await api.put(`/material-standards/${editingItem.id}`, payload);
                 if (onToast) onToast('Standar Material berhasil diperbarui.');
             } else {
-                await api.post('/material-standards', form);
+                await api.post('/material-standards', payload);
                 if (onToast) onToast('Standar Material baru berhasil ditambahkan.');
             }
             setShowModal(false);
@@ -294,102 +559,104 @@ export function MaterialStandardSection({ user, onToast }) {
 
     return (
         <div>
-            {/* Header Toolbar & View Toggle */}
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                <div>
-                    <h2 className="h4 fw-bold text-dark mb-1">Pustaka &amp; Master Standar Engineering</h2>
-                    <p className="pcm-cell-sub mb-0">
-                        Katalog acuan spesifikasi material ASTM, kelompok logam, serta master diameter pipa, ketebalan,
-                        berat nominal, dan berat per batang.
-                    </p>
-                    <p className="pcm-cell-sub small mb-0 mt-1">
-                        Sumber data pipa: ASME B36.10M (VAN LEEUWEN 2015); material: ASTM umum.
-                        Data masih interim dan siap diganti dengan standar perusahaan. Master ini dapat dibaca seluruh departemen.
-                    </p>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                    {/* View Switcher Button Group */}
-                    <div className="btn-group" role="group">
-                        <button
-                            type="button"
-                            className={`btn btn-sm fw-bold ${activeStandardView === 'material' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                            onClick={() => setActiveStandardView('material')}
-                        >
-                            1. Standar Material ASTM
-                        </button>
-                        <button
-                            type="button"
-                            className={`btn btn-sm fw-bold ${activeStandardView === 'pipe' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                            onClick={() => setActiveStandardView('pipe')}
-                        >
-                            2. Master Diameter &amp; Ketebalan Pipa
-                        </button>
-                    </div>
-
-                    {canEdit && (
-                        activeStandardView === 'material' ? (
-                            <button
-                                type="button"
-                                className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                                onClick={() => handleOpenModal()}
-                            >
-                                + Tambah Standar Material
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                                onClick={() => handleOpenPipeModal()}
-                            >
-                                + Tambah Ukuran Pipa
-                            </button>
-                        )
-                    )}
-                </div>
+            {/* Header Toolbar */}
+            <div className="mb-4">
+                <h2 className="h3 fw-bolder text-dark mb-0" style={{ letterSpacing: '-0.02em' }}>
+                    {activeStandardView === 'pipe' ? 'Master Diameter & Ketebalan Pipa (ASME B36.10M)' : 'Katalog Standar Material ASTM'}
+                </h2>
             </div>
 
             {/* VIEW 1: Standar Material ASTM */}
             {activeStandardView === 'material' && (
                 <>
-                    {/* Category Filter & Search */}
-                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                        <div className="btn-group" role="group">
-                            {categories.map(cat => (
-                                <button
-                                    key={cat}
-                                    type="button"
-                                    className={`btn btn-sm ${filterCategory === cat ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
-                                    onClick={() => setFilterCategory(cat)}
-                                >
-                                    {cat === 'ALL' ? 'Semua Kategori' : cat}
-                                </button>
-                            ))}
+                    {/* Kategori Berada di Atas Search */}
+                    <div className="mb-3">
+                        <div className="btn-group flex-wrap" role="group" aria-label="Filter Kategori Material">
+                            {categories.map(cat => {
+                                const isSel = filterCategory === cat;
+                                const badgeStyle = cat === 'ALL'
+                                    ? { backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }
+                                    : getCategoryBadgeStyle(cat);
+                                return (
+                                    <button
+                                        key={cat}
+                                        type="button"
+                                        className={`btn btn-sm ${isSel ? 'fw-bold' : 'btn-outline-secondary'}`}
+                                        style={isSel ? { ...badgeStyle, boxShadow: '0 2px 4px rgba(0,0,0,0.18)' } : {}}
+                                        onClick={() => setFilterCategory(cat)}
+                                    >
+                                        {cat === 'ALL' ? 'Semua Kategori' : cat}
+                                    </button>
+                                );
+                            })}
                         </div>
-                        <div style={{ minWidth: '260px' }}>
+                    </div>
+
+                    {/* Search di Kiri & Tambah Standar Material di Kanan Sejajar dengan Cari */}
+                    <div className="d-flex align-items-center gap-3 mb-4">
+                        <div className="flex-grow-1">
                             <input
                                 type="text"
-                                className="form-control form-control-sm pcm-filter-input"
+                                className="form-control form-control-sm pcm-filter-input w-100"
                                 placeholder="Cari Kode, Spesifikasi ASTM, Group..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
+                        {canEdit && (
+                            <button
+                                type="button"
+                                className="btn btn-primary btn-sm fw-bold px-3 py-2 text-nowrap"
+                                style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                onClick={() => handleOpenModal()}
+                            >
+                                + Tambah Standar Material
+                            </button>
+                        )}
                     </div>
 
                     {/* Table Material Standards */}
-                    <div className="pcm-card">
-                        <div className="table-responsive">
-                            <table className="table table-hover align-middle pcm-table mb-0">
+                    <div className="pcm-card" style={{ minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
+                        <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
+                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1170px', width: '100%' }}>
+                                <colgroup>
+                                    <col style={{ width: '160px' }} />
+                                    <col style={{ width: '130px' }} />
+                                    <col style={{ width: '200px' }} />
+                                    <col style={{ width: '150px' }} />
+                                    <col style={{ width: '145px' }} />
+                                    <col style={{ width: '135px' }} />
+                                    <col style={{ width: '130px' }} />
+                                    {canEdit && <col style={{ width: '120px' }} />}
+                                </colgroup>
                                 <thead>
                                     <tr>
-                                        <th className="ps-3" style={{ width: '130px' }}>Kode Standar</th>
-                                        <th style={{ width: '100px' }}>Kategori</th>
-                                        <th style={{ minWidth: '220px' }}>Spesifikasi Material</th>
-                                        <th style={{ minWidth: '150px' }}>Material Group</th>
-                                        <th style={{ width: '120px' }}>Rating / Class</th>
-                                        <th style={{ width: '130px' }}>Schedule</th>
-                                        <th style={{ width: '130px' }}>Rentang Ukuran</th>
-                                        {canEdit && <th className="text-end pe-3" style={{ width: '160px' }}>Aksi</th>}
+                                        <th className="text-center">
+                                            <span className="pcm-th-title">Kode Standar</span>
+                                        </th>
+                                        <th className="text-center">
+                                             <span className="pcm-th-title">Kategori</span>
+                                        </th>
+                                        <th className="text-center">
+                                             <span className="pcm-th-title">Spesifikasi Material</span>
+                                        </th>
+                                        <th className="text-center">
+                                             <span className="pcm-th-title">Material Group</span>
+                                        </th>
+                                        <th className="text-center">
+                                             <span className="pcm-th-title">Pressure Class</span>
+                                        </th>
+                                        <th className="text-center">
+                                             <span className="pcm-th-title">Schedule</span>
+                                        </th>
+                                        <th className="text-center">
+                                             <span className="pcm-th-title">Rentang Ukuran</span>
+                                        </th>
+                                        {canEdit && (
+                                            <th className="text-center pe-3">
+                                                <span className="pcm-th-title">Aksi</span>
+                                            </th>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -406,50 +673,105 @@ export function MaterialStandardSection({ user, onToast }) {
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredStandards.map((s) => (
-                                            <tr key={s.id}>
-                                                <td className="ps-3 fw-bold pcm-code" style={{ color: '#1e40af' }}>
-                                                    <div className="d-flex flex-wrap align-items-center gap-2">
-                                                        <span>{s.code}</span>
-                                                        {s.is_interim && <span className="pcm-chip pcm-chip--neutral">Interim</span>}
-                                                    </div>
-                                                </td>
-                                                <td><span className="pcm-chip pcm-chip--neutral">{s.category}</span></td>
-                                                <td className="pcm-cell-strong">{s.specification}</td>
-                                                <td>
-                                                    <span className={`pcm-chip ${s.material_group === 'Stainless Steel' ? 'pcm-chip--primary' : s.material_group === 'Alloy Steel' ? 'pcm-chip--warning' : 'pcm-chip--dark'}`}>
-                                                        {s.material_group}
-                                                    </span>
-                                                </td>
-                                                <td>{s.rating_class || 'N/A'}</td>
-                                                <td><span className="pcm-chip pcm-chip--neutral pcm-code">{s.schedule || '—'}</span></td>
-                                                <td className="small pcm-cell-sub">{s.size_range || '—'}</td>
-                                                {canEdit && (
-                                                    <td className="text-end pe-3 text-nowrap">
-                                                        <div className="d-inline-flex align-items-center justify-content-end gap-2">
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-outline-primary btn-sm px-3 py-1.5 fw-bold"
-                                                                onClick={() => handleOpenModal(s)}
-                                                            >
-                                                                Edit
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-danger btn-sm px-3 py-1.5 fw-bold"
-                                                                onClick={() => handleDelete(s.id)}
-                                                            >
-                                                                Hapus
-                                                            </button>
+                                        paginatedStandards.map((s) => {
+                                            const pressureClassDisplay = getPressureClassDisplay(s);
+                                            const isSpecLong = (s.specification || '').length > 22;
+
+                                            return (
+                                                <tr key={s.id}>
+                                                    <td className="ps-3 text-start fw-bold pcm-code" style={{ color: '#0f172a', verticalAlign: 'middle', padding: '0.45rem 0.65rem' }}>
+                                                        <div
+                                                            className="pcm-table-cell-2line text-start"
+                                                            style={{ fontSize: '0.8125rem' }}
+                                                            title={s.code}
+                                                        >
+                                                            {s.code}
                                                         </div>
                                                     </td>
-                                                )}
+                                                    <td className="text-center">
+                                                        <span className="pcm-chip" style={getCategoryBadgeStyle(s.category)}>
+                                                            {s.category}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-start pcm-cell-strong" style={{ verticalAlign: 'middle', padding: '0.45rem 0.65rem' }}>
+                                                        <div
+                                                            className={`text-start pcm-table-cell-2line ${isSpecLong ? 'pcm-table-cell-2line--dense' : 'pcm-table-cell-2line--normal'}`}
+                                                            title={s.specification}
+                                                        >
+                                                            {s.specification}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
+                                                        <span className="pcm-chip" style={getMaterialGroupBadgeStyle(s.material_group)}>
+                                                            {s.material_group}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-center pcm-code font-monospace" style={{ fontSize: '0.8125rem' }}>
+                                                        {pressureClassDisplay && pressureClassDisplay !== '—' && pressureClassDisplay !== 'N/A' ? (
+                                                            <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', whiteSpace: 'nowrap' }}>
+                                                                {pressureClassDisplay}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="pcm-cell-sub">—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="text-center" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                                        {renderDynamicSchedule(s.schedule)}
+                                                    </td>
+                                                    <td className="text-center pcm-code font-monospace" style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                                                        {s.size_range && s.size_range !== 'N/A' && s.size_range !== '—' ? (
+                                                            s.size_range
+                                                        ) : (
+                                                            <span className="pcm-cell-sub">—</span>
+                                                        )}
+                                                    </td>
+                                                    {canEdit && (
+                                                        <td className="text-center pe-3 text-nowrap">
+                                                            <div className="d-inline-flex align-items-center justify-content-center gap-1.5">
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
+                                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
+                                                                    onClick={() => handleOpenModal(s)}
+                                                                >
+                                                                    Edit
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
+                                                                    onClick={() => handleDelete(s.id)}
+                                                                >
+                                                                    Hapus
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                    {/* Empty rows spacer to fix table height precisely at 10 rows */}
+                                    {!loading && paginatedStandards.length > 0 && paginatedStandards.length < PAGE_SIZE && (
+                                        Array.from({ length: PAGE_SIZE - paginatedStandards.length }).map((_, idx) => (
+                                            <tr key={`empty-std-${idx}`} style={{ height: '39px' }} aria-hidden="true">
+                                                <td colSpan={canEdit ? 8 : 7} style={{ borderBottom: '1px solid #f1f5f9', background: 'transparent' }}>&nbsp;</td>
                                             </tr>
                                         ))
                                     )}
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination Bar Standar Material */}
+                        {filteredStandards.length > 0 && (
+                            <ModernPagination
+                                currentPage={currentPage}
+                                totalPages={totalStandardPages}
+                                totalItems={filteredStandards.length}
+                                itemName="data standar"
+                                onPageChange={(p) => setCurrentPage(p)}
+                            />
+                        )}
                     </div>
                 </>
             )}
@@ -457,39 +779,74 @@ export function MaterialStandardSection({ user, onToast }) {
             {/* VIEW 2: Master Diameter & Ketebalan Pipa (Pipe Standards) */}
             {activeStandardView === 'pipe' && (
                 <>
-                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                        <div className="d-flex align-items-center gap-2">
-                            <span className="pcm-cell-sub">
-                                Master ukuran nominal diameter (NPS/DN), tebal dinding pipa (Schedule/mm), berat plain end (kg/m),
-                                dan berat per batang standar 6 m (kg/batang). STD = Standard, XS = Extra Strong,
-                                XXS = Double Extra Strong.
-                            </span>
-                        </div>
-                        <div style={{ minWidth: '260px' }}>
+                    {/* Search di Kiri & Tambah Ukuran Pipa di Kanan Sejajar */}
+                    <div className="d-flex align-items-center gap-3 mb-4">
+                        <div className="flex-grow-1">
                             <input
                                 type="text"
-                                className="form-control form-control-sm pcm-filter-input"
+                                className="form-control form-control-sm pcm-filter-input w-100"
                                 placeholder="Cari Diameter (NPS), DN, Schedule..."
                                 value={pipeSearch}
                                 onChange={(e) => setPipeSearch(e.target.value)}
                             />
                         </div>
+                        {canEdit && (
+                            <button
+                                type="button"
+                                className="btn btn-primary btn-sm fw-bold px-3 py-2 text-nowrap"
+                                style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                onClick={() => handleOpenPipeModal()}
+                            >
+                                + Tambah Ukuran Pipa
+                            </button>
+                        )}
                     </div>
 
-                    <div className="pcm-card">
-                        <div className="table-responsive">
-                            <table className="table table-hover align-middle pcm-table mb-0">
+                    <div className="pcm-card" style={{ minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
+                        <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
+                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1170px', width: '100%' }}>
+                                <colgroup>
+                                    <col style={{ width: '125px' }} />
+                                    <col style={{ width: '105px' }} />
+                                    <col style={{ width: '120px' }} />
+                                    <col style={{ width: '140px' }} />
+                                    <col style={{ width: '145px' }} />
+                                    <col style={{ width: '140px' }} />
+                                    <col style={{ width: '125px' }} />
+                                    <col style={{ width: '140px' }} />
+                                    {canEdit && <col style={{ width: '130px' }} />}
+                                </colgroup>
                                 <thead>
-                                    <tr>
-                                        <th className="ps-3 text-center" style={{ width: '130px' }}>Nominal Size (NPS)</th>
-                                        <th className="text-center" style={{ width: '110px' }}>Metric Size (DN)</th>
-                                        <th className="text-center" style={{ width: '130px' }}>Schedule / Tebal</th>
-                                        <th className="text-center" style={{ width: '140px' }}>Wall Thickness (mm)</th>
-                                        <th className="text-center" style={{ width: '150px' }}>Outer Diameter (mm)</th>
-                                        <th className="text-center" style={{ width: '140px' }}>Nominal Weight (kg/m)</th>
-                                        <th className="text-center" style={{ width: '125px' }}>Panjang Batang (m)</th>
-                                        <th className="text-center" style={{ width: '150px' }}>Berat per Batang (kg)</th>
-                                        {canEdit && <th className="text-center" style={{ width: '160px' }}>Aksi</th>}
+                                     <tr>
+                                         <th className="text-center">
+                                             <span className="pcm-th-title">Ukuran Nominal (NPS)</span>
+                                         </th>
+                                         <th className="text-center">
+                                             <span className="pcm-th-title">Metrik (DN mm)</span>
+                                         </th>
+                                         <th className="text-center">
+                                             <span className="pcm-th-title">Schedule (SCH)</span>
+                                         </th>
+                                         <th className="text-center">
+                                             <span className="pcm-th-title">Tebal Dinding (mm)</span>
+                                         </th>
+                                         <th className="text-center">
+                                             <span className="pcm-th-title">Diameter Luar (OD mm)</span>
+                                         </th>
+                                         <th className="text-center">
+                                             <span className="pcm-th-title">Berat Nominal (kg/m)</span>
+                                         </th>
+                                         <th className="text-center">
+                                             <span className="pcm-th-title">Panjang Batang (m)</span>
+                                         </th>
+                                         <th className="text-center">
+                                             <span className="pcm-th-title">Berat per Batang (kg)</span>
+                                         </th>
+                                         {canEdit && (
+                                             <th className="text-center pe-3">
+                                                <span className="pcm-th-title">Aksi</span>
+                                            </th>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -506,17 +863,14 @@ export function MaterialStandardSection({ user, onToast }) {
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredPipes.map((p) => (
+                                        paginatedPipes.map((p) => (
                                             <tr key={p.id}>
-                                                <td className="ps-3 text-center fw-bold pcm-code" style={{ fontSize: '1rem', color: '#1e40af' }}>
+                                                <td className="text-center fw-bold pcm-code" style={{ fontSize: '0.9375rem', color: '#0f172a' }}>
                                                     {p.nps}
                                                 </td>
                                                 <td className="text-center pcm-cell-sub font-monospace">{p.dn || '—'}</td>
                                                 <td className="text-center">
-                                                    <div className="d-inline-flex flex-wrap align-items-center justify-content-center gap-2">
-                                                        <span className="pcm-chip pcm-chip--neutral pcm-code">{p.schedule}</span>
-                                                        {p.is_interim && <span className="pcm-chip pcm-chip--neutral">Interim</span>}
-                                                    </div>
+                                                    <span className="pcm-chip pcm-chip--neutral pcm-code">{p.schedule}</span>
                                                 </td>
                                                 <td className="text-center pcm-code fw-semibold">{p.wall_thickness_mm ? `${parseFloat(p.wall_thickness_mm).toFixed(2)} mm` : '—'}</td>
                                                 <td className="text-center pcm-code">{p.outer_diameter_mm ? `${parseFloat(p.outer_diameter_mm).toFixed(2)} mm` : '—'}</td>
@@ -524,18 +878,19 @@ export function MaterialStandardSection({ user, onToast }) {
                                                 <td className="text-center pcm-code">{p.standard_length_m ? `${parseFloat(p.standard_length_m).toFixed(2)} m` : '6.00 m'}</td>
                                                 <td className="text-center pcm-code fw-semibold">{stickWeightOf(p) != null ? `${stickWeightOf(p).toFixed(2)} kg` : '—'}</td>
                                                 {canEdit && (
-                                                    <td className="text-center text-nowrap">
-                                                        <div className="d-inline-flex align-items-center justify-content-center gap-2">
+                                                    <td className="text-center pe-3 text-nowrap">
+                                                        <div className="d-inline-flex align-items-center justify-content-center gap-1.5">
                                                             <button
                                                                 type="button"
-                                                                className="btn btn-outline-primary btn-sm px-3 py-1.5 fw-bold"
+                                                                className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
+                                                                style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                                                                 onClick={() => handleOpenPipeModal(p)}
                                                             >
                                                                 Edit
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                className="btn btn-danger btn-sm px-3 py-1.5 fw-bold"
+                                                                className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
                                                                 onClick={() => handleDeletePipe(p.id)}
                                                             >
                                                                 Hapus
@@ -546,9 +901,28 @@ export function MaterialStandardSection({ user, onToast }) {
                                             </tr>
                                         ))
                                     )}
+                                    {/* Empty rows spacer to fix table height precisely at 10 rows */}
+                                    {!pipeLoading && paginatedPipes.length > 0 && paginatedPipes.length < PAGE_SIZE && (
+                                        Array.from({ length: PAGE_SIZE - paginatedPipes.length }).map((_, idx) => (
+                                            <tr key={`empty-pipe-${idx}`} style={{ height: '39px' }} aria-hidden="true">
+                                                <td colSpan={canEdit ? 9 : 8} style={{ borderBottom: '1px solid #f1f5f9', background: 'transparent' }}>&nbsp;</td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination Bar Pipe Standards */}
+                        {filteredPipes.length > 0 && (
+                            <ModernPagination
+                                currentPage={pipeCurrentPage}
+                                totalPages={totalPipePages}
+                                totalItems={filteredPipes.length}
+                                itemName="ukuran pipa"
+                                onPageChange={(p) => setPipeCurrentPage(p)}
+                            />
+                        )}
                     </div>
                 </>
             )}
@@ -567,8 +941,8 @@ export function MaterialStandardSection({ user, onToast }) {
                                 </div>
                                 <div className="modal-body">
                                     {formError && (
-                                        <div className="alert alert-danger py-2 small mb-3">{formError}</div>
-                                    )}
+                                         <div className="alert alert-danger py-2 small mb-3">{formError}</div>
+                                     )}
                                     <div className="row g-3">
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Kode Standar *</label>
@@ -622,13 +996,13 @@ export function MaterialStandardSection({ user, onToast }) {
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Rating / Class Tekanan</label>
+                                            <label className="form-label small fw-bold">Pressure Class</label>
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                placeholder="Contoh: 150#, 300#, Class 800"
-                                                value={form.rating_class}
-                                                onChange={(e) => setForm({ ...form, rating_class: e.target.value })}
+                                                placeholder="Contoh: Class 150, Class 300, atau N/A"
+                                                value={form.pressure_class || ''}
+                                                onChange={(e) => setForm({ ...form, pressure_class: e.target.value })}
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">

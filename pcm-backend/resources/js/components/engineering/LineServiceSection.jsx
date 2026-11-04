@@ -220,72 +220,39 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
 
     return (
         <div>
-            {/* Header & Action Toolbar */}
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                <div>
-                    <h2 className="h4 fw-bold text-dark mb-1">Line Service Register</h2>
-                    <p className="pcm-cell-sub mb-0">
-                        Klasifikasi jalur perpipaan, kode fluida, spesifikasi piping class, dan parameter tekanan/temperatur uji.
-                    </p>
+            {/* Header Standar Independen (Global Master Data) */}
+            <div className="mb-4">
+                <h2 className="h3 fw-bolder text-dark mb-0" style={{ letterSpacing: '-0.02em' }}>
+                    Line Service Register
+                </h2>
+            </div>
+
+            {/* Toolbar Bersih: Search di Kiri & Tambah Line Service di Kanan Sejajar */}
+            <div className="d-flex align-items-center gap-3 mb-4">
+                <div className="flex-grow-1 min-w-0">
+                    <div className="pcm-search w-100" style={{ maxWidth: '100%' }}>
+                        <span className="pcm-search__icon">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </span>
+                        <input
+                            type="text"
+                            className="form-control form-control-sm pcm-filter-input w-100"
+                            placeholder="Cari Line No, Service, Fluid, Piping Class..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
                 </div>
                 {canEdit && (
                     <button
                         type="button"
-                        className="btn btn-primary btn-sm fw-bold px-3 py-2"
+                        className="btn btn-primary btn-sm fw-bold px-3 py-2 text-nowrap d-inline-flex align-items-center gap-1.5"
+                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                         onClick={() => handleOpenModal()}
                     >
-                        + Tambah Line Service
+                        <span>+ Tambah Line Service</span>
                     </button>
                 )}
-            </div>
-
-            {/* Filter & Summary Card */}
-            <div className="row g-3 mb-4">
-                <div className="col-12 col-md-4 col-lg-3">
-                    <div className="pcm-tile h-100">
-                        <span className="pcm-tile__label">Total Jalur Pipa</span>
-                        <strong className="pcm-tile__value pcm-tile__value--primary">
-                            {filteredLines.length}
-                            <span className="pcm-tile__unit">line numbers</span>
-                        </strong>
-                    </div>
-                </div>
-                <div className="col-12 col-md-8 col-lg-9">
-                    <div className="pcm-toolbar h-100">
-                        <div className="pcm-toolbar__grow">
-                            <div className="pcm-search">
-                                <span className="pcm-search__icon">
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                </span>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Cari Line No, Service, Fluid, Piping Class..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
-                            </div>
-                            {!isProjectLocked(activeProjectId) && (
-                                <select
-                                    className="form-select pcm-select"
-                                    value={filterProject}
-                                    onChange={(e) => setFilterProject(e.target.value)}
-                                    aria-label="Filter Project"
-                                >
-                                    <option value="ALL">Semua Proyek ({projects.length})</option>
-                                    {projects.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
-                                        </option>
-                                    ))}
-                                </select>
-                            )}
-                        </div>
-                        <span className="pcm-count">
-                            Menampilkan <strong>{filteredLines.length}</strong> jalur
-                        </span>
-                    </div>
-                </div>
             </div>
 
             {/* Table */}
@@ -294,15 +261,35 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                     <table className="table table-hover align-middle pcm-table mb-0">
                         <thead>
                             <tr>
-                                <th className="text-center" style={{ width: '150px' }}>Line Number</th>
-                                <th style={{ minWidth: '180px' }}>Service Name</th>
-                                <th className="text-center" style={{ width: '90px' }}>Fluid</th>
-                                <th className="text-center" style={{ minWidth: '140px' }}>Piping Class</th>
-                                <th className="text-center" style={{ minWidth: '130px' }}>Design (P / T)</th>
-                                <th className="text-center" style={{ minWidth: '130px' }}>Operating (P / T)</th>
-                                <th className="text-center" style={{ minWidth: '140px' }}>Test Pressure</th>
-                                <th className="text-center" style={{ width: '100px' }}>Insulation</th>
-                                {canEdit && <th className="text-center" style={{ width: '160px' }}>Aksi</th>}
+                                <th className="text-center" style={{ width: '150px' }}>
+                                    <span className="pcm-th-title">Line Number</span>
+                                </th>
+                                <th style={{ minWidth: '180px' }}>
+                                    <span className="pcm-th-title">Service Name</span>
+                                </th>
+                                <th className="text-center" style={{ width: '90px' }}>
+                                    <span className="pcm-th-title">Fluid</span>
+                                </th>
+                                <th className="text-center" style={{ minWidth: '140px' }}>
+                                    <span className="pcm-th-title">Piping Class</span>
+                                </th>
+                                <th className="text-center" style={{ minWidth: '130px' }}>
+                                    <span className="pcm-th-title">Design (P / T)</span>
+                                </th>
+                                <th className="text-center" style={{ minWidth: '130px' }}>
+                                    <span className="pcm-th-title">Operating (P / T)</span>
+                                </th>
+                                <th className="text-center" style={{ minWidth: '140px' }}>
+                                    <span className="pcm-th-title">Test Pressure</span>
+                                </th>
+                                <th className="text-center" style={{ width: '100px' }}>
+                                    <span className="pcm-th-title">Insulation</span>
+                                </th>
+                                {canEdit && (
+                                    <th className="text-center" style={{ width: '160px' }}>
+                                        <span className="pcm-th-title">Aksi</span>
+                                    </th>
+                                )}
                             </tr>
                         </thead>
                         <tbody>

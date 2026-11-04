@@ -378,6 +378,8 @@ class CrudController extends Controller
         $obj = $model::create($data);
         if ($res === 'joints') {
             $obj->load('inspections');
+        } elseif ($res === 'welding-maps') {
+            $this->syncWeldingMapToJoint($obj);
         }
 
         return response()->json($obj, 201);
@@ -403,6 +405,9 @@ class CrudController extends Controller
         }
 
         $obj->update($data);
+        if ($res === 'welding-maps') {
+            $this->syncWeldingMapToJoint($obj->fresh());
+        }
 
         return response()->json($obj);
     }
@@ -412,9 +417,52 @@ class CrudController extends Controller
         $this->checkWrite($request, $res, 'delete');
         [$model] = $this->resolve($res);
 
-        $this->scope($request, $model::query(), $res)->findOrFail($id)->delete();
+        $obj = $this->scope($request, $model::query(), $res)->findOrFail($id);
+        if ($res === 'welding-maps') {
+            $jointSeq = null;
+            if (preg_match('/(\d+)/', (string) $obj->joint_no, $m)) {
+                $jointSeq = (int) $m[1];
+            }
+            \App\Models\Joint::where('drawing_no', $obj->iso_drawing_no)
+                ->where('spool_no', $obj->spool_no)
+                ->where('seq', $jointSeq)
+                ->delete();
+        }
+        $obj->delete();
 
         return response()->json(['message' => 'OK']);
+    }
+
+    private function syncWeldingMapToJoint(\App\Models\WeldingMap $map): void
+    {
+        $jointSeq = null;
+        if (preg_match('/(\d+)/', (string) $map->joint_no, $m)) {
+            $jointSeq = (int) $m[1];
+        }
+
+        $consDeptId = Department::where('code', 'CONS')->value('id') ?? $map->department_id;
+
+        \App\Models\Joint::updateOrCreate(
+            [
+                'drawing_no' => $map->iso_drawing_no,
+                'spool_no' => $map->spool_no,
+                'seq' => $jointSeq,
+            ],
+            [
+                'line_no' => $map->line_no,
+                'item_a' => $map->mat_a_item,
+                'spec_a' => $map->mat_a_spec,
+                'item_b' => $map->mat_b_item,
+                'spec_b' => $map->mat_b_spec,
+                'size_in' => $map->dia_inch,
+                'shop_field' => $map->location ?: 'Shop',
+                'joint_type' => $map->joint_type ?: 'BW',
+                'method' => 'GTAW+SMAW',
+                'wps' => $map->wps_no,
+                'status' => $map->status ?: 'PLANNED',
+                'department_id' => $consDeptId,
+            ]
+        );
     }
 
     private function isDepartmentScoped(string $res): bool

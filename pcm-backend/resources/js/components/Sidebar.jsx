@@ -42,15 +42,17 @@ export const DEPARTMENT_MENUS = {
     ],
     ENG: [
         'engineering',
-        'line_service',
         'welding_map',
+        'line_service',
         'boq',
         'bom',
         'material_standard',
+        'pipe_standard',
         'document_control'
     ],
     MAT: [
         'material_standard',
+        'pipe_standard',
         'mat_receiving',
         'mat_inspection',
         'mat_storing',
@@ -58,8 +60,8 @@ export const DEPARTMENT_MENUS = {
         'mat_openyard',
         'mat_issuing'
     ],
-    CONS: ['material_standard', 'fabrication', 'erection'],
-    QAQC: ['material_standard', 'qaqc', 'testpackage'],
+    CONS: ['material_standard', 'pipe_standard', 'fabrication', 'erection'],
+    QAQC: ['material_standard', 'pipe_standard', 'qaqc', 'testpackage'],
     HSE: ['hse']
 };
 
@@ -79,18 +81,18 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Input Drawing & Berkas CAD/PDF'
     },
     {
-        id: 'line_service',
-        label: 'Line Service',
-        perm: 'drawing.view',
-        group: 'Engineering',
-        desc: 'Klasifikasi Jalur Pipa & Service'
-    },
-    {
         id: 'welding_map',
         label: 'Welding Map',
         perm: 'drawing.view',
         group: 'Engineering',
         desc: 'Pemetaan Sambungan & Spool'
+    },
+    {
+        id: 'line_service',
+        label: 'Line Service',
+        perm: 'drawing.view',
+        group: 'Engineering',
+        desc: 'Klasifikasi Jalur Pipa & Service'
     },
     {
         id: 'boq',
@@ -112,6 +114,13 @@ export const ROLE_SIDEBAR_MENUS = [
         anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',
         desc: 'Katalog Acuan Standar ASTM'
+    },
+    {
+        id: 'pipe_standard',
+        label: 'Master Diameter & Ketebalan',
+        anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
+        group: 'Engineering',
+        desc: 'Standar Dimensi Pipa ASME B36.10M'
     },
     {
         id: 'document_control',

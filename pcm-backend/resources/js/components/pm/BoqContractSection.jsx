@@ -224,7 +224,8 @@ export function BoqContractSection({ scopes = [], project, user, onReload }) {
                                                 <td className="text-end pe-3">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-outline-primary btn-sm px-2 py-1"
+                                                        className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
+                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                                                         onClick={() => handleOpenModal(s)}
                                                     >
                                                         Edit

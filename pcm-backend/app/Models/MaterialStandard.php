@@ -12,6 +12,8 @@ class MaterialStandard extends Model
         'specification',
         'material_group',
         'rating_class',
+        'rating',
+        'class',
         'schedule',
         'size_range',
         'description',

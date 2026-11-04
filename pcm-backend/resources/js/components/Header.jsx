@@ -6,7 +6,17 @@
 import React from 'react';
 import { ROLE_SIDEBAR_MENUS } from './Sidebar';
 
-export function Header({ activeTab, user, scopeCode, onRefresh, lastRefresh, onSelectTab, onLogout, onGlobalDashboardLocked }) {
+export function Header({
+    activeTab,
+    user,
+    scopeCode,
+    onRefresh,
+    lastRefresh,
+    onSelectTab,
+    onLogout,
+    onGlobalDashboardLocked,
+    isAtRisk = false
+}) {
     const currentMenu = ROLE_SIDEBAR_MENUS.find(m => m.id === activeTab) || ROLE_SIDEBAR_MENUS[0];
 
     return (
@@ -37,31 +47,22 @@ export function Header({ activeTab, user, scopeCode, onRefresh, lastRefresh, onS
                     </nav>
                 </div>
 
-                {/* Top Action: Reload Button (Hitam & Ikon Besar) */}
-                <div className="col-12 col-md-5 d-flex align-items-center justify-content-end gap-2 pt-2 pt-md-0">
+                {/* Top Action: Reload Button (Hanya icon tanpa garis pinggir) */}
+                <div className="col-12 col-md-5 d-flex align-items-center justify-content-end pt-2 pt-md-0">
                     <button
                         type="button"
                         onClick={onRefresh}
-                        className="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center"
-                        style={{
-                            width: '52px',
-                            height: '52px',
-                            padding: 0,
-                            borderRadius: '10px',
-                            color: '#000000',
-                            borderColor: '#64748b',
-                            backgroundColor: '#ffffff'
-                        }}
+                        className="pcm-reload-btn"
                         title={lastRefresh ? `Terakhir update: ${lastRefresh}` : 'Muat data terbaru'}
                         aria-label="Refresh Data"
                     >
                         <svg
                             viewBox="0 0 24 24"
-                            width="36"
-                            height="36"
+                            width="22"
+                            height="22"
                             fill="none"
                             stroke="#000000"
-                            strokeWidth="2.6"
+                            strokeWidth="2.4"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             aria-hidden="true"

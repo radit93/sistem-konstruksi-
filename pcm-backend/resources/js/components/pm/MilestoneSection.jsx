@@ -247,7 +247,7 @@ export function MilestoneSection({ project, user, onToast }) {
                                     const isDone = m.status === 'COMPLETED';
                                     return (
                                         <tr key={m.id}>
-                                            <td className="ps-3 fw-bold font-monospace text-primary">{m.code}</td>
+                                            <td className="ps-3 fw-bold font-monospace text-dark">{m.code}</td>
                                             <td className="fw-semibold text-dark">{m.name}</td>
                                             <td><span className="badge bg-light text-dark border">{m.phase}</span></td>
                                             <td className="text-center font-monospace fw-bold">{m.weight_pct}%</td>
@@ -284,7 +284,8 @@ export function MilestoneSection({ project, user, onToast }) {
                                                     )}
                                                     <button
                                                         type="button"
-                                                        className="btn btn-outline-primary btn-sm px-2 py-1"
+                                                        className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
+                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                                                         onClick={() => handleOpenModal(m)}
                                                     >
                                                         Edit

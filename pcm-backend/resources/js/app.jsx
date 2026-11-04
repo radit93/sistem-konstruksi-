@@ -91,17 +91,20 @@ function App() {
         return (projects || []).find((p) => String(p.id) === String(activeProjectId)) || null;
     }, [projects, activeProjectId]);
 
-    // Bersihkan stale active project di localStorage bila project sudah tidak ada di database
-    useEffect(() => {
-        if (activeProjectId && (!projects.length || !projects.some((p) => String(p.id) === String(activeProjectId)))) {
-            localStorage.removeItem('pcm_active_project_id');
-            setActiveProjectId('');
-        }
-    }, [projects, activeProjectId]);
-
     // Status pemuatan data global, dipakai modul untuk state loading dan error (R-27)
     const [dataLoading, setDataLoading] = useState(false);
     const [dataError, setDataError] = useState('');
+
+    // Bersihkan stale active project di localStorage bila project sudah tidak ada di database setelah load selesai
+    useEffect(() => {
+        if (!dataLoading && projects.length > 0 && activeProjectId) {
+            const exists = projects.some((p) => String(p.id) === String(activeProjectId));
+            if (!exists) {
+                localStorage.removeItem('pcm_active_project_id');
+                setActiveProjectId('');
+            }
+        }
+    }, [projects, activeProjectId, dataLoading]);
 
     // Notifikasi Toast
     const showToast = (msg) => {
@@ -343,6 +346,10 @@ function App() {
                         onGlobalDashboardLocked={() => setActiveTab('overview')}
                         activeProject={activeProject}
                         onSetActiveProject={handleSetActiveProject}
+                        isAtRisk={
+                            (hseLogs || []).some(l => (l.status || '').toLowerCase() === 'open') ||
+                            (overview?.ndt_reject_pct !== undefined && overview?.ndt_reject_pct !== null && overview.ndt_reject_pct > 5)
+                        }
                     />
 
                     {/* Konten Halaman Sesuai Tab Aktif */}
@@ -368,7 +375,7 @@ function App() {
                             }}
                         />
                     )}
-                    {['engineering', 'line_service', 'welding_map', 'boq', 'bom', 'material_standard', 'document_control'].includes(activeTab) && (
+                    {['engineering', 'line_service', 'welding_map', 'boq', 'bom', 'material_standard', 'pipe_standard', 'document_control'].includes(activeTab) && (
                         <EngineeringTab
                             currentSection={activeTab}
                             drawings={drawings}

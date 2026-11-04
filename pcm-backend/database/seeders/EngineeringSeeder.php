@@ -2,17 +2,16 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use App\Models\Project;
-use App\Models\Drawing;
+use App\Models\BillOfMaterial;
 use App\Models\Department;
+use App\Models\DocumentControl;
+use App\Models\Drawing;
+use App\Models\EngineeringBoq;
 use App\Models\LineService;
 use App\Models\MaterialStandard;
+use App\Models\Project;
 use App\Models\WeldingMap;
-use App\Models\BillOfMaterial;
-use App\Models\EngineeringBoq;
-use App\Models\DocumentControl;
+use Illuminate\Database\Seeder;
 
 class EngineeringSeeder extends Seeder
 {
@@ -23,7 +22,22 @@ class EngineeringSeeder extends Seeder
         $proj = Project::first();
         $projId = $proj ? $proj->id : null;
         $drawing = Drawing::where('drawing_no', 'like', '%2428-M-15-MPP-AB%')->first() ?: Drawing::first();
-        $drawingId = $drawing ? $drawing->id : null;
+
+        if (! $drawing) {
+            $drawing = Drawing::updateOrCreate(
+                ['drawing_no' => '2428-M-15-MPP-AB-SHT1'],
+                [
+                    'project_id' => $projId,
+                    'line_no' => '15-MPP-AB',
+                    'area' => 'MPP',
+                    'rev' => '0',
+                    'status' => 'IFC',
+                    'department_id' => $deptId,
+                ]
+            );
+        }
+
+        $drawingId = $drawing->id;
 
         // 1. Line Service
         LineService::firstOrCreate(
@@ -142,6 +156,26 @@ class EngineeringSeeder extends Seeder
                 'size_range' => '2" - 12"',
                 'description' => 'Katup isolasi utama OS&Y Gate Valve.',
             ],
+            [
+                'code' => 'GSK-SW-SS316',
+                'category' => 'Gasket',
+                'specification' => 'Spiral Wound SS316L / Graphite',
+                'material_group' => 'Stainless Steel',
+                'rating_class' => 'Class 150# / 300# RF',
+                'schedule' => 'N/A',
+                'size_range' => '1/2" - 24"',
+                'description' => 'Gasket spiral wound untuk sambungan flange.',
+            ],
+            [
+                'code' => 'FST-A193-B7',
+                'category' => 'Fastener',
+                'specification' => 'ASTM A193 B7 / A194 2H',
+                'material_group' => 'Alloy Steel',
+                'rating_class' => 'Class 150# / 300#',
+                'schedule' => 'N/A',
+                'size_range' => '5/8" - 1-1/2"',
+                'description' => 'Stud bolt dan heavy hex nut untuk flange.',
+            ],
         ];
 
         foreach ($standards as $std) {
@@ -151,11 +185,13 @@ class EngineeringSeeder extends Seeder
             );
         }
 
+        $standardIds = MaterialStandard::query()->pluck('id', 'code');
+
         // 3. Welding Map (28 joint dari drawing 2428-M-15-MPP-AB-SHT1)
         if (WeldingMap::count() === 0) {
             for ($j = 1; $j <= 28; $j++) {
                 $jointNo = sprintf('W-%03d', $j);
-                $spoolNo = 'SP-' . sprintf('%02d', ceil($j / 7));
+                $spoolNo = 'SP-'.sprintf('%02d', ceil($j / 7));
                 $isField = ($j >= 25); // 25..28 field joints, sisanya shop joints
                 $location = $isField ? 'Field' : 'Shop';
 
@@ -188,22 +224,28 @@ class EngineeringSeeder extends Seeder
         }
 
         // 4. Bill of Material (BOM/MTO)
+        $this->call(PipingClassTemplateSeeder::class);
+
         if (BillOfMaterial::count() === 0) {
             $bomItems = [
-                ['spool_no' => 'SP-01', 'item_no' => '1', 'component_type' => 'Pipe', 'description' => 'Pipe Seamless BE ASTM A106 Gr. B', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B', 'qty' => 6.20, 'unit' => 'meter', 'tag_number' => 'P-01'],
-                ['spool_no' => 'SP-01', 'item_no' => '2', 'component_type' => 'Elbow 90 LR', 'description' => 'Elbow 90 Deg Long Radius BW ASTM A234 WPB', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A234 WPB', 'qty' => 2, 'unit' => 'buah', 'tag_number' => 'EL-01'],
-                ['spool_no' => 'SP-01', 'item_no' => '3', 'component_type' => 'Flange WN', 'description' => 'Flange Weld Neck RF Class 150# ASTM A105', 'size' => '4"', 'rating_sch' => '150# Sch 40', 'material_spec' => 'ASTM A105', 'qty' => 1, 'unit' => 'buah', 'tag_number' => 'FL-01'],
-                ['spool_no' => 'SP-02', 'item_no' => '4', 'component_type' => 'Pipe', 'description' => 'Pipe Seamless BE ASTM A106 Gr. B', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B', 'qty' => 8.40, 'unit' => 'meter', 'tag_number' => 'P-02'],
-                ['spool_no' => 'SP-02', 'item_no' => '5', 'component_type' => 'Tee Straight', 'description' => 'Tee Straight Equal BW ASTM A234 WPB', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A234 WPB', 'qty' => 1, 'unit' => 'buah', 'tag_number' => 'T-01'],
-                ['spool_no' => 'SP-03', 'item_no' => '6', 'component_type' => 'Gate Valve', 'description' => 'Gate Valve 150# Flanged RF Cast Steel WCB Trim 8', 'size' => '4"', 'rating_sch' => '150#', 'material_spec' => 'ASTM A216 WCB', 'qty' => 1, 'unit' => 'buah', 'tag_number' => 'V-101'],
-                ['spool_no' => 'SP-03', 'item_no' => '7', 'component_type' => 'Gasket', 'description' => 'Spiral Wound Gasket SS316L/Graphite CS Outer 150#', 'size' => '4"', 'rating_sch' => '150#', 'material_spec' => 'SS316L / Graphite', 'qty' => 2, 'unit' => 'buah', 'tag_number' => 'G-01'],
-                ['spool_no' => 'SP-03', 'item_no' => '8', 'component_type' => 'Stud Bolt', 'description' => 'Stud Bolt with 2 Heavy Hex Nuts 5/8" x 90mm', 'size' => '5/8"', 'rating_sch' => 'L=90mm', 'material_spec' => 'ASTM A193 B7 / A194 2H', 'qty' => 16, 'unit' => 'set', 'tag_number' => 'B-01'],
+                ['spool_no' => 'SP-01', 'item_no' => '1', 'component_type' => 'Pipe', 'description' => 'Pipe Seamless BE ASTM A106 Gr. B', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B', 'material_standard_code' => 'CS-PIPE-A106B', 'qty' => 6.20, 'unit' => 'meter', 'tag_number' => 'P-01'],
+                ['spool_no' => 'SP-01', 'item_no' => '2', 'component_type' => 'Elbow 90 LR', 'description' => 'Elbow 90 Deg Long Radius BW ASTM A234 WPB', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A234 WPB', 'material_standard_code' => 'CS-FIT-A234WPB', 'qty' => 2, 'unit' => 'buah', 'tag_number' => 'EL-01'],
+                ['spool_no' => 'SP-01', 'item_no' => '3', 'component_type' => 'Flange WN', 'description' => 'Flange Weld Neck RF Class 150# ASTM A105', 'size' => '4"', 'rating_sch' => '150# Sch 40', 'material_spec' => 'ASTM A105', 'material_standard_code' => 'CS-FLG-A105', 'qty' => 1, 'unit' => 'buah', 'tag_number' => 'FL-01'],
+                ['spool_no' => 'SP-02', 'item_no' => '4', 'component_type' => 'Pipe', 'description' => 'Pipe Seamless BE ASTM A106 Gr. B', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B', 'material_standard_code' => 'CS-PIPE-A106B', 'qty' => 8.40, 'unit' => 'meter', 'tag_number' => 'P-02'],
+                ['spool_no' => 'SP-02', 'item_no' => '5', 'component_type' => 'Tee Straight', 'description' => 'Tee Straight Equal BW ASTM A234 WPB', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A234 WPB', 'material_standard_code' => 'CS-FIT-A234WPB', 'qty' => 1, 'unit' => 'buah', 'tag_number' => 'T-01'],
+                ['spool_no' => 'SP-03', 'item_no' => '6', 'component_type' => 'Gate Valve', 'description' => 'Gate Valve 150# Flanged RF Cast Steel WCB Trim 8', 'size' => '4"', 'rating_sch' => '150#', 'material_spec' => 'ASTM A216 WCB', 'material_standard_code' => 'VLV-GATE-WCB', 'qty' => 1, 'unit' => 'buah', 'tag_number' => 'V-101'],
+                ['spool_no' => 'SP-03', 'item_no' => '7', 'component_type' => 'Gasket', 'description' => 'Spiral Wound Gasket SS316L/Graphite CS Outer 150#', 'size' => '4"', 'rating_sch' => '150#', 'material_spec' => 'SS316L / Graphite', 'material_standard_code' => 'GSK-SW-SS316', 'qty' => 2, 'unit' => 'buah', 'tag_number' => 'G-01'],
+                ['spool_no' => 'SP-03', 'item_no' => '8', 'component_type' => 'Stud Bolt', 'description' => 'Stud Bolt with 2 Heavy Hex Nuts 5/8" x 90mm', 'size' => '5/8"', 'rating_sch' => 'L=90mm', 'material_spec' => 'ASTM A193 B7 / A194 2H', 'material_standard_code' => 'FST-A193-B7', 'qty' => 16, 'unit' => 'set', 'tag_number' => 'B-01'],
             ];
 
             foreach ($bomItems as $item) {
+                $standardCode = $item['material_standard_code'] ?? null;
+                unset($item['material_standard_code']);
+
                 BillOfMaterial::create(array_merge($item, [
                     'project_id' => $projId,
                     'drawing_id' => $drawingId,
+                    'material_standard_id' => $standardCode ? ($standardIds[$standardCode] ?? null) : null,
                     'department_id' => $deptId,
                 ]));
             }

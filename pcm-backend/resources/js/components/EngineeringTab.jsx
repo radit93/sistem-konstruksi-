@@ -11,6 +11,7 @@ import { WeldingMapSection } from './engineering/WeldingMapSection';
 import { BoqSection } from './engineering/BoqSection';
 import { BomSection } from './engineering/BomSection';
 import { MaterialStandardSection } from './engineering/MaterialStandardSection';
+import { PipeScheduleSection } from './engineering/PipeScheduleSection';
 import { DocumentControlSection } from './engineering/DocumentControlSection';
 
 export const ENG_SUB_TABS = [
@@ -20,6 +21,7 @@ export const ENG_SUB_TABS = [
     { id: 'boq', label: 'Bill of Quantity' },
     { id: 'bom', label: 'Bill of Material' },
     { id: 'material_standard', label: 'Material Standart' },
+    { id: 'pipe_schedule', label: 'Pipe Schedule' },
     { id: 'document_control', label: 'Document Control' },
 ];
 
@@ -768,6 +770,13 @@ export function EngineeringTab({
                 ============================================================ */}
             {activeEngTab === 'material_standard' && (
                 <MaterialStandardSection user={user} onToast={onReload} />
+            )}
+
+            {/* ============================================================
+                MODUL 6B: Master Pipe Schedule (ASME B36.10)
+                ============================================================ */}
+            {activeEngTab === 'pipe_schedule' && (
+                <PipeScheduleSection />
             )}
 
             {/* ============================================================

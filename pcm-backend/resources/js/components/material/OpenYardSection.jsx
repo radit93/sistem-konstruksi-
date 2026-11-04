@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { MaterialReportModal } from './MaterialReportModal';
 
 export function OpenYardSection({ user, onToast }) {
     const [storings, setStorings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+    const [reportType, setReportType] = useState(null);
 
     const canEdit = can(user, 'stock.write');
 
@@ -60,8 +62,24 @@ export function OpenYardSection({ user, onToast }) {
                         Kode WBS 26-00-MAT-004 (FE) / MAT-010 (BE) — Manajemen area terbuka (Laydown Yard): Khusus penyimpanan pipa batangan (*Raw Pipe Lengths* CS & SS), balok penyangga (*dunnage*), dan struktur baja pemipaan.
                     </p>
                 </div>
-                <div className="badge bg-primary px-3 py-2 fs-6">
-                    SOP Yard: Elevasi Dunnage &gt; 150mm &amp; Bevel Cap Terpasang
+                <div className="d-flex flex-wrap align-items-center gap-2">
+                    <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm px-3"
+                        onClick={() => setReportType('stock')}
+                    >
+                        Cetak Stock List
+                    </button>
+                    <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm px-3"
+                        onClick={() => setReportType('location-map')}
+                    >
+                        Mapping Lokasi
+                    </button>
+                    <div className="badge bg-primary px-3 py-2 fs-6">
+                        SOP Yard: Elevasi Dunnage &gt; 150mm &amp; Bevel Cap Terpasang
+                    </div>
                 </div>
             </div>
 
@@ -241,6 +259,15 @@ export function OpenYardSection({ user, onToast }) {
                     </div>
                 </div>
             </div>
+
+            <MaterialReportModal
+                open={Boolean(reportType)}
+                reportType={reportType || 'stock'}
+                initialFilters={reportType === 'location-map'
+                    ? { storage_type: 'OPEN_YARD', search }
+                    : { storage_type: 'OPEN_YARD', search }}
+                onClose={() => setReportType(null)}
+            />
         </div>
     );
 }

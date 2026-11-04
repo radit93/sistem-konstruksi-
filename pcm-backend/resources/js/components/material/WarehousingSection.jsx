@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { MaterialReportModal } from './MaterialReportModal';
 
 export function WarehousingSection({ user, onToast }) {
     const [storings, setStorings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterCategory, setFilterCategory] = useState('ALL');
+    const [reportType, setReportType] = useState(null);
 
     const canEdit = can(user, 'stock.write');
 
@@ -64,8 +66,24 @@ export function WarehousingSection({ user, onToast }) {
                         Kode WBS 26-00-MAT-003 (FE) / MAT-009 (BE) — Manajemen penyimpanan tertutup di dalam gudang: Khusus katup (*Valve*), *Flange*, *Fitting*, baut (*Fasteners*), dan paking (*Gaskets*) dengan proteksi cuaca.
                     </p>
                 </div>
-                <div className="badge bg-success px-3 py-2 fs-6">
-                    SOP Indoor: Kelembaban &lt; 65% Terkendali
+                <div className="d-flex flex-wrap align-items-center gap-2">
+                    <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm px-3"
+                        onClick={() => setReportType('stock')}
+                    >
+                        Cetak Stock List
+                    </button>
+                    <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm px-3"
+                        onClick={() => setReportType('location-map')}
+                    >
+                        Mapping Lokasi
+                    </button>
+                    <div className="badge bg-success px-3 py-2 fs-6">
+                        SOP Indoor: Kelembaban &lt; 65% Terkendali
+                    </div>
                 </div>
             </div>
 
@@ -270,6 +288,15 @@ export function WarehousingSection({ user, onToast }) {
                     </div>
                 </div>
             </div>
+
+            <MaterialReportModal
+                open={Boolean(reportType)}
+                reportType={reportType || 'stock'}
+                initialFilters={reportType === 'location-map'
+                    ? { storage_type: 'WAREHOUSE', search }
+                    : { storage_type: 'WAREHOUSE', search, category: filterCategory }}
+                onClose={() => setReportType(null)}
+            />
         </div>
     );
 }

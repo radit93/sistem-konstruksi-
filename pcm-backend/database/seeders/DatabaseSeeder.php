@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Drawing;
 use App\Models\Department;
+use App\Models\Drawing;
 use App\Models\Joint;
 use App\Models\Project;
 use App\Models\Scope;
@@ -80,6 +80,11 @@ class DatabaseSeeder extends Seeder
                 'department_id' => $departments['PMO'] ?? null,
             ]);
         }
+
+        $this->call([
+            PipeScheduleSeeder::class,
+            PipingClassTemplateSeeder::class,
+        ]);
     }
 
     private function normDate($v): ?string
@@ -88,6 +93,7 @@ class DatabaseSeeder extends Seeder
             return null;
         }
         $d = substr(trim((string) $v), 0, 10);
+
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $d : null;
     }
 }

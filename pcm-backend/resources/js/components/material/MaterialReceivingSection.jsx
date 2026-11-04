@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { MaterialDocumentsModal } from './MaterialDocumentsModal';
+import { MaterialReportModal } from './MaterialReportModal';
 
 export function MaterialReceivingSection({ user, onToast }) {
     const [receivings, setReceivings] = useState([]);
+    const [standards, setStandards] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('ALL');
@@ -13,13 +16,18 @@ export function MaterialReceivingSection({ user, onToast }) {
     const [editingItem, setEditingItem] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
+    const [documentSubject, setDocumentSubject] = useState(null);
+    const [reportOpen, setReportOpen] = useState(false);
 
     const [form, setForm] = useState({
         arrival_date: new Date().toISOString().split('T')[0],
         shipment_no: '',
+        line_no: '',
         po_no: '',
         vendor: '',
         item_name: '',
+        category: 'PIPE',
+        material_standard_id: '',
         description: '',
         specification: 'ASTM A106 Gr. B',
         size: '4"',
@@ -28,9 +36,9 @@ export function MaterialReceivingSection({ user, onToast }) {
         mtc_no: '',
         qty: 1,
         unit: 'meter',
+        packing_type: '',
         storage_type: 'OPEN_YARD',
         storage_location: 'Laydown Yard Bay 01',
-        status: 'RECEIVED',
         remarks: ''
     });
 
@@ -52,10 +60,24 @@ export function MaterialReceivingSection({ user, onToast }) {
         loadData();
     }, [loadData]);
 
+    useEffect(() => {
+        let active = true;
+
+        api.get('/material-standards')
+            .then((data) => {
+                if (active) setStandards(Array.isArray(data) ? data : []);
+            })
+            .catch((err) => console.error('Failed to load material standards:', err));
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
     const stats = useMemo(() => {
         const total = receivings.length;
         const accepted = receivings.filter(r => r.status === 'ACCEPTED').length;
-        const pending = receivings.filter(r => r.status === 'RECEIVED' || r.status === 'INSPECTED').length;
+        const pending = receivings.filter(r => r.status === 'RECEIVED' || r.status === 'REQUESTED' || r.status === 'INSPECTED').length;
         const openYardCount = receivings.filter(r => r.storage_type === 'OPEN_YARD').length;
         const warehouseCount = receivings.filter(r => r.storage_type === 'WAREHOUSE').length;
         return { total, accepted, pending, openYardCount, warehouseCount };
@@ -70,6 +92,7 @@ export function MaterialReceivingSection({ user, onToast }) {
                 (r.vendor || '').toLowerCase().includes(q) ||
                 (r.item_name || '').toLowerCase().includes(q) ||
                 (r.specification || '').toLowerCase().includes(q) ||
+                (r.material_standard?.code || '').toLowerCase().includes(q) ||
                 (r.heat_no || '').toLowerCase().includes(q) ||
                 (r.mtc_no || '').toLowerCase().includes(q);
 
@@ -86,9 +109,12 @@ export function MaterialReceivingSection({ user, onToast }) {
             setForm({
                 arrival_date: item.arrival_date || '',
                 shipment_no: item.shipment_no || '',
+                line_no: item.line_no || '',
                 po_no: item.po_no || '',
                 vendor: item.vendor || '',
                 item_name: item.item_name || '',
+                category: item.category || 'PIPE',
+                material_standard_id: item.material_standard_id || '',
                 description: item.description || '',
                 specification: item.specification || '',
                 size: item.size || '',
@@ -97,9 +123,9 @@ export function MaterialReceivingSection({ user, onToast }) {
                 mtc_no: item.mtc_no || '',
                 qty: item.qty || 1,
                 unit: item.unit || 'meter',
+                packing_type: item.packing_type || '',
                 storage_type: item.storage_type || 'OPEN_YARD',
                 storage_location: item.storage_location || '',
-                status: item.status || 'RECEIVED',
                 remarks: item.remarks || ''
             });
         } else {
@@ -107,9 +133,12 @@ export function MaterialReceivingSection({ user, onToast }) {
             setForm({
                 arrival_date: new Date().toISOString().split('T')[0],
                 shipment_no: `SJ-${Date.now().toString().slice(-4)}`,
+                line_no: '',
                 po_no: 'PO-2428-MAT-001',
                 vendor: '',
                 item_name: '',
+                category: 'PIPE',
+                material_standard_id: '',
                 description: '',
                 specification: 'ASTM A106 Gr. B',
                 size: '4"',
@@ -118,9 +147,9 @@ export function MaterialReceivingSection({ user, onToast }) {
                 mtc_no: '',
                 qty: 1,
                 unit: 'meter',
+                packing_type: '',
                 storage_type: 'OPEN_YARD',
                 storage_location: 'Laydown Yard Bay 01',
-                status: 'RECEIVED',
                 remarks: ''
             });
         }
@@ -133,16 +162,43 @@ export function MaterialReceivingSection({ user, onToast }) {
         setFormError('');
     };
 
+    const handleStandardChange = (standardId) => {
+        const standard = standards.find((item) => String(item.id) === String(standardId));
+
+        if (!standard) {
+            setForm((prev) => ({ ...prev, material_standard_id: '' }));
+            return;
+        }
+
+        const isPipe = (standard.category || '').toLowerCase() === 'pipe';
+
+        setForm((prev) => ({
+            ...prev,
+            material_standard_id: standard.id,
+            category: (standard.category || prev.category).toUpperCase(),
+            specification: standard.specification || prev.specification,
+            schedule_rating: standard.schedule && !standard.schedule.includes('/')
+                ? standard.schedule
+                : prev.schedule_rating,
+            unit: isPipe ? 'meter' : (prev.unit === 'meter' ? 'pcs' : prev.unit),
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormLoading(true);
         setFormError('');
 
+        const payload = {
+            ...form,
+            material_standard_id: form.material_standard_id || null,
+        };
+
         try {
             if (editingItem) {
-                await api.put(`/material-receivings/${editingItem.id}`, form);
+                await api.put(`/material-receivings/${editingItem.id}`, payload);
             } else {
-                await api.post('/material-receivings', form);
+                await api.post('/material-receivings', payload);
             }
             handleCloseModal();
             loadData();
@@ -165,6 +221,16 @@ export function MaterialReceivingSection({ user, onToast }) {
         }
     };
 
+    const handleRequestInspection = async (id) => {
+        try {
+            await api.post(`/material-receivings/${id}/request-inspection`, {});
+            loadData();
+            if (onToast) onToast();
+        } catch (err) {
+            alert('Gagal meminta inspeksi: ' + err.message);
+        }
+    };
+
     return (
         <div className="section-material-receiving">
             {/* Header Title & Subtitle */}
@@ -177,16 +243,25 @@ export function MaterialReceivingSection({ user, onToast }) {
                         Kode WBS 26-00-MAT-000 (FE) / MAT-006 (BE) — Penerimaan material dari vendor, verifikasi Surat Jalan, Packing List, Heat Number, dan Mill Test Certificate (MTC).
                     </p>
                 </div>
-                {canEdit && (
+                <div className="d-flex flex-wrap gap-2">
                     <button
                         type="button"
-                        className="btn btn-primary px-3 py-2"
-                        onClick={() => handleOpenModal()}
-                        style={{ backgroundColor: '#1d4ed8', borderColor: '#1d4ed8', fontWeight: 600 }}
+                        className="btn btn-outline-primary px-3 py-2"
+                        onClick={() => setReportOpen(true)}
                     >
-                        + Catat Material Masuk
+                        Cetak Laporan
                     </button>
-                )}
+                    {canEdit && (
+                        <button
+                            type="button"
+                            className="btn btn-primary px-3 py-2"
+                            onClick={() => handleOpenModal()}
+                            style={{ backgroundColor: '#1d4ed8', borderColor: '#1d4ed8', fontWeight: 600 }}
+                        >
+                            + Catat Material Masuk
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Metric KPI Cards */}
@@ -259,10 +334,12 @@ export function MaterialReceivingSection({ user, onToast }) {
                                 onChange={(e) => setFilterStatus(e.target.value)}
                             >
                                 <option value="ALL">Semua Status QC</option>
-                                <option value="ACCEPTED">ACCEPTED (Lolos)</option>
                                 <option value="RECEIVED">RECEIVED (Baru Tiba)</option>
-                                <option value="INSPECTED">INSPECTED (Proses)</option>
+                                <option value="REQUESTED">REQUESTED (Menunggu QC)</option>
+                                <option value="ACCEPTED">ACCEPTED (Lolos)</option>
+                                <option value="HOLD">HOLD (Ditahan)</option>
                                 <option value="REJECTED">REJECTED (NCR)</option>
+                                <option value="INSPECTED">INSPECTED (Legacy)</option>
                             </select>
                         </div>
                         <div className="col-6 col-md-2">
@@ -325,10 +402,14 @@ export function MaterialReceivingSection({ user, onToast }) {
                                             <td>
                                                 <div className="fw-bold text-dark">{item.shipment_no}</div>
                                                 <div className="text-muted small">{item.po_no}</div>
+                                                {item.line_no && (
+                                                    <div className="text-muted small font-monospace">Line {item.line_no}</div>
+                                                )}
                                             </td>
                                             <td className="text-nowrap">{item.vendor}</td>
                                             <td>
                                                 <div className="fw-semibold text-dark">{item.item_name}</div>
+                                                <div className="text-muted small">{item.category || 'PIPE'}</div>
                                                 <div className="text-muted small text-truncate" style={{ maxWidth: '240px' }} title={item.description}>
                                                     {item.description}
                                                 </div>
@@ -337,9 +418,17 @@ export function MaterialReceivingSection({ user, onToast }) {
                                                 <span className="badge bg-light text-dark border">
                                                     {item.specification}
                                                 </span>
+                                                {item.material_standard?.code && (
+                                                    <div className="text-muted small font-monospace mt-1">
+                                                        {item.material_standard.code}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="text-nowrap">
                                                 {item.size} {item.schedule_rating ? `(${item.schedule_rating})` : ''}
+                                                {item.packing_type && (
+                                                    <div className="text-muted small">Packing: {item.packing_type}</div>
+                                                )}
                                             </td>
                                             <td className="text-center">
                                                 <span className="badge bg-secondary font-monospace">
@@ -364,13 +453,30 @@ export function MaterialReceivingSection({ user, onToast }) {
                                                 <span className={`badge ${
                                                     item.status === 'ACCEPTED' ? 'bg-success' :
                                                     item.status === 'REJECTED' ? 'bg-danger' :
-                                                    item.status === 'INSPECTED' ? 'bg-info text-dark' : 'bg-warning text-dark'
+                                                    item.status === 'REQUESTED' || item.status === 'INSPECTED' ? 'bg-info text-dark' :
+                                                    item.status === 'HOLD' ? 'bg-warning text-dark' : 'bg-secondary'
                                                 }`}>
                                                     {item.status}
                                                 </span>
                                             </td>
                                             {canEdit && (
                                                 <td className="px-3 text-end text-nowrap">
+                                                    {['RECEIVED', 'HOLD', 'REJECTED'].includes(item.status) && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                                                            onClick={() => handleRequestInspection(item.id)}
+                                                        >
+                                                            Minta Inspeksi
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                                                        onClick={() => setDocumentSubject(item)}
+                                                    >
+                                                        Dokumen {item.documents?.length ? `(${item.documents.length})` : ''}
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         className="btn btn-sm btn-outline-secondary me-1 py-1 px-2"
@@ -378,13 +484,15 @@ export function MaterialReceivingSection({ user, onToast }) {
                                                     >
                                                         Edit
                                                     </button>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-outline-danger py-1 px-2"
-                                                        onClick={() => handleDelete(item.id)}
-                                                    >
-                                                        Hapus
-                                                    </button>
+                                                    {!item.storing && !(item.inspections || []).length && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-danger py-1 px-2"
+                                                            onClick={() => handleDelete(item.id)}
+                                                        >
+                                                            Hapus
+                                                        </button>
+                                                    )}
                                                 </td>
                                             )}
                                         </tr>
@@ -414,6 +522,12 @@ export function MaterialReceivingSection({ user, onToast }) {
                                             {formError}
                                         </div>
                                     )}
+                                    {editingItem?.storing && (
+                                        <div className="alert alert-info py-2 mb-3 small">
+                                            Stok lot sudah dibuat. Qty, spesifikasi, heat, dan lokasi tidak dapat diubah dari form ini;
+                                            gunakan transfer atau koreksi stok.
+                                        </div>
+                                    )}
 
                                     <div className="row g-3">
                                         <div className="col-12 col-md-4">
@@ -427,7 +541,7 @@ export function MaterialReceivingSection({ user, onToast }) {
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-semibold text-secondary">No. Surat Jalan / Shipment</label>
+                                            <label className="form-label small fw-semibold text-secondary">No. Paket / Surat Jalan (Package No)</label>
                                             <input
                                                 type="text"
                                                 className="form-control"
@@ -437,6 +551,17 @@ export function MaterialReceivingSection({ user, onToast }) {
                                                 onChange={(e) => setForm({ ...form, shipment_no: e.target.value })}
                                             />
                                         </div>
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label small fw-semibold text-secondary">Line No / Item Line</label>
+                                            <input
+                                                type="text"
+                                                className="form-control font-monospace"
+                                                placeholder="Contoh: 15-MPP-AB / Line 01"
+                                                value={form.line_no}
+                                                onChange={(e) => setForm({ ...form, line_no: e.target.value })}
+                                            />
+                                        </div>
+
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Nomor PO Proyek</label>
                                             <input
@@ -448,8 +573,7 @@ export function MaterialReceivingSection({ user, onToast }) {
                                                 onChange={(e) => setForm({ ...form, po_no: e.target.value })}
                                             />
                                         </div>
-
-                                        <div className="col-12 col-md-6">
+                                        <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Vendor / Supplier</label>
                                             <input
                                                 type="text"
@@ -460,6 +584,43 @@ export function MaterialReceivingSection({ user, onToast }) {
                                                 onChange={(e) => setForm({ ...form, vendor: e.target.value })}
                                             />
                                         </div>
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label small fw-semibold text-secondary">Kategori Material</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.category}
+                                                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                                            >
+                                                <option value="PIPE">PIPE</option>
+                                                <option value="FITTING">FITTING</option>
+                                                <option value="FLANGE">FLANGE</option>
+                                                <option value="VALVE">VALVE</option>
+                                                <option value="GASKET">GASKET</option>
+                                                <option value="FASTENER">FASTENER</option>
+                                                <option value="CONSUMABLE">CONSUMABLE</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="col-12">
+                                            <label className="form-label small fw-semibold text-secondary">Kode Standar Material</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.material_standard_id}
+                                                onChange={(e) => handleStandardChange(e.target.value)}
+                                                disabled={Boolean(editingItem?.storing)}
+                                            >
+                                                <option value="">Tanpa kode standar (cocokkan via teks)</option>
+                                                {standards.map((standard) => (
+                                                    <option key={standard.id} value={standard.id}>
+                                                        {standard.code} — {standard.specification} ({standard.category})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="form-text">
+                                                Pilih kode dari katalog Engineering agar receiving ini ikut terhitung di dashboard kebutuhan material.
+                                            </div>
+                                        </div>
+
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Nama Item Material</label>
                                             <input
@@ -472,7 +633,7 @@ export function MaterialReceivingSection({ user, onToast }) {
                                             />
                                         </div>
 
-                                        <div className="col-12">
+                                        <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Deskripsi Lengkap Item</label>
                                             <input
                                                 type="text"
@@ -588,17 +749,14 @@ export function MaterialReceivingSection({ user, onToast }) {
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-semibold text-secondary">Status QC</label>
-                                            <select
-                                                className="form-select"
-                                                value={form.status}
-                                                onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                            >
-                                                <option value="RECEIVED">RECEIVED (Baru Tiba)</option>
-                                                <option value="INSPECTED">INSPECTED (Sedang Diperiksa)</option>
-                                                <option value="ACCEPTED">ACCEPTED (Lolos QC)</option>
-                                                <option value="REJECTED">REJECTED (Karantina / NCR)</option>
-                                            </select>
+                                            <label className="form-label small fw-semibold text-secondary">Packing Type</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Bundle, loose, crate, pallet"
+                                                value={form.packing_type}
+                                                onChange={(e) => setForm({ ...form, packing_type: e.target.value })}
+                                            />
                                         </div>
 
                                         <div className="col-12">
@@ -631,6 +789,25 @@ export function MaterialReceivingSection({ user, onToast }) {
                     </div>
                 </div>
             )}
+
+            <MaterialDocumentsModal
+                open={Boolean(documentSubject)}
+                subjectType="receiving"
+                subject={documentSubject}
+                canEdit={canEdit}
+                onClose={() => setDocumentSubject(null)}
+                onChanged={loadData}
+            />
+
+            <MaterialReportModal
+                open={reportOpen}
+                reportType="receiving"
+                initialFilters={{
+                    search,
+                    status: filterStatus,
+                }}
+                onClose={() => setReportOpen(false)}
+            />
         </div>
     );
 }

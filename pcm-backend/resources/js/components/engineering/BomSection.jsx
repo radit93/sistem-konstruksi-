@@ -4,12 +4,31 @@ import { can } from '../../auth';
 
 export function BomSection({ user, projects = [], drawings = [], onToast }) {
     const [bomList, setBomList] = useState([]);
+    const [standards, setStandards] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterSpool, setFilterSpool] = useState('ALL');
     const [filterType, setFilterType] = useState('ALL');
     const [showModal, setShowModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
+    const [generating, setGenerating] = useState(false);
+    const [selectedGenDrawingId, setSelectedGenDrawingId] = useState('');
+    const [showGenModal, setShowGenModal] = useState(false);
+    const [showClassModal, setShowClassModal] = useState(false);
+    const [templates, setTemplates] = useState([]);
+    const [templateLoading, setTemplateLoading] = useState(false);
+    const [templateError, setTemplateError] = useState('');
+    const [templateForm, setTemplateForm] = useState({
+        piping_class: 'A1A',
+        component_type: 'Pipe',
+        description: '',
+        default_rating_sch: '',
+        material_spec: '',
+        material_standard_id: '',
+        unit: 'buah',
+        ratio_formula: 1,
+        basis: 'PER_JOINT',
+    });
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
 
@@ -21,6 +40,7 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
         size: '4"',
         rating_sch: 'Sch 40',
         material_spec: 'ASTM A106 Gr. B',
+        material_standard_id: '',
         qty: 6.0,
         unit: 'meter',
         tag_number: '',
@@ -46,6 +66,20 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
         loadData();
     }, [loadData]);
 
+    useEffect(() => {
+        let active = true;
+
+        api.get('/material-standards')
+            .then((data) => {
+                if (active) setStandards(Array.isArray(data) ? data : []);
+            })
+            .catch((err) => console.error('Failed to load material standards:', err));
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
     const spoolOptions = useMemo(() => {
         return Array.from(new Set(bomList.map(b => b.spool_no).filter(Boolean))).sort();
     }, [bomList]);
@@ -53,6 +87,12 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
     const typeOptions = useMemo(() => {
         return Array.from(new Set(bomList.map(b => b.component_type).filter(Boolean))).sort();
     }, [bomList]);
+
+    const bomDrawingOptions = useMemo(() => {
+        if (!form.project_id) return drawings;
+
+        return drawings.filter((drawing) => String(drawing.project_id) === String(form.project_id));
+    }, [drawings, form.project_id]);
 
     const stats = useMemo(() => {
         const totalItems = bomList.length;
@@ -77,6 +117,7 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                 (b.description || '').toLowerCase().includes(q) ||
                 (b.component_type || '').toLowerCase().includes(q) ||
                 (b.material_spec || '').toLowerCase().includes(q) ||
+                (b.material_standard?.code || '').toLowerCase().includes(q) ||
                 (b.spool_no || '').toLowerCase().includes(q) ||
                 (b.tag_number || '').toLowerCase().includes(q);
             return matchSpool && matchType && matchSearch;
@@ -95,6 +136,7 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                 size: item.size || '4"',
                 rating_sch: item.rating_sch || 'Sch 40',
                 material_spec: item.material_spec || 'ASTM A106 Gr. B',
+                material_standard_id: item.material_standard_id || '',
                 qty: item.qty || 1,
                 unit: item.unit || 'meter',
                 tag_number: item.tag_number || '',
@@ -111,6 +153,7 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                 size: '4"',
                 rating_sch: 'Sch 40',
                 material_spec: 'ASTM A106 Gr. B',
+                material_standard_id: '',
                 qty: 6.0,
                 unit: 'meter',
                 tag_number: '',
@@ -121,6 +164,24 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
         setShowModal(true);
     };
 
+    const handleStandardChange = (standardId) => {
+        const standard = standards.find((item) => String(item.id) === String(standardId));
+
+        if (!standard) {
+            setForm((prev) => ({ ...prev, material_standard_id: '' }));
+            return;
+        }
+
+        setForm((prev) => ({
+            ...prev,
+            material_standard_id: standard.id,
+            material_spec: standard.specification || prev.material_spec,
+            rating_sch: standard.schedule && !standard.schedule.includes('/')
+                ? standard.schedule
+                : prev.rating_sch,
+        }));
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
         setFormError('');
@@ -129,13 +190,20 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
             return;
         }
 
+        const payload = {
+            ...form,
+            material_standard_id: form.material_standard_id || null,
+            drawing_id: form.drawing_id || null,
+            project_id: form.project_id || null,
+        };
+
         setFormLoading(true);
         try {
             if (editingItem) {
-                await api.put(`/bill-of-materials/${editingItem.id}`, form);
+                await api.put(`/bill-of-materials/${editingItem.id}`, payload);
                 if (onToast) onToast('Item BOM / MTO berhasil diperbarui.');
             } else {
-                await api.post('/bill-of-materials', form);
+                await api.post('/bill-of-materials', payload);
                 if (onToast) onToast('Item BOM / MTO baru berhasil ditambahkan.');
             }
             setShowModal(false);
@@ -150,12 +218,83 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
     const handleDelete = async (id) => {
         if (!window.confirm('Hapus item material ini dari BOM?')) return;
         try {
-            await api.delete(`/bill-of-materials/${id}`);
+            await api.del(`/bill-of-materials/${id}`);
             if (onToast) onToast('Item BOM berhasil dihapus.');
             loadData();
         } catch (err) {
             alert(err.message || 'Gagal menghapus data.');
         }
+    };
+
+    const handleGenerateBom = async (e) => {
+        e.preventDefault();
+        if (!selectedGenDrawingId) {
+            alert('Pilih isometrik drawing terlebih dahulu.');
+            return;
+        }
+        setGenerating(true);
+        try {
+            const res = await api.post(`/drawings/${selectedGenDrawingId}/generate-bom`, {});
+            if (onToast) onToast(res.message || 'BOM berhasil digenerate otomatis.');
+            setShowGenModal(false);
+            loadData();
+        } catch (err) {
+            alert(err.message || 'Gagal generate BOM otomatis.');
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const loadTemplates = useCallback(async () => {
+        setTemplateLoading(true);
+        try {
+            const data = await api.get('/piping-class-templates');
+            setTemplates(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load piping class templates:', err);
+        } finally {
+            setTemplateLoading(false);
+        }
+    }, []);
+
+    const handleSaveTemplate = async (e) => {
+        e.preventDefault();
+        setTemplateError('');
+
+        if (!templateForm.piping_class.trim() || !templateForm.component_type.trim() || !templateForm.description.trim()) {
+            setTemplateError('Piping class, tipe komponen, dan deskripsi wajib diisi.');
+            return;
+        }
+
+        try {
+            await api.post('/piping-class-templates', {
+                ...templateForm,
+                material_standard_id: templateForm.material_standard_id || null,
+                ratio_formula: parseFloat(templateForm.ratio_formula) || 0,
+            });
+            if (onToast) onToast('Template komponen piping class berhasil ditambahkan.');
+            setTemplateForm((prev) => ({ ...prev, description: '', material_spec: '', default_rating_sch: '' }));
+            loadTemplates();
+        } catch (err) {
+            setTemplateError(err.message || 'Gagal menyimpan template komponen.');
+        }
+    };
+
+    const handleDeleteTemplate = async (id) => {
+        if (!window.confirm('Hapus template komponen ini dari piping class?')) return;
+        try {
+            await api.del(`/piping-class-templates/${id}`);
+            if (onToast) onToast('Template komponen berhasil dihapus.');
+            loadTemplates();
+        } catch (err) {
+            alert(err.message || 'Gagal menghapus template komponen.');
+        }
+    };
+
+    const handleOpenClassModal = () => {
+        setTemplateError('');
+        setShowClassModal(true);
+        loadTemplates();
     };
 
     return (
@@ -169,14 +308,35 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                     </p>
                 </div>
                 {canEdit && (
-                    <button
-                        type="button"
-                        className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                        style={{ borderRadius: '6px' }}
-                        onClick={() => handleOpenModal()}
-                    >
-                        + Tambah Item BOM
-                    </button>
+                    <div className="d-flex gap-2">
+                        <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm fw-bold px-3 py-2"
+                            style={{ borderRadius: '6px' }}
+                            onClick={handleOpenClassModal}
+                        >
+                            Master Piping Class
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-outline-success btn-sm fw-bold px-3 py-2"
+                            style={{ borderRadius: '6px' }}
+                            onClick={() => {
+                                setSelectedGenDrawingId(drawings[0]?.id || '');
+                                setShowGenModal(true);
+                            }}
+                        >
+                            ⚡ Generate BOM Otomatis
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-primary btn-sm fw-bold px-3 py-2"
+                            style={{ borderRadius: '6px' }}
+                            onClick={() => handleOpenModal()}
+                        >
+                            + Tambah Item BOM
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -257,7 +417,9 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                                 <th className="py-3">Size</th>
                                 <th className="py-3">Sch / Rating</th>
                                 <th className="py-3">Material Spec</th>
+                                <th className="py-3">Kode Std</th>
                                 <th className="py-3">Qty</th>
+                                <th className="py-3">Berat</th>
                                 <th className="py-3">Tag No</th>
                                 {canEdit && <th className="text-end pe-3 py-3">Aksi</th>}
                             </tr>
@@ -265,13 +427,13 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 10 : 9} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 text-muted">
                                         Memuat data Bill of Material...
                                     </td>
                                 </tr>
                             ) : filteredBom.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 10 : 9} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 text-muted">
                                         Tidak ada item BOM yang sesuai.
                                     </td>
                                 </tr>
@@ -279,13 +441,46 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                                 filteredBom.map((b) => (
                                     <tr key={b.id}>
                                         <td className="ps-3 font-monospace text-muted">{b.item_no}</td>
-                                        <td><span className="badge bg-light text-dark border font-monospace">{b.spool_no || '—'}</span></td>
-                                        <td><span className="badge bg-secondary">{b.component_type}</span></td>
+                                        <td>
+                                            <span className="badge bg-light text-dark border font-monospace">{b.spool_no || '—'}</span>
+                                            {b.drawing?.drawing_no && (
+                                                <div className="text-muted small font-monospace mt-1">{b.drawing.drawing_no}</div>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <span className="badge bg-secondary">{b.component_type}</span>
+                                            {b.source === 'GENERATED' && (
+                                                <span className="badge bg-info text-dark ms-1" title="Dihasilkan otomatis dari piping class">
+                                                    Auto
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="fw-semibold">{b.description}</td>
                                         <td className="font-monospace">{b.size}</td>
                                         <td>{b.rating_sch || '—'}</td>
                                         <td className="small">{b.material_spec}</td>
+                                        <td>
+                                            {b.material_standard?.code ? (
+                                                <span className="badge bg-light text-dark border font-monospace">{b.material_standard.code}</span>
+                                            ) : (
+                                                <span className="text-muted small">—</span>
+                                            )}
+                                        </td>
                                         <td className="fw-bold text-primary">{parseFloat(b.qty).toFixed(1)} {b.unit}</td>
+                                        <td className="text-nowrap">
+                                            {b.weight_kg != null ? (
+                                                <>
+                                                    <span className="fw-semibold">{parseFloat(b.weight_kg).toFixed(2)} kg</span>
+                                                    {b.od_mm != null && b.wall_mm != null && (
+                                                        <div className="text-muted small font-monospace">
+                                                            Ø{b.od_mm} × {b.wall_mm} mm
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <span className="text-muted small">—</span>
+                                            )}
+                                        </td>
                                         <td className="font-monospace small">{b.tag_number || '—'}</td>
                                         {canEdit && (
                                             <td className="text-end pe-3">
@@ -313,6 +508,245 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                 </div>
             </div>
 
+            {/* Modal Master Piping Class */}
+            {showClassModal && (
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+                    <div className="modal-dialog modal-dialog-centered modal-xl">
+                        <div className="modal-content border-0 shadow">
+                            <div className="modal-header">
+                                <div>
+                                    <h5 className="modal-title fw-bold">Master Komponen Piping Class</h5>
+                                    <div className="text-muted small">
+                                        Template ini menjadi dasar perhitungan otomatis BOM/MTO dari isometrik drawing.
+                                    </div>
+                                </div>
+                                <button type="button" className="btn-close" onClick={() => setShowClassModal(false)}></button>
+                            </div>
+                            <div className="modal-body">
+                                {templateError && (
+                                    <div className="alert alert-danger py-2 small mb-3">{templateError}</div>
+                                )}
+
+                                <form onSubmit={handleSaveTemplate} className="row g-2 align-items-end mb-4">
+                                    <div className="col-6 col-md-2">
+                                        <label className="form-label small fw-bold mb-1">Piping Class *</label>
+                                        <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            placeholder="A1A"
+                                            value={templateForm.piping_class}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, piping_class: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-6 col-md-3">
+                                        <label className="form-label small fw-bold mb-1">Tipe Komponen *</label>
+                                        <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            placeholder="Elbow 90 LR"
+                                            value={templateForm.component_type}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, component_type: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-4">
+                                        <label className="form-label small fw-bold mb-1">Deskripsi *</label>
+                                        <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            placeholder="Elbow 90 Deg Long Radius BW ASTM A234 WPB"
+                                            value={templateForm.description}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="col-6 col-md-2">
+                                        <label className="form-label small fw-bold mb-1">Rating / Sch</label>
+                                        <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            placeholder="Sch 40"
+                                            value={templateForm.default_rating_sch}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, default_rating_sch: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="col-6 col-md-3">
+                                        <label className="form-label small fw-bold mb-1">Material Spec</label>
+                                        <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            placeholder="ASTM A234 WPB"
+                                            value={templateForm.material_spec}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, material_spec: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="col-12 col-md-3">
+                                        <label className="form-label small fw-bold mb-1">Kode Standar Material</label>
+                                        <select
+                                            className="form-select form-select-sm"
+                                            value={templateForm.material_standard_id}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, material_standard_id: e.target.value })}
+                                        >
+                                            <option value="">Tanpa kode standar</option>
+                                            {standards.map((standard) => (
+                                                <option key={standard.id} value={standard.id}>
+                                                    {standard.code}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-6 col-md-2">
+                                        <label className="form-label small fw-bold mb-1">Satuan</label>
+                                        <select
+                                            className="form-select form-select-sm"
+                                            value={templateForm.unit}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, unit: e.target.value })}
+                                        >
+                                            <option value="meter">meter</option>
+                                            <option value="buah">buah</option>
+                                            <option value="set">set</option>
+                                            <option value="kg">kg</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-6 col-md-2">
+                                        <label className="form-label small fw-bold mb-1">Basis Hitung</label>
+                                        <select
+                                            className="form-select form-select-sm"
+                                            value={templateForm.basis}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, basis: e.target.value })}
+                                        >
+                                            <option value="PER_JOINT">Per Joint</option>
+                                            <option value="PER_DI">Per Dia-Inch</option>
+                                            <option value="FIXED">Fixed</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-6 col-md-2">
+                                        <label className="form-label small fw-bold mb-1">Rasio</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            className="form-control form-control-sm"
+                                            value={templateForm.ratio_formula}
+                                            onChange={(e) => setTemplateForm({ ...templateForm, ratio_formula: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="col-6 col-md-2">
+                                        <button type="submit" className="btn btn-primary btn-sm fw-bold w-100">
+                                            + Tambah
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <div className="table-responsive" style={{ maxHeight: '320px' }}>
+                                    <table className="table table-sm table-hover align-middle mb-0" style={{ fontSize: '0.82rem' }}>
+                                        <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.7rem' }}>
+                                            <tr>
+                                                <th>Class</th>
+                                                <th>Komponen</th>
+                                                <th>Deskripsi</th>
+                                                <th>Sch / Rating</th>
+                                                <th>Material</th>
+                                                <th>Unit</th>
+                                                <th>Basis</th>
+                                                <th>Rasio</th>
+                                                <th className="text-end">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {templateLoading ? (
+                                                <tr>
+                                                    <td colSpan={9} className="text-center py-3 text-muted">Memuat template...</td>
+                                                </tr>
+                                            ) : templates.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={9} className="text-center py-3 text-muted">
+                                                        Belum ada template. Tambahkan komponen di atas agar generate BOM memakai master ini.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                templates.map((template) => (
+                                                    <tr key={template.id}>
+                                                        <td className="font-monospace fw-semibold">{template.piping_class}</td>
+                                                        <td>{template.component_type}</td>
+                                                        <td className="small">{template.description}</td>
+                                                        <td className="small">{template.default_rating_sch || '—'}</td>
+                                                        <td className="small">{template.material_spec || '—'}</td>
+                                                        <td>{template.unit}</td>
+                                                        <td className="small">{template.basis}</td>
+                                                        <td>{parseFloat(template.ratio_formula).toFixed(2)}</td>
+                                                        <td className="text-end">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-outline-danger btn-sm px-2 py-1"
+                                                                onClick={() => handleDeleteTemplate(template.id)}
+                                                            >
+                                                                Hapus
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowClassModal(false)}>
+                                    Tutup
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Generate BOM Otomatis */}
+            {showGenModal && (
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow">
+                            <form onSubmit={handleGenerateBom}>
+                                <div className="modal-header">
+                                    <h5 className="modal-title fw-bold">Generate BOM Otomatis dari Drawing</h5>
+                                    <button type="button" className="btn-close" onClick={() => setShowGenModal(false)}></button>
+                                </div>
+                                <div className="modal-body">
+                                    <p className="text-muted small">
+                                        Sistem akan membaca nomor line dan piping class dari isometrik drawing yang dipilih, lalu menghitung kuantitas material (MTO) berdasarkan spesifikasi kelas pipa dan ukuran drawing.
+                                    </p>
+                                    <div className="mb-3">
+                                        <label className="form-label small fw-bold">Pilih Isometrik Drawing *</label>
+                                        <select
+                                            className="form-select"
+                                            value={selectedGenDrawingId}
+                                            onChange={(e) => setSelectedGenDrawingId(e.target.value)}
+                                            required
+                                        >
+                                            <option value="">-- Pilih Drawing --</option>
+                                            {drawings.map((d) => (
+                                                <option key={d.id} value={d.id}>
+                                                    {d.drawing_no} ({d.line_no || 'Tanpa Line'} - {d.size_range || 'Size N/A'})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowGenModal(false)}>
+                                        Batal
+                                    </button>
+                                    <button type="submit" className="btn btn-success btn-sm fw-bold" disabled={generating}>
+                                        {generating ? 'Memproses MTO...' : 'Generate MTO Sekarang'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal Add / Edit */}
             {showModal && (
                 <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
@@ -330,6 +764,42 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                                         <div className="alert alert-danger py-2 small mb-3">{formError}</div>
                                     )}
                                     <div className="row g-3">
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label small fw-bold">Project</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.project_id}
+                                                onChange={(e) => setForm({
+                                                    ...form,
+                                                    project_id: e.target.value,
+                                                    drawing_id: '',
+                                                })}
+                                            >
+                                                <option value="">Tanpa project</option>
+                                                {projects.map((project) => (
+                                                    <option key={project.id} value={project.id}>{project.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label small fw-bold">Drawing Isometrik</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.drawing_id}
+                                                onChange={(e) => setForm({ ...form, drawing_id: e.target.value })}
+                                            >
+                                                <option value="">Tanpa drawing</option>
+                                                {bomDrawingOptions.map((drawing) => (
+                                                    <option key={drawing.id} value={drawing.id}>
+                                                        {drawing.drawing_no} — {drawing.line_no || drawing.title || 'Tanpa line'}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="form-text">
+                                                Drawing ini menjadi kunci rekonsiliasi BOM vs issuing.
+                                            </div>
+                                        </div>
+
                                         <div className="col-12 col-md-3">
                                             <label className="form-label small fw-bold">Item No *</label>
                                             <input
@@ -406,6 +876,24 @@ export function BomSection({ user, projects = [], drawings = [], onToast }) {
                                                 value={form.material_spec}
                                                 onChange={(e) => setForm({ ...form, material_spec: e.target.value })}
                                             />
+                                        </div>
+                                        <div className="col-12">
+                                            <label className="form-label small fw-bold">Kode Standar Material</label>
+                                            <select
+                                                className="form-select"
+                                                value={form.material_standard_id}
+                                                onChange={(e) => handleStandardChange(e.target.value)}
+                                            >
+                                                <option value="">Tanpa kode standar (cocokkan via teks)</option>
+                                                {standards.map((standard) => (
+                                                    <option key={standard.id} value={standard.id}>
+                                                        {standard.code} — {standard.specification}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="form-text">
+                                                Kode ini menghubungkan BOM ke receiving, stok, issuing, dan dashboard kebutuhan material.
+                                            </div>
                                         </div>
                                         <div className="col-6 col-md-4">
                                             <label className="form-label small fw-bold">Quantity *</label>

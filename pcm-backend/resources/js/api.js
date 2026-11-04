@@ -38,9 +38,10 @@ export const api = {
         const { skipAuthRedirect = false, ...init } = options;
         const token = this.getToken();
         const department = this.getDepartmentFilter();
+        const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
         const headers = {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
+            ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
             ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             ...(department ? { 'X-Department-Id': String(department) } : {}),
             ...(init.headers || {})
@@ -82,6 +83,57 @@ export const api = {
     },
     del(endpoint) {
         return this.request(endpoint, { method: 'DELETE' });
+    },
+    upload(endpoint, formData) {
+        return this.request(endpoint, { method: 'POST', body: formData });
+    },
+    async download(endpoint, fallbackName = 'dokumen') {
+        const token = this.getToken();
+        const department = this.getDepartmentFilter();
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+            headers: {
+                'Accept': 'application/octet-stream',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                ...(department ? { 'X-Department-Id': String(department) } : {})
+            }
+        });
+
+        if (res.status === 401) {
+            this.setToken('');
+            this.setUser(null);
+            window.dispatchEvent(new Event('pcm-auth-changed'));
+            throw new Error('Sesi berakhir, silakan login kembali');
+        }
+
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.message || `Gagal mengunduh dokumen (HTTP ${res.status})`);
+        }
+
+        const disposition = res.headers.get('Content-Disposition') || '';
+        let filename = fallbackName;
+        const utf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        const plain = disposition.match(/filename="?([^";]+)"?/i);
+
+        if (utf8?.[1]) {
+            try {
+                filename = decodeURIComponent(utf8[1]);
+            } catch (e) {
+                filename = utf8[1];
+            }
+        } else if (plain?.[1]) {
+            filename = plain[1];
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     },
     async login(email, password) {
         const res = await this.request('/login', {

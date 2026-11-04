@@ -29,7 +29,7 @@ export function MaterialInspectionSection({ user, onToast }) {
         notes: ''
     });
 
-    const canEdit = can(user, 'stock.write') || can(user, 'inspection.write');
+    const canEdit = can(user, 'material_inspection.write');
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -74,6 +74,20 @@ export function MaterialInspectionSection({ user, onToast }) {
         });
     }, [inspections, search, filterResult]);
 
+    const inspectableReceivings = useMemo(() => {
+        const candidates = receivings.filter(r => r.status === 'REQUESTED');
+
+        if (editingItem?.material_receiving_id
+            && !candidates.some(r => r.id === editingItem.material_receiving_id)) {
+            const current = receivings.find(r => r.id === editingItem.material_receiving_id);
+            if (current) {
+                return [current, ...candidates];
+            }
+        }
+
+        return candidates;
+    }, [receivings, editingItem]);
+
     const handleOpenModal = (item = null) => {
         setFormError('');
         if (item) {
@@ -95,12 +109,12 @@ export function MaterialInspectionSection({ user, onToast }) {
         } else {
             setEditingItem(null);
             setForm({
-                material_receiving_id: receivings[0]?.id || '',
+                material_receiving_id: inspectableReceivings[0]?.id || '',
                 report_no: `MIR-2428-${(inspections.length + 1).toString().padStart(3, '0')}`,
                 inspection_date: new Date().toISOString().split('T')[0],
                 inspector_name: 'Budi Santoso (QC Inspector)',
-                item_name: receivings[0] ? `${receivings[0].item_name} ${receivings[0].size}` : '',
-                heat_no: receivings[0]?.heat_no || '',
+                item_name: inspectableReceivings[0] ? `${inspectableReceivings[0].item_name} ${inspectableReceivings[0].size}` : '',
+                heat_no: inspectableReceivings[0]?.heat_no || '',
                 visual_check: 'PASS',
                 dimension_check: 'PASS',
                 mtc_check: 'PASS',
@@ -136,6 +150,12 @@ export function MaterialInspectionSection({ user, onToast }) {
         e.preventDefault();
         setFormLoading(true);
         setFormError('');
+
+        if (!form.material_receiving_id) {
+            setFormError('Pilih batch penerimaan material yang akan diinspeksi.');
+            setFormLoading(false);
+            return;
+        }
 
         try {
             if (editingItem) {
@@ -359,13 +379,15 @@ export function MaterialInspectionSection({ user, onToast }) {
                                                     >
                                                         Edit
                                                     </button>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-sm btn-outline-danger py-1 px-2"
-                                                        onClick={() => handleDelete(item.id)}
-                                                    >
-                                                        Hapus
-                                                    </button>
+                                                    {item.result !== 'ACCEPTED' && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-danger py-1 px-2"
+                                                            onClick={() => handleDelete(item.id)}
+                                                        >
+                                                            Hapus
+                                                        </button>
+                                                    )}
                                                 </td>
                                             )}
                                         </tr>
@@ -401,13 +423,15 @@ export function MaterialInspectionSection({ user, onToast }) {
                                             <label className="form-label small fw-semibold text-secondary">Tautkan ke Batch Penerimaan</label>
                                             <select
                                                 className="form-select"
+                                                required
                                                 value={form.material_receiving_id}
+                                                disabled={Boolean(editingItem)}
                                                 onChange={(e) => handleSelectReceiving(e.target.value)}
                                             >
                                                 <option value="">-- Pilih Batch Surat Jalan / Penerimaan --</option>
-                                                {receivings.map(r => (
+                                                {inspectableReceivings.map(r => (
                                                     <option key={r.id} value={r.id}>
-                                                        {r.shipment_no} - {r.item_name} ({r.heat_no})
+                                                        {r.shipment_no} - {r.item_name} ({r.heat_no || 'tanpa heat'}) — {r.status}
                                                     </option>
                                                 ))}
                                             </select>

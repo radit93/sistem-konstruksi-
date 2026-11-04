@@ -29,6 +29,7 @@ class MaterialIssuing extends Model
         'qty',
         'unit',
         'heat_no',
+        'mtc_no',
         'issued_by',
         'status',
         'cancelled_at',

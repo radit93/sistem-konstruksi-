@@ -15,6 +15,7 @@ class MaterialStoring extends Model
         'item_code',
         'line_no',
         'heat_no',
+        'mtc_no',
         'item_name',
         'category',
         'material_standard_id',

@@ -9,6 +9,7 @@ export function MaterialInspectionSection({ user, onToast }) {
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterResult, setFilterResult] = useState('ALL');
+    const [quickQcLoading, setQuickQcLoading] = useState({});
 
     const [showModal, setShowModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
@@ -185,6 +186,46 @@ export function MaterialInspectionSection({ user, onToast }) {
         }
     };
 
+    /**
+     * Quick QC Accept — otomatis membuat laporan inspeksi ACCEPTED
+     * dan langsung men-trigger stock-in ke gudang tanpa input manual.
+     */
+    const handleQuickAccept = async (receiving) => {
+        setQuickQcLoading((prev) => ({ ...prev, [receiving.id]: true }));
+        try {
+            const reportNo = `MIR-AUTO-${receiving.shipment_no || receiving.id}`;
+            const payload = {
+                material_receiving_id: receiving.id,
+                report_no: reportNo,
+                inspection_date: new Date().toISOString().split('T')[0],
+                inspector_name: user?.name || 'QC Inspector',
+                item_name: `${receiving.item_name} ${receiving.size}`.trim(),
+                heat_no: receiving.heat_no || '-',
+                visual_check: 'PASS',
+                dimension_check: 'PASS',
+                mtc_check: 'PASS',
+                result: 'ACCEPTED',
+                ncr_no: '',
+                notes: `Auto QC Accept — Heat ${receiving.heat_no || '-'}, MTC ${receiving.mtc_no || '-'}`,
+            };
+            await api.post('/material-inspections', payload);
+            loadData();
+            if (onToast) onToast();
+        } catch (err) {
+            alert('Gagal Quick QC Accept: ' + err.message);
+        } finally {
+            setQuickQcLoading((prev) => ({ ...prev, [receiving.id]: false }));
+        }
+    };
+
+    /** Receiving yang menunggu inspeksi (belum ada laporan QC sama sekali) */
+    const pendingQueue = useMemo(() => {
+        const inspectedIds = new Set(inspections.map((i) => i.material_receiving_id));
+        return receivings.filter(
+            (r) => r.status === 'REQUESTED' && !inspectedIds.has(r.id)
+        );
+    }, [receivings, inspections]);
+
     return (
         <div className="section-material-inspection">
             {/* Header Title & Subtitle */}
@@ -256,6 +297,106 @@ export function MaterialInspectionSection({ user, onToast }) {
                     </div>
                 </div>
             </div>
+
+            {/* === AUTO STOCK-IN: Antrian QC Menunggu Inspeksi === */}
+            {pendingQueue.length > 0 && (
+                <div className="card border-0 shadow-sm mb-4" style={{ borderLeft: '4px solid #b45309' }}>
+                    <div className="card-body py-3">
+                        <div className="d-flex align-items-center gap-2 mb-3">
+                            <span className="fw-bold text-warning" style={{ fontSize: '1rem' }}>
+                                ⏳ Antrian QC — {pendingQueue.length} Paket Menunggu Inspeksi
+                            </span>
+                            <span className="badge bg-warning text-dark ms-1">
+                                Perlu Tindakan
+                            </span>
+                        </div>
+                        <div className="text-muted small mb-3">
+                            Paket di bawah sudah diminta inspeksi. Klik <strong>Quick Accept</strong> untuk langsung
+                            menerima QC dan otomatis masuk stok gudang/open yard — atau klik <strong>Input Detail</strong>
+                            untuk isi laporan MIR lengkap.
+                        </div>
+                        <div className="table-responsive">
+                            <table className="table table-sm align-middle mb-0" style={{ fontSize: '0.88rem' }}>
+                                <thead className="table-light text-muted text-uppercase" style={{ fontSize: '0.74rem' }}>
+                                    <tr>
+                                        <th className="py-2 ps-2">No. Shipment / PO</th>
+                                        <th className="py-2">Vendor</th>
+                                        <th className="py-2">Item Material</th>
+                                        <th className="py-2">Spesifikasi</th>
+                                        <th className="py-2 text-center">Heat Number</th>
+                                        <th className="py-2 text-center">MTC No</th>
+                                        <th className="py-2 text-end">Qty</th>
+                                        <th className="py-2 text-center">Lokasi Simpan</th>
+                                        <th className="py-2 text-center">Aksi QC Cepat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {pendingQueue.map((r) => (
+                                        <tr key={r.id}>
+                                            <td className="ps-2 text-nowrap">
+                                                <div className="fw-bold font-monospace text-dark">{r.shipment_no || '-'}</div>
+                                                <div className="text-muted small">{r.po_no || ''}</div>
+                                            </td>
+                                            <td className="text-nowrap small">{r.vendor || '-'}</td>
+                                            <td>
+                                                <div className="fw-semibold text-dark">{r.item_name}</div>
+                                                <div className="text-muted small">{r.description || ''}</div>
+                                            </td>
+                                            <td className="text-nowrap small text-muted">
+                                                {r.specification} {r.size}
+                                                {r.schedule_rating ? ` (${r.schedule_rating})` : ''}
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="badge bg-secondary font-monospace">{r.heat_no || '-'}</span>
+                                            </td>
+                                            <td className="text-center">
+                                                <span className="badge bg-light text-dark border font-monospace">{r.mtc_no || '-'}</span>
+                                            </td>
+                                            <td className="text-end text-nowrap fw-semibold">
+                                                {parseFloat(r.qty || 0).toLocaleString('id-ID')} {r.unit}
+                                            </td>
+                                            <td className="text-center text-nowrap">
+                                                <span className={`badge ${r.storage_type === 'OPEN_YARD' ? 'bg-primary' : 'bg-info text-dark'}`} style={{ fontSize: '0.7rem' }}>
+                                                    {r.storage_type === 'OPEN_YARD' ? 'Open Yard' : 'Warehouse'}
+                                                </span>
+                                                <div className="text-muted small mt-1" style={{ fontSize: '0.72rem' }}>
+                                                    {r.storage_location || ''}
+                                                </div>
+                                            </td>
+                                            <td className="text-center text-nowrap">
+                                                {canEdit && (
+                                                    <div className="d-flex gap-1 justify-content-center">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-success py-1 px-2"
+                                                            disabled={quickQcLoading[r.id]}
+                                                            onClick={() => handleQuickAccept(r)}
+                                                            title="Langsung ACCEPTED — otomatis masuk stok"
+                                                        >
+                                                            {quickQcLoading[r.id] ? '...' : '✓ Quick Accept'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary py-1 px-2"
+                                                            onClick={() => handleOpenModal()}
+                                                            title="Isi laporan MIR lengkap"
+                                                        >
+                                                            Detail
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {!canEdit && (
+                                                    <span className="badge bg-warning text-dark">Menunggu QC</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Filter & Search Bar */}
             <div className="card border-0 shadow-sm mb-4">

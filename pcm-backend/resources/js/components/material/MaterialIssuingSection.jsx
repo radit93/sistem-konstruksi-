@@ -41,6 +41,7 @@ export function MaterialIssuingSection({ user, onToast }) {
         qty: 1,
         unit: 'meter',
         heat_no: 'HT-99421A',
+        mtc_no: '',
         issued_by: 'Material Control (Agus W.)',
         remarks: ''
     });
@@ -136,6 +137,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                 qty: item.qty || 1,
                 unit: item.unit || 'meter',
                 heat_no: item.heat_no || '',
+                mtc_no: item.mtc_no || '',
                 issued_by: item.issued_by || 'Material Control',
                 remarks: item.remarks || ''
             });
@@ -187,7 +189,8 @@ export function MaterialIssuingSection({ user, onToast }) {
                 schedule_rating: found.schedule_rating || prev.schedule_rating,
                 vendor: found.receiving?.vendor || prev.vendor,
                 unit: found.unit,
-                heat_no: found.heat_no || ''
+                heat_no: found.heat_no || '',
+                mtc_no: found.mtc_no || found.receiving?.mtc_no || prev.mtc_no || ''
             }));
         }
     };
@@ -211,24 +214,49 @@ export function MaterialIssuingSection({ user, onToast }) {
             return;
         }
 
-        setForm((prev) => {
-            const hasStock = Boolean(prev.material_storing_id);
+        // Auto-matching FIFO: Cari stok yang paling sesuai dan balance > 0
+        const availableStorings = storings
+            .filter(s => (parseFloat(s.balance) || 0) > 0)
+            .sort((a, b) => Number(a.id) - Number(b.id));
+        let matchedStock = null;
 
+        if (found.material_standard_id) {
+            matchedStock = availableStorings.find(s => (
+                String(s.material_standard_id) === String(found.material_standard_id)
+                && (!found.unit || String(s.unit).toLowerCase() === String(found.unit).toLowerCase())
+            ));
+        }
+
+        if (!matchedStock) {
+            // Fallback: exact specification, size, and unit; tetap mengambil lot tertua.
+            const normalize = (value) => String(value || '').trim().toLowerCase();
+            matchedStock = availableStorings.find(s => (
+                (!found.material_spec || normalize(s.specification) === normalize(found.material_spec))
+                && (!found.size || normalize(s.size) === normalize(found.size))
+                && (!found.unit || normalize(s.unit) === normalize(found.unit))
+            ));
+        }
+
+        setForm((prev) => {
+            const st = matchedStock;
             return {
                 ...prev,
                 bom_id: found.id,
                 drawing_id: found.drawing_id || prev.drawing_id,
                 drawing_no: found.drawing?.drawing_no || prev.drawing_no,
                 target_spool_no: found.spool_no || prev.target_spool_no,
-                material_standard_id: hasStock
-                    ? prev.material_standard_id
-                    : (found.material_standard_id || prev.material_standard_id),
-                item_name: hasStock ? prev.item_name : (found.description || prev.item_name),
-                description: hasStock ? prev.description : (found.description || prev.description),
-                specification: hasStock ? prev.specification : (found.material_spec || prev.specification),
-                size: hasStock ? prev.size : (found.size || prev.size),
-                schedule_rating: hasStock ? prev.schedule_rating : (found.rating_sch || prev.schedule_rating),
-                unit: hasStock ? prev.unit : (found.unit || prev.unit),
+                material_storing_id: st ? st.id : prev.material_storing_id,
+                material_standard_id: st?.material_standard_id || found.material_standard_id || prev.material_standard_id,
+                item_name: st?.item_name || found.description || prev.item_name,
+                description: st?.item_name || found.description || prev.description,
+                specification: st?.specification || found.material_spec || prev.specification,
+                size: st?.size || found.size || prev.size,
+                schedule_rating: st?.schedule_rating || found.rating_sch || prev.schedule_rating,
+                unit: st?.unit || found.unit || prev.unit,
+                vendor: st?.receiving?.vendor || prev.vendor,
+                heat_no: st?.heat_no || prev.heat_no,
+                mtc_no: st?.mtc_no || st?.receiving?.mtc_no || prev.mtc_no,
+                qty: parseFloat(found.qty) || prev.qty,
             };
         });
     };
@@ -634,7 +662,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Pilih dari Master Stok</label>
                                             <select
-                                                className="form-select"
+                                                className={`form-select ${form.material_storing_id ? 'border-success bg-success bg-opacity-10' : ''}`}
                                                 value={form.material_storing_id || ''}
                                                 disabled={Boolean(editingItem)}
                                                 onChange={(e) => handleSelectStock(e.target.value)}
@@ -648,6 +676,18 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                     </option>
                                                 ))}
                                             </select>
+                                            {form.bom_id && form.material_storing_id && (
+                                                <div className="text-success small mt-1">
+                                                    <i className="bi bi-check-circle-fill me-1"></i>
+                                                    Otomatis terpilih (FIFO) sesuai BOM
+                                                </div>
+                                            )}
+                                            {form.bom_id && !form.material_storing_id && (
+                                                <div className="text-danger small mt-1">
+                                                    <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                                                    Stok tidak ditemukan di gudang (Shortage)
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Nama Material</label>

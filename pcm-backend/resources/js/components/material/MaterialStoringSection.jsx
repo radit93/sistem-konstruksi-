@@ -87,12 +87,14 @@ export function MaterialStoringSection({ user, onToast }) {
         const totalItems = storings.length;
         const totalIn = storings.reduce((acc, s) => acc + (parseFloat(s.stock_in) || 0), 0);
         const totalOut = storings.reduce((acc, s) => acc + (parseFloat(s.stock_out) || 0), 0);
-        const lowStock = storings.filter(s => {
+        const lowStockItems = storings.filter(s => {
             const bal = parseFloat(s.balance) || 0;
             const min = parseFloat(s.min_stock_alert) || 0;
             return bal <= min;
-        }).length;
-        return { totalItems, totalIn, totalOut, lowStock };
+        });
+        const lowStock = lowStockItems.length;
+        const outOfStock = lowStockItems.filter(s => (parseFloat(s.balance) || 0) <= 0).length;
+        return { totalItems, totalIn, totalOut, lowStock, outOfStock };
     }, [storings]);
 
     const filtered = useMemo(() => {
@@ -387,6 +389,32 @@ export function MaterialStoringSection({ user, onToast }) {
                     </div>
                 </div>
             </div>
+
+            {/* Auto Alert Minimum Stock / Shortage */}
+            {stats.lowStock > 0 && (
+                <div className={`alert ${stats.outOfStock > 0 ? 'alert-danger' : 'alert-warning'} border-0 shadow-sm mb-4`} role="alert">
+                    <div className="d-flex align-items-start gap-3">
+                        <div className="fs-4">{stats.outOfStock > 0 ? '⚠️' : '🔔'}</div>
+                        <div className="flex-grow-1">
+                            <div className="fw-bold">
+                                {stats.outOfStock > 0
+                                    ? `${stats.outOfStock} item stok habis dan ${stats.lowStock - stats.outOfStock} item berada di bawah batas minimum.`
+                                    : `${stats.lowStock} item berada di bawah batas minimum stok.`}
+                            </div>
+                            <div className="small mt-1">
+                                Segera lakukan pengadaan atau koordinasi transfer stok. Sistem akan memperbarui alert ini otomatis setelah receiving ACCEPTED atau issuing dibatalkan.
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-dark text-nowrap"
+                            onClick={() => setFilterStockStatus('LOW')}
+                        >
+                            Lihat Item Kritis
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Filter & Search Bar */}
             <div className="card border-0 shadow-sm mb-4">

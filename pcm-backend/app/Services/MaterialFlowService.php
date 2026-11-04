@@ -134,7 +134,7 @@ class MaterialFlowService
                     ]);
                 }
 
-                foreach (['item_name', 'specification', 'size', 'unit', 'heat_no'] as $field) {
+                foreach (['item_name', 'specification', 'size', 'unit', 'heat_no', 'mtc_no'] as $field) {
                     if (! empty($data[$field]) && (string) $data[$field] !== (string) $stock->{$field}) {
                         throw ValidationException::withMessages([
                             $field => 'Data material harus sama dengan lot stok yang dipilih.',
@@ -159,6 +159,7 @@ class MaterialFlowService
                 $data['vendor'] = $data['vendor'] ?? $stock->receiving?->vendor;
                 $data['unit'] = $data['unit'] ?? $stock->unit;
                 $data['heat_no'] = $data['heat_no'] ?? $stock->heat_no;
+                $data['mtc_no'] = $data['mtc_no'] ?? $stock->mtc_no;
 
                 // Lot lama yang belum punya kode standar ikut terisi saat
                 // pertama kali dikaitkan ke standar dari BOM/receiving.
@@ -406,6 +407,7 @@ class MaterialFlowService
             'item_code' => $stock?->item_code ?? $this->lotCode($receiving),
             'line_no' => $receiving->line_no,
             'heat_no' => $receiving->heat_no,
+            'mtc_no' => $receiving->mtc_no,
             'item_name' => $receiving->item_name,
             'category' => $receiving->category ?: ($stock?->category ?? 'PIPE'),
             'material_standard_id' => $receiving->material_standard_id ?? $stock?->material_standard_id,

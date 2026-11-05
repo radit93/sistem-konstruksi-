@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from 'react';
 // Menu operasional: hanya ini yang ikut tersaring saat superadmin memilih
 // satu departemen. Dashboard dan menu administrasi selalu tampil.
 export const OPERATIONAL_MENU_IDS = [
+    'project_list',
     'engineering',
     'line_service',
     'welding_map',
@@ -42,6 +43,7 @@ export const DEPARTMENT_MENUS = {
         'report'
     ],
     ENG: [
+        'project_list',
         'engineering',
         'welding_map',
         'line_service',
@@ -76,11 +78,18 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Ringkasan seluruh departemen'
     },
     {
+        id: 'project_list',
+        label: 'List Project',
+        perm: 'drawing.view',
+        group: 'Engineering',
+        desc: 'Direktori Folder Proyek & Client'
+    },
+    {
         id: 'engineering',
         label: 'Isometric Drawing',
         perm: 'drawing.view',
         group: 'Engineering',
-        desc: 'Input Drawing & Berkas CAD/PDF'
+        desc: 'Register Gambar Isometrik'
     },
     {
         id: 'welding_map',

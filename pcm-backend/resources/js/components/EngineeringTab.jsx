@@ -17,6 +17,7 @@ import { DocumentControlSection } from './engineering/DocumentControlSection';
 import { SearchSelect } from './SearchSelect';
 
 export const ENG_SUB_TABS = [
+    { id: 'project_list', label: 'List Project' },
     { id: 'isometric', label: 'Isometric Drawing' },
     { id: 'welding_map', label: 'Welding Map' },
     { id: 'line_service', label: 'Line Service' },
@@ -131,6 +132,7 @@ export function EngineeringTab({
     activeProject: propActiveProject = null,
     activeProjectId = '',
     onSetActiveProject,
+    onSelectTab,
     user,
     onReload,
     loading = false,
@@ -375,7 +377,10 @@ export function EngineeringTab({
             new Set(pList.map((p) => (p.client || '').trim()).filter(Boolean))
         ).sort();
 
-        return { folderList: enrichedProjects, unassignedDrawings: unassigned, clientOptions: clients };
+        const pMap = {};
+        pList.forEach(p => { pMap[p.id] = p; });
+
+        return { folderList: enrichedProjects, unassignedDrawings: unassigned, clientOptions: clients, projectMap: pMap };
     }, [projects, drawings]);
 
     const activeProject = useMemo(() => {
@@ -406,10 +411,11 @@ export function EngineeringTab({
     }), [folderList, clientFilter, searchFolder]);
 
     const activeFolderDrawings = useMemo(() => {
-        if (!selectedProjectId) return [];
-        const list = selectedProjectId === 'unassigned'
-            ? unassignedDrawings
-            : (drawings || []).filter((d) => Number(d.project_id) === Number(selectedProjectId));
+        const list = !selectedProjectId
+            ? (drawings || [])
+            : (selectedProjectId === 'unassigned'
+                ? unassignedDrawings
+                : (drawings || []).filter((d) => Number(d.project_id) === Number(selectedProjectId)));
 
         const q = searchDrawing.toLowerCase();
         if (!q) return list;
@@ -630,16 +636,13 @@ export function EngineeringTab({
             )}
 
             {/* ============================================================
-                MODUL 1: Isometric Drawing (ENG-000 / ENG-007)
+                MODUL 0: List Project (Direktori Folder Proyek Persegi 4)
                 ============================================================ */}
-            {activeEngTab === 'isometric' && (
-                <>
-                    {/* VIEW A: daftar folder proyek client */}
-                    {!selectedProjectId && (
-                        <div>
+            {activeEngTab === 'project_list' && (
+                <div>
                     <div className="mb-4">
                         <h2 className="h3 fw-bolder text-dark mb-0" style={{ letterSpacing: '-0.02em' }}>
-                            Isometric Drawing &amp; Direktori Proyek
+                            Direktori List Project
                         </h2>
                     </div>
 
@@ -703,7 +706,7 @@ export function EngineeringTab({
                     {loading && folderList.length === 0 && (
                         <div className="pcm-state" role="status" aria-live="polite">
                             <span className="spinner-border spinner-border-sm text-primary mb-2" aria-hidden="true" />
-                            <p className="pcm-state__title">Memuat data drawing</p>
+                            <p className="pcm-state__title">Memuat data folder proyek</p>
                             <p className="pcm-state__text">Mengambil daftar folder proyek dan register drawing dari server.</p>
                         </div>
                     )}
@@ -725,7 +728,10 @@ export function EngineeringTab({
                                     <button
                                         type="button"
                                         className="pcm-folder-square-card h-100 w-100"
-                                        onClick={() => setSelectedProjectId(folder.id)}
+                                        onClick={() => {
+                                            setSelectedProjectId(folder.id);
+                                            if (onSelectTab) onSelectTab('engineering');
+                                        }}
                                     >
                                         <div className="d-flex align-items-center justify-content-between mb-3 w-100">
                                             <span className="pcm-folder-square-card__icon">
@@ -761,7 +767,10 @@ export function EngineeringTab({
                                     <button
                                         type="button"
                                         className="pcm-folder-square-card pcm-folder-square-card--warning h-100 w-100"
-                                        onClick={() => setSelectedProjectId('unassigned')}
+                                        onClick={() => {
+                                            setSelectedProjectId('unassigned');
+                                            if (onSelectTab) onSelectTab('engineering');
+                                        }}
                                     >
                                         <div className="d-flex align-items-center justify-content-between mb-3 w-100">
                                             <span className="pcm-folder-square-card__icon">
@@ -804,81 +813,135 @@ export function EngineeringTab({
             )}
 
             {/* ============================================================
-                VIEW B: register drawing di dalam folder
+                MODUL 1: Isometric Drawing Register (Table View)
                 ============================================================ */}
-            {selectedProjectId && activeProject && (
+            {activeEngTab === 'isometric' && (
                 <div>
-                    {/* Header Banner Terpadu: Judul Project, Client & Summary Metrics */}
-                    <div className="bg-white border rounded p-4 mb-4 shadow-sm">
-                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                            <div className="d-flex align-items-center gap-3 min-w-0">
-                                <button
-                                    type="button"
-                                    className="pcm-page-nav-btn d-inline-flex align-items-center justify-content-center flex-shrink-0"
-                                    onClick={() => setSelectedProjectId(null)}
-                                    title="Kembali ke Direktori Proyek"
-                                    aria-label="Kembali ke Direktori Proyek"
-                                >
-                                    <svg
-                                        viewBox="0 0 24 24"
-                                        width="22"
-                                        height="22"
-                                        fill="none"
-                                        stroke="#000000"
-                                        strokeWidth="2.4"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        aria-hidden="true"
+                    {/* Header Banner: Tergantung apakah Project Terkunci (Strict) atau Mode Global */}
+                    {selectedProjectId && activeProject ? (
+                        <div className="bg-white border rounded p-4 mb-4 shadow-sm">
+                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <div className="d-flex align-items-center gap-3 min-w-0">
+                                    <button
+                                        type="button"
+                                        className="pcm-page-nav-btn d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                                        onClick={() => {
+                                            setSelectedProjectId(null);
+                                            if (onSelectTab) onSelectTab('project_list');
+                                        }}
+                                        title="Kembali ke Direktori List Project"
+                                        aria-label="Kembali ke Direktori List Project"
                                     >
-                                        <polyline points="15 18 9 12 15 6" />
-                                    </svg>
-                                </button>
-                                <div className="min-w-0">
-                                    <h1 className="h3 fw-bolder text-dark mb-1 text-truncate" style={{ letterSpacing: '-0.02em' }}>
-                                        {activeProject.name}
-                                    </h1>
-                                    <div className="d-flex flex-wrap align-items-center gap-2 small">
-                                        <span className="fw-bold text-dark pcm-code bg-light px-2 py-0.5 rounded border">
-                                            JOB NO: {activeProject.job_no || '-'}
-                                        </span>
-                                        <span className="text-muted">&bull;</span>
-                                        <span className="fw-bold" style={{ color: '#0f172a' }}>
-                                            Client: {activeProject.client || 'General Client'}
-                                        </span>
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            width="22"
+                                            height="22"
+                                            fill="none"
+                                            stroke="#000000"
+                                            strokeWidth="2.4"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            aria-hidden="true"
+                                        >
+                                            <polyline points="15 18 9 12 15 6" />
+                                        </svg>
+                                    </button>
+                                    <div className="min-w-0">
+                                        <h1 className="h3 fw-bolder text-dark mb-1 text-truncate" style={{ letterSpacing: '-0.02em' }}>
+                                            {activeProject.name}
+                                        </h1>
+                                        <div className="d-flex flex-wrap align-items-center gap-2 small">
+                                            <span className="fw-bold text-dark pcm-code bg-light px-2 py-0.5 rounded border">
+                                                JOB NO: {activeProject.job_no || '-'}
+                                            </span>
+                                            <span className="text-muted">&bull;</span>
+                                            <span className="fw-bold" style={{ color: '#0f172a' }}>
+                                                Client: {activeProject.client || 'General Client'}
+                                            </span>
+                                            <span className="badge bg-primary text-white ms-1" style={{ fontSize: '0.6875rem' }}>
+                                                STRICT PROJECT
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 2 Box Metrik Kompak & Simetris */}
+                                <div className="d-flex align-items-center gap-2">
+                                    <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
+                                        <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Drawing</span>
+                                        <strong className="h5 fw-bolder text-dark mb-0">{activeProject.drawings_count || 0}</strong>
+                                    </div>
+                                    <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
+                                        <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Joints</span>
+                                        <strong className="h5 fw-bolder text-dark mb-0">{activeProject.total_joints || 0}</strong>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* 2 Box Metrik Kompak & Simetris (DI dihitung di Welding Map) */}
-                            <div className="d-flex align-items-center gap-2">
-                                <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
-                                    <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Drawing</span>
-                                    <strong className="h5 fw-bolder text-dark mb-0">{activeProject.drawings_count || 0}</strong>
+                        </div>
+                    ) : (
+                        <div className="bg-white border rounded p-4 mb-4 shadow-sm">
+                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <div className="min-w-0">
+                                    <h1 className="h3 fw-bolder text-dark mb-1 text-truncate" style={{ letterSpacing: '-0.02em' }}>
+                                        Isometric Drawing Register
+                                    </h1>
+                                    <p className="text-muted small mb-0">
+                                        Menampilkan seluruh gambar isometrik. Pilih proyek di menu <strong>List Project</strong> atau dropdown untuk mengunci ke mode kerja ketat (*strict mode*).
+                                    </p>
                                 </div>
-                                <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
-                                    <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Joints</span>
-                                    <strong className="h5 fw-bolder text-dark mb-0">{activeProject.total_joints || 0}</strong>
+                                <div className="d-flex align-items-center gap-2">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary btn-sm fw-bold px-3 py-2"
+                                        style={{ borderRadius: '6px' }}
+                                        onClick={() => { if (onSelectTab) onSelectTab('project_list'); }}
+                                    >
+                                        Buka List Project
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Toolbar Bersih: Search di Kiri & Tambah Drawing di Kanan Sejajar */}
-                    <div className="d-flex align-items-center gap-3 mb-4">
-                        <div className="flex-grow-1 min-w-0">
+                    {/* Toolbar: Search, Kunci Proyek (jika belum strict), dan Tambah Drawing */}
+                    <div className="d-flex flex-wrap align-items-center gap-3 mb-4">
+                        <div className="flex-grow-1 min-w-0" style={{ minWidth: '220px' }}>
                             <div className="pcm-search w-100" style={{ maxWidth: '100%' }}>
                                 <span className="pcm-search__icon"><IconSearch size="sm" /></span>
                                 <input
                                     type="text"
                                     className="form-control form-control-sm pcm-filter-input w-100"
                                     placeholder="Cari nomor drawing, line no, area, judul..."
-                                    aria-label="Cari drawing di proyek ini"
+                                    aria-label="Cari drawing"
                                     value={searchDrawing}
                                     onChange={(e) => setSearchDrawing(e.target.value)}
                                 />
                             </div>
                         </div>
-                        {canEdit && selectedProjectId !== 'unassigned' && (
+
+                        {/* Jika belum strict, sediakan dropdown kunci proyek langsung di baris search */}
+                        {!selectedProjectId && (
+                            <select
+                                className="form-select form-select-sm pcm-select-theme"
+                                value=""
+                                onChange={(e) => {
+                                    if (e.target.value) {
+                                        setSelectedProjectId(e.target.value);
+                                    }
+                                }}
+                                style={{ width: 'auto', minWidth: '220px' }}
+                                aria-label="Kunci Proyek"
+                            >
+                                <option value="">-- Kunci ke Proyek Tertentu --</option>
+                                {projects.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.client ? `[${p.client}] ` : ''}{p.name} ({p.job_no || 'NO JOB'})
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+
+                        {canEdit && (
                             <button
                                 type="button"
                                 className="btn btn-primary btn-sm fw-bold px-3 py-2 text-nowrap d-inline-flex align-items-center gap-1.5"
@@ -965,6 +1028,13 @@ export function EngineeringTab({
                                                         <div className="pcm-cell-sub small text-muted">
                                                             {d.sheet || 'Sheet 1 of 1'}
                                                         </div>
+                                                        {!selectedProjectId && (
+                                                            <div className="mt-1">
+                                                                <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.4rem', border: '1px solid #cbd5e1', backgroundColor: '#ffffff' }}>
+                                                                    {projectMap[d.project_id]?.name || (d.project_id ? `Project #${d.project_id}` : 'Unassigned')}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="text-center">
                                                         <div className="pcm-code fw-bold text-dark" style={{ fontSize: '0.8125rem' }}>
@@ -1051,8 +1121,6 @@ export function EngineeringTab({
                         </div>
                     </div>
                 </div>
-            )}
-                </>
             )}
 
             {/* ============================================================

@@ -90,11 +90,58 @@ class SystemParameterSeeder extends Seeder
                 'description' => 'Arsip Resmi Master Transmittal',
                 'sort_order' => 5,
             ],
+
+            // Label atribut Material Standart per kategori.
+            // Dipakai form Welding Map: judul kolom ke-4 menyesuaikan kategori
+            // supaya nilai seperti "Heavy Hex" atau "RF Flanged" tidak salah
+            // diberi label "Sch".
+            [
+                'category' => 'material_attribute',
+                'code' => 'Pipe',
+                'name' => 'Sch',
+                'description' => 'Kolom schedule pipa',
+                'sort_order' => 1,
+            ],
+            [
+                'category' => 'material_attribute',
+                'code' => 'Fitting',
+                'name' => 'Sch',
+                'description' => 'Kolom schedule fitting',
+                'sort_order' => 2,
+            ],
+            [
+                'category' => 'material_attribute',
+                'code' => 'Flange',
+                'name' => 'Sch & Facing',
+                'description' => 'Kolom schedule sekaligus permukaan flange (RF/FF/RTJ)',
+                'sort_order' => 3,
+            ],
+            [
+                'category' => 'material_attribute',
+                'code' => 'Valve',
+                'name' => 'End Connection',
+                'description' => 'Kolom tipe sambungan ujung valve',
+                'sort_order' => 4,
+            ],
+            [
+                'category' => 'material_attribute',
+                'code' => 'Gasket',
+                'name' => 'Gasket Type',
+                'description' => 'Kolom tipe gasket',
+                'sort_order' => 5,
+            ],
+            [
+                'category' => 'material_attribute',
+                'code' => 'Fastener',
+                'name' => 'Thread & Head',
+                'description' => 'Kolom tipe ulir dan kepala baut/mur',
+                'sort_order' => 6,
+            ],
         ];
 
         foreach ($parameters as $param) {
             SystemParameter::updateOrCreate(
-                ['category' => $param['category'], 'name' => $param['name']],
+                ['category' => $param['category'], 'code' => $param['code'] ?? null],
                 $param
             );
         }

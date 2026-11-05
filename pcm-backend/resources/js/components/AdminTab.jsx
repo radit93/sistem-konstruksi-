@@ -4,6 +4,13 @@ import { confirmDelete } from '../confirm';
 
 const SECTIONS = ['project', 'users', 'roles', 'access', 'departments'];
 
+/* Label kategori pada menu Master Parameter. */
+const PARAM_CATEGORY_LABELS = {
+    plant_area: 'Plant Area',
+    distribution_target: 'Target Distribusi',
+    material_attribute: 'Label Atribut Material'
+};
+
 const GROUP_LABELS = {
     dashboard: 'Dashboard',
     engineering: 'Engineering',
@@ -642,8 +649,8 @@ export function AdminTab({ section, user, onReload, onToast }) {
                                     {filtered(rows.parameters || [], ['category', 'name', 'code', 'description']).map((row) => (
                                         <tr key={row.id}>
                                             <td>
-                                                <span className={`pcm-chip ${row.category === 'plant_area' ? 'pcm-chip--primary' : 'pcm-chip--neutral'}`}>
-                                                    {row.category === 'plant_area' ? 'Plant Area' : 'Target Distribusi'}
+                                                <span className={`pcm-chip ${row.category === 'plant_area' ? 'pcm-chip--primary' : row.category === 'material_attribute' ? 'pcm-chip--warning' : 'pcm-chip--neutral'}`}>
+                                                    {PARAM_CATEGORY_LABELS[row.category] || row.category}
                                                 </span>
                                             </td>
                                             <td className="pcm-cell-strong">{row.name}</td>
@@ -864,6 +871,7 @@ function DialogFields({ dialog, form, setForm, roles, departments }) {
     }
 
     if (dialog.type === 'parameter') {
+        const isMaterialAttribute = (form.category || 'plant_area') === 'material_attribute';
         return (
             <div className="pcm-form-grid">
                 <div>
@@ -872,23 +880,30 @@ function DialogFields({ dialog, form, setForm, roles, departments }) {
                         value={form.category || 'plant_area'} onChange={set('category')}>
                         <option value="plant_area">Plant Area</option>
                         <option value="distribution_target">Target Distribusi</option>
+                        <option value="material_attribute">Label Atribut Material</option>
                     </select>
                 </div>
                 <div>
-                    <label className="form-label pcm-form-label" htmlFor="adm-pcode">Kode Singkat</label>
+                    <label className="form-label pcm-form-label" htmlFor="adm-pcode">
+                        {isMaterialAttribute ? 'Kategori Material' : 'Kode Singkat'}
+                    </label>
                     <input id="adm-pcode" className="form-control pcm-code" maxLength={64}
-                        value={form.code || ''} onChange={set('code')} placeholder="mis. MPP" />
+                        value={form.code || ''} onChange={set('code')}
+                        placeholder={isMaterialAttribute ? 'mis. Fastener' : 'mis. MPP'} />
                 </div>
                 <div className="pcm-form-grid__full">
-                    <label className="form-label pcm-form-label" htmlFor="adm-pname">Nama Parameter (tampil di dropdown)</label>
+                    <label className="form-label pcm-form-label" htmlFor="adm-pname">
+                        {isMaterialAttribute ? 'Label Kolom (tampil di form Welding Map)' : 'Nama Parameter (tampil di dropdown)'}
+                    </label>
                     <input id="adm-pname" className="form-control" required maxLength={128}
-                        value={form.name || ''} onChange={set('name')} placeholder="mis. MPP Area" />
+                        value={form.name || ''} onChange={set('name')}
+                        placeholder={isMaterialAttribute ? 'mis. Thread & Head' : 'mis. MPP Area'} />
                 </div>
                 <div className="pcm-form-grid__full">
                     <label className="form-label pcm-form-label" htmlFor="adm-pdesc">Deskripsi</label>
                     <input id="adm-pdesc" className="form-control" maxLength={255}
                         value={form.description || ''} onChange={set('description')}
-                        placeholder="mis. Main Process Plant Area" />
+                        placeholder={isMaterialAttribute ? 'mis. Kolom tipe ulir dan kepala baut' : 'mis. Main Process Plant Area'} />
                 </div>
                 <div>
                     <label className="form-label pcm-form-label" htmlFor="adm-psort">Urutan</label>

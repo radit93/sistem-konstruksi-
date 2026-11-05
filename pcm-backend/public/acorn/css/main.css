@@ -2096,10 +2096,15 @@ html[data-placement=horizontal] .nav-container .logo .img {
 }
 
 /* --- Welding Map joint form: kolom setara & field lebih besar --- */
+/* Modal joint dilebarkan agar 5 dropdown Material A/B muat sejajar.
+   Bootstrap modal-xl hanya 1140px; 1360px memberi ~253px per kolom. */
+.wm-joint-modal {
+    max-width: min(1360px, 95vw);
+}
+
 .wm-joint-modal .modal-body {
     padding: 1.25rem 1.5rem;
 }
-
 .wm-joint-modal .form-label {
     margin-bottom: .35rem;
     font-size: .8125rem;
@@ -2150,6 +2155,29 @@ html[data-placement=horizontal] .nav-container .logo .img {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: .75rem;
+}
+
+/* Material A/B: Material Group, Kategori, Size, Sch, Spesifikasi sejajar. */
+.wm-form-grid--5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 1399.98px) {
+    .wm-form-grid--5 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991.98px) {
+    .wm-form-grid--5 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575.98px) {
+    .wm-form-grid--5 {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .wm-form-grid__full {

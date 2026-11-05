@@ -4,25 +4,21 @@ import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { SearchSelect } from '../SearchSelect';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
+import {
+    buildAttributeLabels,
+    buildMaterialIndex,
+    buildMaterialOptions,
+    naturalCompare,
+    normSize,
+    normSchedule,
+    parseInch,
+    resolveAttributeLabel,
+    sizeWithinRange
+} from './materialCascade';
 
 /* --------------------------------------------------------------------------
  * Helper: parsing & format
  * ----------------------------------------------------------------------- */
-
-const parseInch = (val) => {
-    if (!val) return 0;
-    const clean = String(val).replace(/["']/g, '').trim().replace(/-/g, ' ');
-    if (clean.includes('/')) {
-        const parts = clean.split(' ');
-        if (parts.length === 2) {
-            const [num, den] = parts[1].split('/');
-            return parseFloat(parts[0]) + ((parseFloat(num) / parseFloat(den)) || 0);
-        }
-        const [num, den] = clean.split('/');
-        return (parseFloat(num) / parseFloat(den)) || 0;
-    }
-    return parseFloat(clean) || 0;
-};
 
 const autoCalculateDI = (sizeA, sizeB) => {
     const inchA = parseInch(sizeA);
@@ -31,18 +27,6 @@ const autoCalculateDI = (sizeA, sizeB) => {
     if (inchA && inchB) return Math.max(inchA, inchB);
     return inchA || inchB;
 };
-
-const normSize = (val) => String(val || '')
-    .replace(/["']/g, '')
-    .replace(/\s+/g, '')
-    .replace(/-/g, '')
-    .toLowerCase();
-
-const normSchedule = (val) => String(val || '')
-    .toLowerCase()
-    .replace(/schedule/g, '')
-    .replace(/sch/g, '')
-    .replace(/[\s.]/g, '');
 
 const parseThicknessText = (val) => {
     const match = String(val || '').match(/([\d.]+)\s*mm/i);
@@ -54,11 +38,6 @@ const fmt = (val, digits = 2) => {
     const n = Number(val);
     return Number.isFinite(n) ? n.toFixed(digits) : '—';
 };
-
-const naturalCompare = (a, b) => String(a).localeCompare(String(b), undefined, {
-    numeric: true,
-    sensitivity: 'base',
-});
 
 /* Jumlah sheet mengikuti data ISO, mis. "Sheet 1 of 4" -> 4. */
 const sheetTotalOf = (drawing) => {
@@ -138,7 +117,7 @@ const STATUS_OPTIONS = ['PLANNED', 'FITUP_OK', 'WELDED', 'INSPECTED', 'COMPLETED
  * Detail material (accordion)
  * ----------------------------------------------------------------------- */
 
-function MaterialCard({ label, info }) {
+function MaterialCard({ label, info, attributeLabel = 'Class / Sch' }) {
     return (
         <div className="wm-mat">
             <div className="wm-mat__head">
@@ -148,10 +127,11 @@ function MaterialCard({ label, info }) {
                     : <span className="pcm-chip pcm-chip--neutral">Manual</span>}
             </div>
             <dl className="wm-spec">
-                <dt>Item</dt><dd>{info.item || '—'}</dd>
+                <dt>Group</dt><dd>{info.group || '—'}</dd>
+                <dt>Kategori</dt><dd>{info.category || '—'}</dd>
                 <dt>Spec</dt><dd>{info.spec || '—'}</dd>
                 <dt>Size</dt><dd>{info.size || '—'}</dd>
-                <dt>Schedule</dt><dd>{info.sch || '—'}</dd>
+                <dt>{attributeLabel}</dt><dd>{info.sch || '—'}</dd>
                 <dt>Thickness</dt><dd>{info.thickness ? `${fmt(info.thickness)} mm` : '—'}</dd>
                 <dt>OD</dt><dd>{info.od ? `${fmt(info.od)} mm` : '—'}</dd>
                 <dt>DN</dt><dd>{info.dn || '—'}</dd>
@@ -175,6 +155,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
     const [maps, setMaps] = useState([]);
     const [pipeStandards, setPipeStandards] = useState([]);
     const [materialStandards, setMaterialStandards] = useState([]);
+    const [systemParameters, setSystemParameters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterProject, setFilterProject] = useProjectFilter(activeProjectId);
@@ -200,10 +181,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         length_mm: '',
         location: 'Shop',
         mat_a_item: '',
+        mat_a_group: '',
+        mat_a_category: '',
         mat_a_spec: '',
         mat_a_size: '',
         mat_a_sch: '',
         mat_b_item: '',
+        mat_b_group: '',
+        mat_b_category: '',
         mat_b_spec: '',
         mat_b_size: '',
         mat_b_sch: '',
@@ -225,7 +210,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [mapData, pipeData, materialData] = await Promise.all([
+            const [mapData, pipeData, materialData, paramData] = await Promise.all([
                 api.get('/welding-maps'),
                 api.get('/pipe-standards').catch((err) => {
                     console.error('Failed to load pipe standards:', err);
@@ -235,10 +220,15 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                     console.error('Failed to load material standards:', err);
                     return [];
                 }),
+                api.get('/system-parameters').catch((err) => {
+                    console.error('Failed to load system parameters:', err);
+                    return [];
+                }),
             ]);
             setMaps(Array.isArray(mapData) ? mapData : []);
             setPipeStandards(Array.isArray(pipeData) ? pipeData : []);
             setMaterialStandards(Array.isArray(materialData) ? materialData : []);
+            setSystemParameters(Array.isArray(paramData) ? paramData : []);
         } catch (err) {
             console.error('Failed to load welding maps:', err);
         } finally {
@@ -275,6 +265,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
             : (weightPerM != null ? parseFloat(weightPerM) * stickLength : null);
         return {
             item: map[`mat_${key}_item`] || '',
+            group: map[`mat_${key}_group`] || '',
+            category: map[`mat_${key}_category`] || '',
             spec: map[`mat_${key}_spec`] || '',
             size,
             sch,
@@ -416,58 +408,44 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
 
     /* ------------------------------------------------------------- modal */
 
-    const sizeOptions = useMemo(() => {
-        const seen = new Map();
-        pipeStandards.forEach((row) => {
-            if (!row.nps || seen.has(row.nps)) return;
-            const hint = [row.dn, row.outer_diameter_mm ? `OD ${fmt(row.outer_diameter_mm)}` : '']
-                .filter(Boolean)
-                .join(' · ');
-            seen.set(row.nps, { value: row.nps, label: row.nps, hint });
-        });
-        return Array.from(seen.values()).sort((a, b) => (
-            (parseInch(a.value) - parseInch(b.value)) || naturalCompare(a.value, b.value)
-        ));
-    }, [pipeStandards]);
+    /* --- Cascade Material A/B ------------------------------------------
+       Urutan produksi: Material Group -> Kategori -> Size -> Sch -> Spesifikasi.
+       Logika murni ada di materialCascade.js supaya bisa diuji terpisah. */
 
-    const scheduleOptionsFor = useCallback((size) => {
-        const nps = normSize(size);
-        const rows = nps
-            ? pipeStandards.filter((row) => normSize(row.nps) === nps)
-            : pipeStandards;
-        const seen = new Map();
-        rows.forEach((row) => {
-            if (!row.schedule || seen.has(row.schedule)) return;
-            seen.set(row.schedule, {
-                value: row.schedule,
-                label: row.schedule,
-                hint: row.wall_thickness_mm ? `${fmt(row.wall_thickness_mm)} mm` : '',
-                thickness: parseFloat(row.wall_thickness_mm) || 0,
-            });
-        });
-        return Array.from(seen.values()).sort((a, b) => (
-            (a.thickness - b.thickness) || naturalCompare(a.value, b.value)
-        ));
-    }, [pipeStandards]);
+    const materialIndex = useMemo(() => buildMaterialIndex(materialStandards), [materialStandards]);
 
-    const scheduleOptionsA = useMemo(
-        () => scheduleOptionsFor(form.mat_a_size),
-        [scheduleOptionsFor, form.mat_a_size]
-    );
-    const scheduleOptionsB = useMemo(
-        () => scheduleOptionsFor(form.mat_b_size),
-        [scheduleOptionsFor, form.mat_b_size]
+    const attributeLabels = useMemo(() => buildAttributeLabels(systemParameters), [systemParameters]);
+
+    const attributeLabelFor = useCallback(
+        (category) => resolveAttributeLabel(attributeLabels, category),
+        [attributeLabels]
     );
 
-    const materialSpecOptions = useMemo(() => {
-        const seen = new Map();
-        materialStandards.forEach((std) => {
-            const spec = std.specification || std.code || '';
-            if (!spec || seen.has(spec)) return;
-            seen.set(spec, { value: spec, label: spec });
-        });
-        return Array.from(seen.values()).sort((a, b) => naturalCompare(a.label, b.label));
-    }, [materialStandards]);
+    const optionsA = useMemo(
+        () => buildMaterialOptions({
+            materialIndex,
+            pipeStandards,
+            group: form.mat_a_group,
+            category: form.mat_a_category,
+            size: form.mat_a_size,
+            sch: form.mat_a_sch
+        }),
+        [materialIndex, pipeStandards, form.mat_a_group, form.mat_a_category, form.mat_a_size, form.mat_a_sch]
+    );
+    const optionsB = useMemo(
+        () => buildMaterialOptions({
+            materialIndex,
+            pipeStandards,
+            group: form.mat_b_group,
+            category: form.mat_b_category,
+            size: form.mat_b_size,
+            sch: form.mat_b_sch
+        }),
+        [materialIndex, pipeStandards, form.mat_b_group, form.mat_b_category, form.mat_b_size, form.mat_b_sch]
+    );
+
+    const attributeLabelA = attributeLabelFor(form.mat_a_category);
+    const attributeLabelB = attributeLabelFor(form.mat_b_category);
 
     const modalStandard = findStandard(form.mat_a_size, form.mat_a_sch);
     const modalStandardB = findStandard(form.mat_b_size, form.mat_b_sch);
@@ -485,15 +463,49 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         ? parseFloat(modalStandardB.weight_kg_stick)
         : (modalStandardB?.weight_kg_m ? parseFloat(modalStandardB.weight_kg_m) * stickLengthB : null);
 
-    const applyMaterialField = (which, field, value) => {
+    /* Penerapan pilihan Material A/B.
+       Reset berantai: memilih tingkat N mengosongkan tingkat di bawahnya,
+       sehingga tidak pernah ada kombinasi usang. Back-fill: memilih
+       Spesifikasi langsung mengisi Group & Kategori dari master. */
+    const applyMaterial = (which, field, value) => {
         setForm((prev) => {
-            const next = { ...prev, [`mat_${which}_${field}`]: value };
+            const key = (f) => `mat_${which}_${f}`;
+            const next = { ...prev, [key(field)]: value };
 
-            if (field === 'size') {
-                const available = scheduleOptionsFor(value).map((opt) => opt.value);
-                const currentSch = next[`mat_${which}_sch`];
-                if (currentSch && available.length > 0 && !available.includes(currentSch)) {
-                    next[`mat_${which}_sch`] = '';
+            if (field === 'group') {
+                next[key('category')] = '';
+                next[key('size')] = '';
+                next[key('sch')] = '';
+                next[key('spec')] = '';
+                next[key('item')] = '';
+            } else if (field === 'category') {
+                next[key('size')] = '';
+                next[key('sch')] = '';
+                next[key('spec')] = '';
+                next[key('item')] = value;
+            } else if (field === 'size') {
+                next[key('sch')] = '';
+                next[key('spec')] = '';
+            } else if (field === 'sch') {
+                next[key('spec')] = '';
+            } else if (field === 'spec') {
+                const row = materialIndex.find((r) => r.spec === value);
+                if (row) {
+                    next[key('group')] = row.group;
+                    next[key('category')] = row.category;
+                    next[key('item')] = row.category;
+
+                    /* Pertahankan Size/Sch hanya bila masih valid untuk baris ini. */
+                    const currentSize = next[key('size')];
+                    const currentSch = next[key('sch')];
+                    const sizeOk = !currentSize
+                        || sizeWithinRange(parseInch(currentSize), row);
+                    if (!sizeOk) {
+                        next[key('size')] = '';
+                        next[key('sch')] = '';
+                    } else if (currentSch && !row.schedules.includes(currentSch)) {
+                        next[key('sch')] = '';
+                    }
                 }
             }
 
@@ -514,12 +526,23 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
 
     const applyFitup = (which, spec) => {
         setForm((prev) => {
+            const specValue = spec.material_spec || prev[`mat_${which}_spec`];
             const next = {
                 ...prev,
-                [`mat_${which}_spec`]: spec.material_spec || prev[`mat_${which}_spec`],
+                [`mat_${which}_spec`]: specValue,
                 [`mat_${which}_size`]: spec.size || prev[`mat_${which}_size`],
                 [`mat_${which}_sch`]: spec.schedule || prev[`mat_${which}_sch`],
             };
+
+            /* Fit-up spec hanya membawa spesifikasi; Group & Kategori
+               diturunkan dari master agar form tetap konsisten. */
+            const row = materialIndex.find((r) => r.spec === specValue);
+            if (row) {
+                next[`mat_${which}_group`] = row.group;
+                next[`mat_${which}_category`] = row.category;
+                next[`mat_${which}_item`] = row.category;
+            }
+
             if (which === 'a') {
                 const std = findStandard(next.mat_a_size, next.mat_a_sch);
                 if (std?.wall_thickness_mm) {
@@ -553,10 +576,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                 length_mm: item.length_mm ?? '',
                 location: item.location || 'Shop',
                 mat_a_item: item.mat_a_item || '',
+                mat_a_group: item.mat_a_group || '',
+                mat_a_category: item.mat_a_category || '',
                 mat_a_spec: item.mat_a_spec || '',
                 mat_a_size: item.mat_a_size || item.size || '',
                 mat_a_sch: item.mat_a_sch || '',
                 mat_b_item: item.mat_b_item || '',
+                mat_b_group: item.mat_b_group || '',
+                mat_b_category: item.mat_b_category || '',
                 mat_b_spec: item.mat_b_spec || '',
                 mat_b_size: item.mat_b_size || item.size || '',
                 mat_b_sch: item.mat_b_sch || '',
@@ -1076,8 +1103,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                             <tr className="wm-detail" id={`wm-detail-${m.id}`}>
                                                                                 <td colSpan={colSpan}>
                                                                                     <div className="wm-detail__inner">
-                                                                                        <MaterialCard label="Material A" info={materialA} />
-                                                                                        <MaterialCard label="Material B" info={materialB} />
+                                                                                        <MaterialCard label="Material A" info={materialA} attributeLabel={attributeLabelFor(m.mat_a_category)} />
+                                                                                        <MaterialCard label="Material B" info={materialB} attributeLabel={attributeLabelFor(m.mat_b_category)} />
                                                                                         <div className="wm-calc">
                                                                                             <div className="wm-calc__head">Perhitungan</div>
                                                                                             <div className="wm-calc__row">
@@ -1368,48 +1395,55 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                     {/* Material A */}
                                     <div className="pcm-form-section">
                                         <span className="pcm-form-section__title">Material A</span>
-                                        <div className="wm-form-grid">
+                                        <div className="wm-form-grid wm-form-grid--5">
                                             <div>
-                                                <label className="form-label small fw-bold">Item</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    placeholder=""
-                                                    value={form.mat_a_item}
-                                                    onChange={(e) => setForm({ ...form, mat_a_item: e.target.value })}
+                                                <label className="form-label small fw-bold">Material Group</label>
+                                                <SearchSelect
+                                                    value={form.mat_a_group}
+                                                    onChange={(value) => applyMaterial('a', 'group', value)}
+                                                    options={optionsA.groupOpts}
+                                                    placeholder="Pilih group..."
+                                                    ariaLabel="Material Group A"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Material Spec</label>
+                                                <label className="form-label small fw-bold">Kategori</label>
                                                 <SearchSelect
-                                                    value={form.mat_a_spec}
-                                                    onChange={(value) => setForm({ ...form, mat_a_spec: value })}
-                                                    options={materialSpecOptions}
-                                                    placeholder="Cari spesifikasi ASTM..."
-                                                    allowCustom
-                                                    ariaLabel="Spesifikasi Material A"
+                                                    value={form.mat_a_category}
+                                                    onChange={(value) => applyMaterial('a', 'category', value)}
+                                                    options={optionsA.categoryOpts}
+                                                    placeholder="Pilih kategori..."
+                                                    ariaLabel="Kategori Material A"
                                                 />
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Size (NPS)</label>
                                                 <SearchSelect
                                                     value={form.mat_a_size}
-                                                    onChange={(value) => applyMaterialField('a', 'size', value)}
-                                                    options={sizeOptions}
-                                                    placeholder="Cari NPS..."
-                                                    allowCustom
+                                                    onChange={(value) => applyMaterial('a', 'size', value)}
+                                                    options={optionsA.sizeOpts}
+                                                    placeholder="Pilih size..."
                                                     ariaLabel="Size Material A"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Schedule</label>
+                                                <label className="form-label small fw-bold">{attributeLabelA}</label>
                                                 <SearchSelect
                                                     value={form.mat_a_sch}
-                                                    onChange={(value) => applyMaterialField('a', 'sch', value)}
-                                                    options={scheduleOptionsA}
-                                                    placeholder="Cari schedule..."
-                                                    allowCustom
-                                                    ariaLabel="Schedule Material A"
+                                                    onChange={(value) => applyMaterial('a', 'sch', value)}
+                                                    options={optionsA.schOpts}
+                                                    placeholder={`Pilih ${attributeLabelA}...`}
+                                                    ariaLabel={`${attributeLabelA} Material A`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="form-label small fw-bold">Spesifikasi Material</label>
+                                                <SearchSelect
+                                                    value={form.mat_a_spec}
+                                                    onChange={(value) => applyMaterial('a', 'spec', value)}
+                                                    options={optionsA.specOpts}
+                                                    placeholder="Pilih spesifikasi..."
+                                                    ariaLabel="Spesifikasi Material A"
                                                 />
                                             </div>
                                         </div>
@@ -1423,48 +1457,55 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                     {/* Material B */}
                                     <div className="pcm-form-section">
                                         <span className="pcm-form-section__title">Material B</span>
-                                        <div className="wm-form-grid">
+                                        <div className="wm-form-grid wm-form-grid--5">
                                             <div>
-                                                <label className="form-label small fw-bold">Item</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    placeholder=""
-                                                    value={form.mat_b_item}
-                                                    onChange={(e) => setForm({ ...form, mat_b_item: e.target.value })}
+                                                <label className="form-label small fw-bold">Material Group</label>
+                                                <SearchSelect
+                                                    value={form.mat_b_group}
+                                                    onChange={(value) => applyMaterial('b', 'group', value)}
+                                                    options={optionsB.groupOpts}
+                                                    placeholder="Pilih group..."
+                                                    ariaLabel="Material Group B"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Material Spec</label>
+                                                <label className="form-label small fw-bold">Kategori</label>
                                                 <SearchSelect
-                                                    value={form.mat_b_spec}
-                                                    onChange={(value) => setForm({ ...form, mat_b_spec: value })}
-                                                    options={materialSpecOptions}
-                                                    placeholder="Cari spesifikasi ASTM..."
-                                                    allowCustom
-                                                    ariaLabel="Spesifikasi Material B"
+                                                    value={form.mat_b_category}
+                                                    onChange={(value) => applyMaterial('b', 'category', value)}
+                                                    options={optionsB.categoryOpts}
+                                                    placeholder="Pilih kategori..."
+                                                    ariaLabel="Kategori Material B"
                                                 />
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Size (NPS)</label>
                                                 <SearchSelect
                                                     value={form.mat_b_size}
-                                                    onChange={(value) => applyMaterialField('b', 'size', value)}
-                                                    options={sizeOptions}
-                                                    placeholder="Cari NPS..."
-                                                    allowCustom
+                                                    onChange={(value) => applyMaterial('b', 'size', value)}
+                                                    options={optionsB.sizeOpts}
+                                                    placeholder="Pilih size..."
                                                     ariaLabel="Size Material B"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Schedule</label>
+                                                <label className="form-label small fw-bold">{attributeLabelB}</label>
                                                 <SearchSelect
                                                     value={form.mat_b_sch}
-                                                    onChange={(value) => applyMaterialField('b', 'sch', value)}
-                                                    options={scheduleOptionsB}
-                                                    placeholder="Cari schedule..."
-                                                    allowCustom
-                                                    ariaLabel="Schedule Material B"
+                                                    onChange={(value) => applyMaterial('b', 'sch', value)}
+                                                    options={optionsB.schOpts}
+                                                    placeholder={`Pilih ${attributeLabelB}...`}
+                                                    ariaLabel={`${attributeLabelB} Material B`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="form-label small fw-bold">Spesifikasi Material</label>
+                                                <SearchSelect
+                                                    value={form.mat_b_spec}
+                                                    onChange={(value) => applyMaterial('b', 'spec', value)}
+                                                    options={optionsB.specOpts}
+                                                    placeholder="Pilih spesifikasi..."
+                                                    ariaLabel="Spesifikasi Material B"
                                                 />
                                             </div>
                                         </div>

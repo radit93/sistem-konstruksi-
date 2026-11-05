@@ -352,7 +352,7 @@ export function EngineeringTab({
     };
 
     // Statistik folder dan drawing
-    const { folderList, unassignedDrawings, clientOptions } = useMemo(() => {
+    const { folderList, unassignedDrawings, clientOptions, projectMap } = useMemo(() => {
         const pList = projects || [];
         const dList = drawings || [];
 

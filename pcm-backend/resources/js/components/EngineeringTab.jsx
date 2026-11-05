@@ -1248,7 +1248,7 @@ export function EngineeringTab({
                                     <div className="row g-3">
                                         <div className="col-12 col-md-6">
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-service">
-                                                Line Service
+                                                Line Service (Master Acuan)
                                             </label>
                                             <select
                                                 id="pcm-dwg-service"
@@ -1257,22 +1257,27 @@ export function EngineeringTab({
                                                 onChange={(e) => {
                                                     const sId = e.target.value;
                                                     const chosen = lineServices.find((s) => String(s.id) === String(sId));
+                                                    let autoDrawingNo = drawingForm.drawing_no;
+                                                    // Jika nomor drawing belum diisi atau masih default, bantu buat format profesional otomatis
+                                                    if (!autoDrawingNo && chosen && activeProject) {
+                                                        const cleanJob = (activeProject.job_no || 'PROJ').trim();
+                                                        autoDrawingNo = `${cleanJob}-ISO-${chosen.line_no}-SHT1`;
+                                                    }
                                                     setDrawingForm({
                                                         ...drawingForm,
                                                         line_service_id: sId,
                                                         line_service: chosen ? chosen.service_name : drawingForm.line_service,
-                                                        line_no: chosen ? chosen.line_no : drawingForm.line_no
+                                                        line_no: chosen ? chosen.line_no : drawingForm.line_no,
+                                                        drawing_no: autoDrawingNo || drawingForm.drawing_no
                                                     });
                                                 }}
                                             >
-                                                <option value="">-- Pilih Line Service --</option>
-                                                {lineServices
-                                                    .filter((s) => !targetProjectId || String(s.project_id) === String(targetProjectId))
-                                                    .map((s) => (
-                                                        <option key={s.id} value={s.id}>
-                                                            {s.line_no} — {s.service_name} {s.fluid_code ? `(${s.fluid_code})` : ''}
-                                                        </option>
-                                                    ))}
+                                                <option value="">-- Pilih Master Line Service --</option>
+                                                {lineServices.map((s) => (
+                                                    <option key={s.id} value={s.id}>
+                                                        {s.line_no} — {s.service_name} {s.fluid_code ? `(${s.fluid_code})` : ''} {s.piping_class ? `· Class: ${s.piping_class}` : ''}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
 
@@ -1285,7 +1290,7 @@ export function EngineeringTab({
                                                 type="text"
                                                 required
                                                 className="form-control form-control-sm pcm-code"
-                                                placeholder="Contoh: 15-MPP-AB"
+                                                placeholder="Pilih dari Master Line Service di atas atau ketik manual"
                                                 value={drawingForm.line_no}
                                                 onChange={(e) => setDrawingForm({ ...drawingForm, line_no: e.target.value })}
                                             />

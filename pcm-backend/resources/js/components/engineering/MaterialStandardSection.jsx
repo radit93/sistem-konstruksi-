@@ -268,7 +268,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
     const [activeStandardView, setActiveStandardView] = useState(initialView);
 
     useEffect(() => {
-        if (activeSection === 'pipe_standard') {
+        if (activeSection === 'pipe_standard' || activeSection === 'pipe_schedule') {
             setActiveStandardView('pipe');
         } else if (activeSection === 'material_standard') {
             setActiveStandardView('material');
@@ -319,6 +319,17 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
     });
 
     const [pipeForm, setPipeForm] = useState(emptyPipeForm);
+    const [fittingCategory, setFittingCategory] = useState('Pipe');
+
+    const fittingCategories = [
+        { id: 'Pipe', label: 'Pipe' },
+        { id: 'Elbow Long Radius', label: 'Elbow Long Radius' },
+        { id: 'Elbow Short Radius', label: 'Elbow Short Radius' },
+        { id: 'Reducer', label: 'Reducer' },
+        { id: 'Tee', label: 'Tee' },
+        { id: 'Tee Reducer', label: 'Tee Reducer' },
+        { id: 'Weldolet', label: 'Weldolet' },
+    ];
 
     const canEdit = can(user, 'drawing.write');
 
@@ -351,7 +362,21 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         loadPipeData();
     }, [loadData, loadPipeData]);
 
-    const categories = ['ALL', 'Pipe', 'Fitting', 'Flange', 'Valve', 'Gasket', 'Fastener'];
+    const categories = [
+        'ALL',
+        'Pipe',
+        'Fitting',
+        'Elbow Long Radius',
+        'Elbow Short Radius',
+        'Reducer',
+        'Tee',
+        'Tee Reducer',
+        'Weldolet',
+        'Flange',
+        'Valve',
+        'Gasket',
+        'Fastener',
+    ];
 
     const filteredStandards = useMemo(() => {
         const q = search.toLowerCase();
@@ -562,7 +587,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
             {/* Header Toolbar */}
             <div className="mb-4">
                 <h2 className="h3 fw-bolder text-dark mb-0" style={{ letterSpacing: '-0.02em' }}>
-                    {activeStandardView === 'pipe' ? 'Master Diameter & Ketebalan Pipa (ASME B36.10M)' : 'Katalog Standar Material ASTM'}
+                    Katalog Standar Material ASTM
                 </h2>
             </div>
 
@@ -779,6 +804,48 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
             {/* VIEW 2: Master Diameter & Ketebalan Pipa (Pipe Standards) */}
             {activeStandardView === 'pipe' && (
                 <>
+                    <div className="mb-3">
+                        <div className="btn-group flex-wrap" role="group" aria-label="Filter komponen master diameter">
+                            {fittingCategories.map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    className={`btn btn-sm ${fittingCategory === item.id ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
+                                    onClick={() => setFittingCategory(item.id)}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    {fittingCategory !== 'Pipe' && (
+                        <div className="pcm-card mb-4">
+                            <div className="table-responsive">
+                                <table className="table table-hover align-middle pcm-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th className="text-center">Ukuran Nominal</th>
+                                            <th className="text-center">Tipe / Komponen</th>
+                                            <th className="text-center">Spesifikasi Material</th>
+                                            <th className="text-center">Schedule / Wall Thickness</th>
+                                            <th className="text-center">Pressure Class</th>
+                                            <th className="text-center">Dimensi / End-to-End</th>
+                                            <th className="text-center">Berat (kg/pcs)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colSpan={7} className="text-center py-5 pcm-cell-sub">
+                                                Belum ada data {fittingCategory}. Layout tabel sudah disiapkan dan siap diisi setelah data diberikan.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                    {fittingCategory === 'Pipe' && (
+                    <>
                     {/* Search di Kiri & Tambah Ukuran Pipa di Kanan Sejajar */}
                     <div className="d-flex align-items-center gap-3 mb-4">
                         <div className="flex-grow-1">
@@ -819,10 +886,10 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                 <thead>
                                      <tr>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Ukuran Nominal (NPS)</span>
+                                             <span className="pcm-th-title">Ukuran Nominal NPS</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Metrik (DN mm)</span>
+                                             <span className="pcm-th-title">Metrik DN (mm)</span>
                                          </th>
                                          <th className="text-center">
                                              <span className="pcm-th-title">Schedule (SCH)</span>
@@ -837,10 +904,10 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                              <span className="pcm-th-title">Berat Nominal (kg/m)</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Panjang Batang (m)</span>
+                                             <span className="pcm-th-title">Pipe Length (m)</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Berat per Batang (kg)</span>
+                                             <span className="pcm-th-title">Berat Pipe (kg)</span>
                                          </th>
                                          {canEdit && (
                                              <th className="text-center pe-3">
@@ -924,6 +991,8 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                             />
                         )}
                     </div>
+                    </>
+                    )}
                 </>
             )}
 

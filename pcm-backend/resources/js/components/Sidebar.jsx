@@ -50,12 +50,12 @@ export const DEPARTMENT_MENUS = {
         'boq',
         'bom',
         'material_standard',
-        'pipe_standard',
+        'pipe_schedule',
         'document_control'
     ],
     MAT: [
         'material_standard',
-        'pipe_standard',
+        'pipe_schedule',
         'mat_requirement',
         'mat_receiving',
         'mat_inspection',
@@ -64,8 +64,8 @@ export const DEPARTMENT_MENUS = {
         'mat_openyard',
         'mat_issuing'
     ],
-    CONS: ['material_standard', 'pipe_standard', 'fabrication', 'erection'],
-    QAQC: ['material_standard', 'pipe_standard', 'qaqc', 'testpackage', 'mat_inspection'],
+    CONS: ['material_standard', 'pipe_schedule', 'fabrication', 'erection'],
+    QAQC: ['material_standard', 'pipe_schedule', 'qaqc', 'testpackage', 'mat_inspection'],
     HSE: ['hse']
 };
 
@@ -127,7 +127,7 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Katalog Acuan Standar ASTM'
     },
     {
-        id: 'pipe_standard',
+        id: 'pipe_schedule',
         label: 'Master Diameter & Ketebalan',
         anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',

@@ -106,6 +106,11 @@ function IconFile({ size }) {
 /* -------------------------------------------------------------------------
  * Form defaults. Declared once so create and reset cannot drift apart.
  * ---------------------------------------------------------------------- */
+const defaultSpoolRow = (index = 1) => ({
+    spool_no: `SP-${String(index).padStart(2, '0')}`,
+    joints_count: 1
+});
+
 const emptyDrawingForm = () => ({
     drawing_no: '',
     title: '',
@@ -118,7 +123,9 @@ const emptyDrawingForm = () => ({
     sheet: 'Sheet 1 of 1',
     rev: '0',
     total_dia_inch: '',
-    total_joints: '',
+    total_joints: 1,
+    total_spools: 1,
+    spool_data: [defaultSpoolRow(1)],
     fitup_specs: [],
     distributed_to: '',
     distribution_date: new Date().toISOString().split('T')[0],
@@ -470,6 +477,21 @@ export function EngineeringTab({
 
         const matchedService = lineServices.find(s => s.line_no === drawing.line_no);
 
+        let rawSpoolData = drawing.spool_data;
+        if (typeof rawSpoolData === 'string') {
+            try { rawSpoolData = JSON.parse(rawSpoolData); } catch (e) { rawSpoolData = []; }
+        }
+        if (!Array.isArray(rawSpoolData) || rawSpoolData.length === 0) {
+            rawSpoolData = [
+                {
+                    spool_no: 'SP-01',
+                    joints_count: Math.max(parseInt(drawing.total_joints, 10) || 1, 1)
+                }
+            ];
+        }
+
+        const calculatedTotalJoints = rawSpoolData.reduce((acc, sp) => acc + (parseInt(sp.joints_count, 10) || 0), 0);
+
         setDrawingForm({
             drawing_no: drawing.drawing_no || '',
             title: drawing.title || '',
@@ -484,7 +506,9 @@ export function EngineeringTab({
             material_spec: drawing.material_spec || '',
             size_range: drawing.size_range || '',
             total_dia_inch: drawing.total_dia_inch || '',
-            total_joints: drawing.total_joints || '',
+            total_joints: calculatedTotalJoints || drawing.total_joints || 1,
+            total_spools: rawSpoolData.length,
+            spool_data: rawSpoolData,
             fitup_specs: specs,
             distributed_to: drawing.distributed_to || '',
             distribution_date: drawing.distribution_date ? drawing.distribution_date.split('T')[0] : new Date().toISOString().split('T')[0],
@@ -529,6 +553,12 @@ export function EngineeringTab({
                         data.append('material_spec', validSpecs.map(s => s.material_spec).filter(Boolean).join(', '));
                         data.append('size_range', validSpecs.map(s => s.size).filter(Boolean).join(', '));
                     }
+                } else if (key === 'spool_data') {
+                    const spList = Array.isArray(drawingForm.spool_data) && drawingForm.spool_data.length > 0
+                        ? drawingForm.spool_data
+                        : [defaultSpoolRow(1)];
+                    data.append('spool_data', JSON.stringify(spList));
+                    data.append('total_spools', String(spList.length));
                 } else if (drawingForm[key] !== '' && drawingForm[key] !== null) {
                     data.append(key, drawingForm[key]);
                 }
@@ -597,7 +627,9 @@ export function EngineeringTab({
                     sheetData.append('material_spec', '');
                     sheetData.append('size_range', '');
                     sheetData.append('total_dia_inch', '0');
-                    sheetData.append('total_joints', '0');
+                    sheetData.append('total_joints', '1');
+                    sheetData.append('total_spools', '1');
+                    sheetData.append('spool_data', JSON.stringify([defaultSpoolRow(1)]));
 
                     await fetch('/api/drawings', {
                         method: 'POST',
@@ -1210,31 +1242,11 @@ export function EngineeringTab({
                                     <div className="alert alert-danger py-2 mb-3" role="alert">{drawingError}</div>
                                 )}
 
-                                {/* Bagian 1: Proyek & Referensi Line Service (3 Kolom) */}
+                                {/* Bagian 1: Referensi Line Service (Terkunci Sesuai Proyek Aktif) */}
                                 <div className="pcm-form-section mb-4">
-                                    <div className="pcm-form-section__title mb-2">1. Proyek &amp; Referensi Jalur</div>
+                                    <div className="pcm-form-section__title mb-2">1. Referensi Jalur Pipa (Line Service)</div>
                                     <div className="row g-3">
-                                        <div className="col-12 col-md-4">
-                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-project">
-                                                Folder Proyek Client <span className="text-danger">*</span>
-                                            </label>
-                                            <select
-                                                id="pcm-dwg-project"
-                                                className="form-select form-select-sm"
-                                                required
-                                                value={targetProjectId}
-                                                onChange={(e) => setTargetProjectId(e.target.value)}
-                                            >
-                                                <option value="">-- Pilih Folder Proyek --</option>
-                                                {projects.map((p) => (
-                                                    <option key={p.id} value={p.id}>
-                                                        {p.client ? `[${p.client}] ` : ''}{p.job_no ? `(JOB: ${p.job_no}) ` : ''}{p.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div className="col-12 col-md-4">
+                                        <div className="col-12 col-md-6">
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-service">
                                                 Line Service
                                             </label>
@@ -1264,7 +1276,7 @@ export function EngineeringTab({
                                             </select>
                                         </div>
 
-                                        <div className="col-12 col-md-4">
+                                        <div className="col-12 col-md-6">
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-line">
                                                 Line Number <span className="text-danger">*</span>
                                             </label>
@@ -1418,42 +1430,127 @@ export function EngineeringTab({
                                     </div>
                                 </div>
 
-                                {/* Bagian 3: Estimasi Titik Joint & Berkas CAD/PDF (2 Kolom) */}
+                                {/* Bagian 3: Estimasi Spool, Joint & Berkas CAD/PDF */}
                                 <div className="pcm-form-section mb-4">
-                                    <div className="pcm-form-section__title mb-2">3. Estimasi Joint &amp; Berkas CAD/PDF</div>
-                                    <div className="row g-3">
-                                        <div className="col-12 col-md-6">
-                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-joints">
-                                                Estimasi Total Joint (Titik Sambungan)
-                                            </label>
-                                            <input
-                                                id="pcm-dwg-joints"
-                                                type="number"
-                                                min="0"
-                                                className="form-control form-control-sm"
-                                                placeholder="Contoh: 18"
-                                                value={drawingForm.total_joints}
-                                                onChange={(e) => setDrawingForm({ ...drawingForm, total_joints: e.target.value })}
-                                            />
+                                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                        <div className="pcm-form-section__title mb-0">3. Estimasi Spool, Joint &amp; Berkas CAD/PDF</div>
+                                        <div className="d-flex align-items-center gap-2">
+                                            <span className="badge bg-light text-dark border pcm-code" style={{ fontSize: '0.75rem' }}>
+                                                Total: {drawingForm.spool_data?.length || 1} Spool &bull; {drawingForm.total_joints || 0} Joint
+                                            </span>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-primary btn-sm fw-bold px-2.5 py-0.5"
+                                                style={{ fontSize: '0.75rem', borderRadius: '4px' }}
+                                                onClick={() => {
+                                                    const cur = Array.isArray(drawingForm.spool_data) ? [...drawingForm.spool_data] : [];
+                                                    const nextIdx = cur.length + 1;
+                                                    const updated = [...cur, defaultSpoolRow(nextIdx)];
+                                                    const sumJoints = updated.reduce((acc, s) => acc + (parseInt(s.joints_count, 10) || 0), 0);
+                                                    setDrawingForm({
+                                                        ...drawingForm,
+                                                        spool_data: updated,
+                                                        total_spools: updated.length,
+                                                        total_joints: sumJoints
+                                                    });
+                                                }}
+                                            >
+                                                + Tambah Spool
+                                            </button>
                                         </div>
+                                    </div>
 
-                                        <div className="col-12 col-md-6">
-                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-file">
-                                                Berkas Drawing (CAD / PDF)
-                                            </label>
-                                            <input
-                                                id="pcm-dwg-file"
-                                                type="file"
-                                                accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg,.zip"
-                                                className="form-control form-control-sm"
-                                                onChange={(e) => setDrawingFile(e.target.files[0])}
-                                            />
-                                            {editingDrawing && editingDrawing.scan_path && (
-                                                <small className="text-muted d-block mt-1 text-truncate">
-                                                    File aktif: <strong>{editingDrawing.scan_path.split('/').pop()}</strong>
-                                                </small>
-                                            )}
+                                    {/* Grid Rincian Spool */}
+                                    <div className="p-3 border rounded bg-light mb-3">
+                                        <div className="row g-2">
+                                            {(drawingForm.spool_data || [defaultSpoolRow(1)]).map((sp, sIdx) => (
+                                                <div className="col-12 col-md-6 col-lg-4" key={sIdx}>
+                                                    <div className="p-2.5 bg-white border rounded shadow-sm">
+                                                        <div className="d-flex align-items-center justify-content-between mb-1.5">
+                                                            <span className="fw-bold small text-dark pcm-code">
+                                                                Spool #{sIdx + 1}
+                                                            </span>
+                                                            {(drawingForm.spool_data || []).length > 1 && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-link text-danger p-0 text-decoration-none small fw-bold"
+                                                                    style={{ fontSize: '0.75rem', lineHeight: 1 }}
+                                                                    onClick={() => {
+                                                                        const updated = drawingForm.spool_data.filter((_, idx) => idx !== sIdx);
+                                                                        const sumJoints = updated.reduce((acc, s) => acc + (parseInt(s.joints_count, 10) || 0), 0);
+                                                                        setDrawingForm({
+                                                                            ...drawingForm,
+                                                                            spool_data: updated,
+                                                                            total_spools: updated.length,
+                                                                            total_joints: sumJoints
+                                                                        });
+                                                                    }}
+                                                                    title="Hapus Spool Ini"
+                                                                >
+                                                                    Hapus
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <div className="row g-1.5">
+                                                            <div className="col-6">
+                                                                <label className="form-label small text-muted mb-0" style={{ fontSize: '0.6875rem' }}>No Spool</label>
+                                                                <input
+                                                                    type="text"
+                                                                    className="form-control form-control-sm pcm-code fw-bold text-dark"
+                                                                    value={sp.spool_no}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value;
+                                                                        const updated = [...drawingForm.spool_data];
+                                                                        updated[sIdx] = { ...updated[sIdx], spool_no: val };
+                                                                        setDrawingForm({ ...drawingForm, spool_data: updated });
+                                                                    }}
+                                                                    placeholder="SP-01"
+                                                                />
+                                                            </div>
+                                                            <div className="col-6">
+                                                                <label className="form-label small text-muted mb-0" style={{ fontSize: '0.6875rem' }}>Estimasi Joint</label>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    className="form-control form-control-sm text-center fw-bold"
+                                                                    value={sp.joints_count || 1}
+                                                                    onChange={(e) => {
+                                                                        const count = Math.max(parseInt(e.target.value, 10) || 1, 1);
+                                                                        const updated = [...drawingForm.spool_data];
+                                                                        updated[sIdx] = { ...updated[sIdx], joints_count: count };
+                                                                        const sumJoints = updated.reduce((acc, s) => acc + (parseInt(s.joints_count, 10) || 0), 0);
+                                                                        setDrawingForm({
+                                                                            ...drawingForm,
+                                                                            spool_data: updated,
+                                                                            total_joints: sumJoints
+                                                                        });
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
+                                    </div>
+
+                                    {/* Upload Berkas Drawing CAD / PDF */}
+                                    <div>
+                                        <label className="form-label pcm-form-label mb-1" htmlFor="pcm-dwg-file">
+                                            Berkas Drawing (CAD / PDF)
+                                        </label>
+                                        <input
+                                            id="pcm-dwg-file"
+                                            type="file"
+                                            accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg,.zip"
+                                            className="form-control form-control-sm"
+                                            onChange={(e) => setDrawingFile(e.target.files[0])}
+                                        />
+                                        {editingDrawing && editingDrawing.scan_path && (
+                                            <small className="text-muted d-block mt-1 text-truncate">
+                                                File aktif: <strong>{editingDrawing.scan_path.split('/').pop()}</strong>
+                                            </small>
+                                        )}
                                     </div>
                                 </div>
 

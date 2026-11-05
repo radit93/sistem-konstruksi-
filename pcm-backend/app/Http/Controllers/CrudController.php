@@ -489,6 +489,9 @@ class CrudController extends Controller
         if ($res === 'drawings' && isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
             $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
         }
+        if ($res === 'drawings' && isset($data['spool_data']) && is_string($data['spool_data'])) {
+            $data['spool_data'] = json_decode($data['spool_data'], true);
+        }
 
         if ($res === 'piping-class-templates') {
             $duplicate = PipingClassTemplate::query()
@@ -637,6 +640,9 @@ class CrudController extends Controller
         }
         if ($res === 'drawings' && isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
             $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
+        }
+        if ($res === 'drawings' && isset($data['spool_data']) && is_string($data['spool_data'])) {
+            $data['spool_data'] = json_decode($data['spool_data'], true);
         }
         if (! $request->user()->isSuperAdmin()) {
             unset($data['department_id']);

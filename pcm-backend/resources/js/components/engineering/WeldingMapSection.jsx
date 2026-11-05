@@ -679,6 +679,20 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
     }, [selectedDrawing, form.sheet]);
 
     const drawingSpoolOptions = useMemo(() => {
+        // Prioritas 1: Ambil langsung dari spool_data drawing terpilih jika sudah diinput di drawing
+        if (selectedDrawing) {
+            let raw = selectedDrawing.spool_data;
+            if (typeof raw === 'string') {
+                try { raw = JSON.parse(raw); } catch (e) { raw = []; }
+            }
+            if (Array.isArray(raw) && raw.length > 0) {
+                const spoolsFromDrawing = raw.map(s => (s.spool_no || '').trim()).filter(Boolean);
+                if (spoolsFromDrawing.length > 0) {
+                    return Array.from(new Set(spoolsFromDrawing)).sort(naturalCompare);
+                }
+            }
+        }
+
         const source = selectedDrawing
             ? scopedMaps.filter((m) => String(m.drawing_id) === String(selectedDrawing.id)
                 || (m.iso_drawing_no && m.iso_drawing_no === selectedDrawing.drawing_no))
@@ -686,6 +700,19 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         return Array.from(new Set(source.map((m) => (m.spool_no || '').trim()).filter(Boolean)))
             .sort(naturalCompare);
     }, [scopedMaps, selectedDrawing]);
+
+    // Data spool detail lengkap (termasuk kapasitas joints_count) dari drawing terpilih
+    const selectedDrawingSpools = useMemo(() => {
+        if (!selectedDrawing) return [];
+        let raw = selectedDrawing.spool_data;
+        if (typeof raw === 'string') {
+            try { raw = JSON.parse(raw); } catch (e) { raw = []; }
+        }
+        if (Array.isArray(raw) && raw.length > 0) {
+            return raw;
+        }
+        return [];
+    }, [selectedDrawing]);
 
     const spoolSequenceOptions = useMemo(() => Array.from(new Set(
         drawingSpoolOptions
@@ -1129,6 +1156,16 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     onChange={(e) => {
                                                         const dId = e.target.value;
                                                         const dwg = drawings.find((d) => String(d.id) === String(dId));
+                                                        let nextSpoolNo = form.spool_no;
+                                                        if (dwg) {
+                                                            let sps = dwg.spool_data;
+                                                            if (typeof sps === 'string') {
+                                                                try { sps = JSON.parse(sps); } catch (err) { sps = []; }
+                                                            }
+                                                            if (Array.isArray(sps) && sps.length > 0 && sps[0].spool_no) {
+                                                                nextSpoolNo = sps[0].spool_no;
+                                                            }
+                                                        }
                                                         setForm({
                                                             ...form,
                                                             drawing_id: dId,
@@ -1136,41 +1173,61 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                             line_no: dwg ? dwg.line_no : form.line_no,
                                                             project_id: dwg?.project_id ? String(dwg.project_id) : form.project_id,
                                                             sheet: dwg ? getDrawingSheet(dwg) : '',
+                                                            spool_no: nextSpoolNo
                                                         });
                                                     }}
                                                     required
                                                 >
                                                     <option value="">-- Pilih Isometric Drawing --</option>
-                                                    {availableDrawings.map((d) => (
-                                                        <option key={d.id} value={d.id}>
-                                                            {d.drawing_no} {d.line_no ? `(${d.line_no})` : ''}
-                                                        </option>
-                                                    ))}
+                                                    {availableDrawings.map((d) => {
+                                                        const sheetInfo = d.sheet ? `(${d.sheet})` : '';
+                                                        return (
+                                                            <option key={d.id} value={d.id}>
+                                                                {d.drawing_no} {sheetInfo} {d.line_no ? `· Line: ${d.line_no}` : ''}
+                                                            </option>
+                                                        );
+                                                    })}
                                                 </select>
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Spool No *</label>
-                                                <div className="input-group wm-prefix-group">
-                                                    <span className="input-group-text">SP-</span>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control pcm-code"
-                                                        list="wm-spool-options"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9]*"
-                                                        placeholder="01"
-                                                        value={stripSequence(form.spool_no, 'SP')}
-                                                        onChange={(e) => {
-                                                            const next = withSequencePrefix(e.target.value, 'SP');
-                                                            setForm((prev) => ({ ...prev, spool_no: next }));
-                                                        }}
-                                                        onBlur={(e) => {
-                                                            const next = formatSequence(e.target.value, 'SP');
-                                                            setForm((prev) => ({ ...prev, spool_no: next }));
-                                                        }}
+                                                {selectedDrawingSpools.length > 0 ? (
+                                                    <select
+                                                        className="form-select pcm-code fw-bold text-dark"
+                                                        value={form.spool_no || ''}
+                                                        onChange={(e) => setForm({ ...form, spool_no: e.target.value })}
                                                         required
-                                                    />
-                                                </div>
+                                                    >
+                                                        <option value="">-- Pilih Spool --</option>
+                                                        {selectedDrawingSpools.map((sp, idx) => (
+                                                            <option key={idx} value={sp.spool_no}>
+                                                                {sp.spool_no} (Estimasi: {sp.joints_count || 1} Joint)
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    <div className="input-group wm-prefix-group">
+                                                        <span className="input-group-text">SP-</span>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control pcm-code"
+                                                            list="wm-spool-options"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9]*"
+                                                            placeholder="01"
+                                                            value={stripSequence(form.spool_no, 'SP')}
+                                                            onChange={(e) => {
+                                                                const next = withSequencePrefix(e.target.value, 'SP');
+                                                                setForm((prev) => ({ ...prev, spool_no: next }));
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                const next = formatSequence(e.target.value, 'SP');
+                                                                setForm((prev) => ({ ...prev, spool_no: next }));
+                                                            }}
+                                                            required
+                                                        />
+                                                    </div>
+                                                )}
                                                 <datalist id="wm-spool-options">
                                                     {spoolSequenceOptions.map((sequence) => (
                                                         <option key={sequence} value={sequence} />
@@ -1179,26 +1236,48 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Joint No *</label>
-                                                <div className="input-group wm-prefix-group">
-                                                    <span className="input-group-text">J-</span>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control pcm-code"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9]*"
-                                                        placeholder="01"
-                                                        value={stripSequence(form.joint_no, 'J')}
-                                                        onChange={(e) => {
-                                                            const next = withSequencePrefix(e.target.value, 'J');
-                                                            setForm((prev) => ({ ...prev, joint_no: next }));
-                                                        }}
-                                                        onBlur={(e) => {
-                                                            const next = formatSequence(e.target.value, 'J');
-                                                            setForm((prev) => ({ ...prev, joint_no: next }));
-                                                        }}
-                                                        required
-                                                    />
-                                                </div>
+                                                {(() => {
+                                                    const currentSpoolObj = selectedDrawingSpools.find(s => s.spool_no === form.spool_no);
+                                                    const maxJoints = currentSpoolObj ? parseInt(currentSpoolObj.joints_count, 10) || 1 : null;
+
+                                                    return (
+                                                        <>
+                                                            <div className="input-group wm-prefix-group">
+                                                                <span className="input-group-text">J-</span>
+                                                                <input
+                                                                    type="text"
+                                                                    className="form-control pcm-code"
+                                                                    inputMode="numeric"
+                                                                    pattern="[0-9]*"
+                                                                    placeholder="01"
+                                                                    list="wm-joint-quick-options"
+                                                                    value={stripSequence(form.joint_no, 'J')}
+                                                                    onChange={(e) => {
+                                                                        const next = withSequencePrefix(e.target.value, 'J');
+                                                                        setForm((prev) => ({ ...prev, joint_no: next }));
+                                                                    }}
+                                                                    onBlur={(e) => {
+                                                                        const next = formatSequence(e.target.value, 'J');
+                                                                        setForm((prev) => ({ ...prev, joint_no: next }));
+                                                                    }}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                            {maxJoints != null && (
+                                                                <datalist id="wm-joint-quick-options">
+                                                                    {Array.from({ length: maxJoints }, (_, i) => String(i + 1).padStart(2, '0')).map(num => (
+                                                                        <option key={num} value={num} label={`Joint ${num} (${form.spool_no})`} />
+                                                                    ))}
+                                                                </datalist>
+                                                            )}
+                                                            {maxJoints != null && (
+                                                                <div className="text-muted small mt-1" style={{ fontSize: '0.6875rem' }}>
+                                                                    Rekomendasi urutan: J-01 s/d J-{String(maxJoints).padStart(2, '0')}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Tipe Sambungan</label>

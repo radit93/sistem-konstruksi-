@@ -121,7 +121,7 @@ const emptyDrawingForm = () => ({
     sheet_num: 1,
     sheet_total: 1,
     sheet: 'Sheet 1 of 1',
-    rev: '0',
+    rev: '',
     total_dia_inch: '',
     total_joints: 1,
     total_spools: 1,

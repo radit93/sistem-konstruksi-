@@ -124,11 +124,28 @@ export const ROLE_SIDEBAR_MENUS = [
         label: 'Material Standart',
         anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',
-        desc: 'Katalog Acuan Standar ASTM'
+        desc: 'Katalog Acuan Standar ASTM',
+        children: [
+            {
+                id: 'material_pipe',
+                label: 'Standart Pipe',
+                desc: 'Standar material khusus pipa'
+            },
+            {
+                id: 'material_fitting',
+                label: 'Standart Fitting',
+                desc: 'Standar material fitting: elbow, tee, reducer, weld-o-let'
+            },
+            {
+                id: 'material_additional',
+                label: 'Standart Additional',
+                desc: 'Flange, valve, gasket, dan fastener'
+            }
+        ]
     },
     {
         id: 'master_pipe',
-        label: 'Master Pipe',
+        label: 'Master Diameter',
         anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',
         desc: 'Master data pipa (ASME B36.10M) dan fitting',
@@ -342,9 +359,9 @@ export function Sidebar({
         try {
             const raw = window.localStorage.getItem(SUBMENU_STORAGE_KEY);
             const parsed = raw ? JSON.parse(raw) : null;
-            return parsed && typeof parsed === 'object' ? parsed : { master_pipe: true };
+            return parsed && typeof parsed === 'object' ? parsed : { master_pipe: true, material_standard: true };
         } catch (err) {
-            return { master_pipe: true };
+            return { master_pipe: true, material_standard: true };
         }
     });
 

@@ -294,6 +294,15 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
             ? 'fitting'
             : 'all';
 
+    /* Scope untuk halaman Material Standart (menu punya 3 anak). */
+    const materialScope = activeSection === 'material_pipe'
+        ? 'pipe'
+        : activeSection === 'material_fitting'
+            ? 'fitting'
+            : activeSection === 'material_additional'
+                ? 'additional'
+                : 'all';
+
     // 1. Material Standards State
     const [standards, setStandards] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -353,6 +362,9 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
             setActiveStandardView('pipe');
         } else if (activeSection === 'material_standard') {
             setActiveStandardView('material');
+        } else if (activeSection === 'material_pipe' || activeSection === 'material_fitting' || activeSection === 'material_additional') {
+            setActiveStandardView('material');
+            setFilterCategory('ALL');
         }
     }, [activeSection]);
 
@@ -421,19 +433,39 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         'Fastener',
     ];
 
+    /* Pengelompokan kategori untuk 3 anak menu Material Standart. */
+    const MATERIAL_SCOPE_CATEGORIES = {
+        pipe: ['Pipe'],
+        fitting: ['Fitting', 'Elbow Long Radius', 'Elbow Short Radius', 'Tee', 'Tee Reducer', 'Reducer Concentric', 'Reducer Eccentric', 'Weldolet'],
+        additional: ['Flange', 'Valve', 'Gasket', 'Fastener']
+    };
+
+    const visibleCategories = materialScope === 'all'
+        ? categories
+        : ['ALL', ...(MATERIAL_SCOPE_CATEGORIES[materialScope] || [])];
+
+    const materialScopeSet = materialScope === 'all'
+        ? null
+        : new Set(MATERIAL_SCOPE_CATEGORIES[materialScope] || []);
+
+    /* Tab bar tidak perlu tampil bila hanya ada satu kategori di dalam scope. */
+    const showCategoryTabs = materialScope === 'all'
+        || (MATERIAL_SCOPE_CATEGORIES[materialScope] || []).length > 1;
+
     const filteredStandards = useMemo(() => {
         const q = search.toLowerCase();
         const rows = standards.filter(s => {
             const matchCat = filterCategory === 'ALL' || s.category === filterCategory;
+            const matchScope = !materialScopeSet || materialScopeSet.has(s.category);
             const matchSearch = !q ||
                 (s.code || '').toLowerCase().includes(q) ||
                 (s.specification || '').toLowerCase().includes(q) ||
                 (s.material_group || '').toLowerCase().includes(q) ||
                 (s.schedule || '').toLowerCase().includes(q);
-            return matchCat && matchSearch;
+            return matchCat && matchScope && matchSearch;
         });
         return rows.sort((a, b) => naturalCompare(a.code, b.code));
-    }, [standards, search, filterCategory]);
+    }, [standards, search, filterCategory, materialScope]);
 
     const filteredPipes = useMemo(() => {
         const q = pipeSearch.toLowerCase();
@@ -631,7 +663,13 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
             <div className="mb-4">
                 <h2 className="h3 fw-bolder text-dark mb-0" style={{ letterSpacing: '-0.02em' }}>
                     {activeStandardView === 'material'
-                        ? 'Katalog Standar Material ASTM'
+                        ? (materialScope === 'pipe'
+                            ? 'Standart Material — Pipe'
+                            : materialScope === 'fitting'
+                                ? 'Standart Material — Fitting'
+                                : materialScope === 'additional'
+                                    ? 'Standart Material — Additional'
+                                    : 'Katalog Standar Material ASTM')
                         : scope === 'pipe'
                             ? 'Pipe Dimension & Wall Thickness ASME B36.10M'
                             : scope === 'fitting'
@@ -644,9 +682,10 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
             {activeStandardView === 'material' && (
                 <>
                     {/* Kategori Berada di Atas Search */}
+                    {showCategoryTabs && (
                     <div className="mb-3">
                         <div className="pcm-tabbar" role="tablist" aria-label="Filter Kategori Material">
-                            {categories.map(cat => {
+                            {visibleCategories.map(cat => {
                                 const isSel = filterCategory === cat;
                                 return (
                                     <button
@@ -663,6 +702,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                             })}
                         </div>
                     </div>
+                    )}
 
                     {/* Search di Kiri & Tambah Standar Material di Kanan Sejajar dengan Cari */}
                     <div className="d-flex align-items-center gap-3 mb-4">

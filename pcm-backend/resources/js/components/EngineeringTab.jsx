@@ -1218,11 +1218,11 @@ export function EngineeringTab({
             {/* ============================================================
                 MODUL 6: Material Standart (ENG-005 / ENG-012)
                 ============================================================ */}
-            {(activeEngTab === 'material_standard' || activeEngTab === 'pipe_standard' || activeEngTab === 'pipe_schedule' || activeEngTab === 'pipe_table' || activeEngTab === 'fitting_table') && (
+            {(activeEngTab === 'material_standard' || activeEngTab === 'material_pipe' || activeEngTab === 'material_fitting' || activeEngTab === 'material_additional' || activeEngTab === 'pipe_standard' || activeEngTab === 'pipe_schedule' || activeEngTab === 'pipe_table' || activeEngTab === 'fitting_table') && (
                 <MaterialStandardSection
                     user={user}
                     onToast={onReload}
-                    initialView={activeEngTab === 'material_standard' ? 'material' : 'pipe'}
+                    initialView={['material_standard', 'material_pipe', 'material_fitting', 'material_additional'].includes(activeEngTab) ? 'material' : 'pipe'}
                     activeSection={activeEngTab}
                 />
             )}

@@ -23,7 +23,7 @@ export const ENG_SUB_TABS = [
     { id: 'boq', label: 'Bill of Quantity' },
     { id: 'bom', label: 'Bill of Material' },
     { id: 'material_standard', label: 'Material Standart' },
-    { id: 'pipe_schedule', label: 'Pipe Schedule' },
+    { id: 'pipe_schedule', label: 'Master Diameter & Ketebalan' },
     { id: 'document_control', label: 'Document Control' },
 ];
 
@@ -1086,20 +1086,13 @@ export function EngineeringTab({
             {/* ============================================================
                 MODUL 6: Material Standart (ENG-005 / ENG-012)
                 ============================================================ */}
-            {(activeEngTab === 'material_standard' || activeEngTab === 'pipe_standard') && (
+            {(activeEngTab === 'material_standard' || activeEngTab === 'pipe_standard' || activeEngTab === 'pipe_schedule') && (
                 <MaterialStandardSection
                     user={user}
                     onToast={onReload}
-                    initialView={activeEngTab === 'pipe_standard' ? 'pipe' : 'material'}
+                    initialView={activeEngTab === 'material_standard' ? 'material' : 'pipe'}
                     activeSection={activeEngTab}
                 />
-            )}
-
-            {/* ============================================================
-                MODUL 6B: Master Pipe Schedule (ASME B36.10)
-                ============================================================ */}
-            {activeEngTab === 'pipe_schedule' && (
-                <PipeScheduleSection />
             )}
 
             {/* ============================================================

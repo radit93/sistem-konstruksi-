@@ -1218,7 +1218,7 @@ export function EngineeringTab({
             {/* ============================================================
                 MODUL 6: Material Standart (ENG-005 / ENG-012)
                 ============================================================ */}
-            {(activeEngTab === 'material_standard' || activeEngTab === 'pipe_standard' || activeEngTab === 'pipe_schedule') && (
+            {(activeEngTab === 'material_standard' || activeEngTab === 'pipe_standard' || activeEngTab === 'pipe_schedule' || activeEngTab === 'pipe_table' || activeEngTab === 'fitting_table') && (
                 <MaterialStandardSection
                     user={user}
                     onToast={onReload}

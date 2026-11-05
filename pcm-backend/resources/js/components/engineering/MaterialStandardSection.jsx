@@ -286,13 +286,13 @@ function ModernPagination({ currentPage, totalPages, totalItems, itemName = 'dat
 export function MaterialStandardSection({ user, onToast, initialView = 'material', activeSection }) {
     const [activeStandardView, setActiveStandardView] = useState(initialView);
 
-    useEffect(() => {
-        if (activeSection === 'pipe_standard' || activeSection === 'pipe_schedule') {
-            setActiveStandardView('pipe');
-        } else if (activeSection === 'material_standard') {
-            setActiveStandardView('material');
-        }
-    }, [activeSection]);
+    /* Scope halaman: 'pipe' = hanya tabel pipa, 'fitting' = hanya tabel fitting,
+       'all' = keduanya dalam satu halaman (perilaku lama). Ditentukan oleh menu sidebar. */
+    const scope = activeSection === 'pipe_table'
+        ? 'pipe'
+        : activeSection === 'fitting_table'
+            ? 'fitting'
+            : 'all';
 
     // 1. Material Standards State
     const [standards, setStandards] = useState([]);
@@ -338,7 +338,23 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
     });
 
     const [pipeForm, setPipeForm] = useState(emptyPipeForm);
-    const [fittingCategory, setFittingCategory] = useState('Pipe');
+    const [fittingCategory, setFittingCategory] = useState(scope === 'fitting' ? 'Elbow Long Radius' : 'Pipe');
+
+    /* Selaraskan view & tab aktif setiap kali menu sidebar berganti.
+       Diletakkan setelah deklarasi state agar tidak kena temporal dead zone. */
+    useEffect(() => {
+        if (activeSection === 'pipe_table') {
+            setActiveStandardView('pipe');
+            setFittingCategory('Pipe');
+        } else if (activeSection === 'fitting_table') {
+            setActiveStandardView('pipe');
+            setFittingCategory((prev) => (prev === 'Pipe' ? 'Elbow Long Radius' : prev));
+        } else if (activeSection === 'pipe_standard' || activeSection === 'pipe_schedule') {
+            setActiveStandardView('pipe');
+        } else if (activeSection === 'material_standard') {
+            setActiveStandardView('material');
+        }
+    }, [activeSection]);
 
     const fittingCategories = [
         { id: 'Pipe', label: 'Pipe' },
@@ -350,6 +366,12 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         { id: 'Reducer Eccentric', label: 'Reducer Eccentric' },
         { id: 'Weldolet', label: 'Weld-o-let' },
     ];
+
+    /* Saat halaman dibuka dari menu "Tabel Fitting", tab Pipe disembunyikan
+       karena pipa punya halaman sendiri. */
+    const visibleFittingCategories = scope === 'fitting'
+        ? fittingCategories.filter((f) => f.id !== 'Pipe')
+        : fittingCategories;
 
     const canEdit = can(user, 'drawing.write');
 
@@ -823,9 +845,10 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
             {/* VIEW 2: Master Diameter & Ketebalan Pipa (Pipe Standards) */}
             {activeStandardView === 'pipe' && (
                 <>
+                    {scope !== 'pipe' && (
                     <div className="mb-3">
                         <div className="pcm-tabbar" role="tablist" aria-label="Filter komponen master diameter">
-                            {fittingCategories.map((item) => {
+                            {visibleFittingCategories.map((item) => {
                                 const isSel = fittingCategory === item.id;
                                 return (
                                     <button
@@ -842,6 +865,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                             })}
                         </div>
                     </div>
+                    )}
                     {fittingCategory !== 'Pipe' && (
                         <div className="pcm-card mb-4">
                             <div className="table-responsive">
@@ -910,28 +934,36 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                 <thead>
                                      <tr>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Ukuran Nominal NPS</span>
+                                             <span className="pcm-th-title">Ukuran Nominal</span>
+                                             <span className="pcm-th-unit">NPS (inch)</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Metrik DN (mm)</span>
+                                             <span className="pcm-th-title">Metrik</span>
+                                             <span className="pcm-th-unit">DN (mm)</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Schedule (SCH)</span>
+                                             <span className="pcm-th-title">Schedule</span>
+                                             <span className="pcm-th-unit">SCH</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Tebal Dinding (mm)</span>
+                                             <span className="pcm-th-title">Tebal Dinding</span>
+                                             <span className="pcm-th-unit">mm</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Diameter Luar (OD mm)</span>
+                                             <span className="pcm-th-title">Diameter Luar</span>
+                                             <span className="pcm-th-unit">OD (mm)</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Berat Nominal (kg/m)</span>
+                                             <span className="pcm-th-title">Berat Nominal</span>
+                                             <span className="pcm-th-unit">kg/m</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Pipe Length (m)</span>
+                                             <span className="pcm-th-title">Pipe Length</span>
+                                             <span className="pcm-th-unit">m</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Berat Pipe (kg)</span>
+                                             <span className="pcm-th-title">Berat Pipe</span>
+                                             <span className="pcm-th-unit">kg</span>
                                          </th>
                                          {canEdit && (
                                              <th className="text-center pe-3">

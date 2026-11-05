@@ -375,7 +375,7 @@ function App() {
                             }}
                         />
                     )}
-                    {['project_list', 'engineering', 'line_service', 'welding_map', 'boq', 'bom', 'material_standard', 'pipe_schedule', 'document_control'].includes(activeTab) && (
+                    {['project_list', 'engineering', 'line_service', 'welding_map', 'boq', 'bom', 'material_standard', 'pipe_schedule', 'pipe_table', 'fitting_table', 'document_control'].includes(activeTab) && (
                         <EngineeringTab
                             currentSection={activeTab}
                             drawings={drawings}

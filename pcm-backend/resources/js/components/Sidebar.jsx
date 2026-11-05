@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 // Menu operasional: hanya ini yang ikut tersaring saat superadmin memilih
 // satu departemen. Dashboard dan menu administrasi selalu tampil.
@@ -50,12 +50,12 @@ export const DEPARTMENT_MENUS = {
         'boq',
         'bom',
         'material_standard',
-        'pipe_schedule',
+        'master_pipe',
         'document_control'
     ],
     MAT: [
         'material_standard',
-        'pipe_schedule',
+        'master_pipe',
         'mat_requirement',
         'mat_receiving',
         'mat_inspection',
@@ -64,8 +64,8 @@ export const DEPARTMENT_MENUS = {
         'mat_openyard',
         'mat_issuing'
     ],
-    CONS: ['material_standard', 'pipe_schedule', 'fabrication', 'erection'],
-    QAQC: ['material_standard', 'pipe_schedule', 'qaqc', 'testpackage', 'mat_inspection'],
+    CONS: ['material_standard', 'master_pipe', 'fabrication', 'erection'],
+    QAQC: ['material_standard', 'master_pipe', 'qaqc', 'testpackage', 'mat_inspection'],
     HSE: ['hse']
 };
 
@@ -127,11 +127,23 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Katalog Acuan Standar ASTM'
     },
     {
-        id: 'pipe_schedule',
-        label: 'Master Diameter & Ketebalan',
+        id: 'master_pipe',
+        label: 'Master Pipe',
         anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',
-        desc: 'Standar Dimensi Pipa ASME B36.10M'
+        desc: 'Master data pipa (ASME B36.10M) dan fitting',
+        children: [
+            {
+                id: 'pipe_table',
+                label: 'Tabel Pipa',
+                desc: 'Dimensi & ketebalan pipa ASME B36.10M'
+            },
+            {
+                id: 'fitting_table',
+                label: 'Tabel Fitting',
+                desc: 'Dimensi & berat fitting (elbow, tee, reducer, weld-o-let)'
+            }
+        ]
     },
     {
         id: 'document_control',
@@ -322,6 +334,42 @@ export function Sidebar({
     const menuRef = useRef(null);
     const allow = (code) => Boolean(user?.is_superadmin) || permissions.includes(code);
 
+    /* --- Sub-menu (parent bisa dibuka/tutup) ---------------------------------
+       Status buka-tutup disimpan di localStorage supaya tidak reset saat reload.
+       Default: terbuka, agar isi "Master Pipe" langsung terlihat. */
+    const SUBMENU_STORAGE_KEY = 'pcm.sidebar.submenus';
+    const [openSubmenus, setOpenSubmenus] = useState(() => {
+        try {
+            const raw = window.localStorage.getItem(SUBMENU_STORAGE_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            return parsed && typeof parsed === 'object' ? parsed : { master_pipe: true };
+        } catch (err) {
+            return { master_pipe: true };
+        }
+    });
+
+    const toggleSubmenu = (id) => {
+        setOpenSubmenus((prev) => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(SUBMENU_STORAGE_KEY, JSON.stringify(openSubmenus));
+        } catch (err) {
+            /* localStorage bisa diblokir — abaikan, menu tetap berfungsi. */
+        }
+    }, [openSubmenus]);
+
+    /* Buka otomatis parent bila salah satu child-nya sedang aktif,
+       supaya halaman yang sedang dibuka tidak pernah tersembunyi. */
+    useEffect(() => {
+        const parent = ROLE_SIDEBAR_MENUS.find(
+            (m) => Array.isArray(m.children) && m.children.some((c) => c.id === activeTab)
+        );
+        if (!parent) return;
+        setOpenSubmenus((prev) => (prev[parent.id] ? prev : { ...prev, [parent.id]: true }));
+    }, [activeTab]);
+
     let displayedMenus = ROLE_SIDEBAR_MENUS.filter((menu) =>
         menu.anyOf ? menu.anyOf.some(allow) : allow(menu.perm)
     );
@@ -432,7 +480,10 @@ export function Sidebar({
                 <div className="menu-container flex-grow-1" style={{ borderRadius: 0, order: 1, marginTop: '0.5rem', backgroundColor: '#1e40af' }}>
                     <ul id="menu" ref={menuRef} className="menu show" style={{ borderRadius: 0, padding: 0, display: 'flex', flexDirection: 'column', backgroundColor: '#1e40af' }}>
                         {displayedMenus.map((menu, index) => {
-                            const isActive = activeTab === menu.id;
+                            const hasChildren = Array.isArray(menu.children) && menu.children.length > 0;
+                            const childActive = hasChildren && menu.children.some((c) => c.id === activeTab);
+                            const isActive = activeTab === menu.id || childActive;
+                            const isOpen = hasChildren ? Boolean(openSubmenus[menu.id]) : false;
                             const isOperational = OPERATIONAL_MENU_IDS.includes(menu.id);
                             const groupName = menu.group || (isOperational ? (currentDepartment ? `Departemen: ${currentDepartment.name}` : 'Modul Departemen') : null);
                             const previousMenu = index > 0 ? displayedMenus[index - 1] : null;
@@ -460,6 +511,127 @@ export function Sidebar({
                                             {groupName}
                                         </li>
                                     )}
+                                    {hasChildren ? (
+                                        <>
+                                            {/* Parent: hanya membuka/menutup, tidak berpindah halaman */}
+                                            <li style={{ borderRadius: 0, margin: '2px 0', padding: 0, backgroundColor: '#1e40af' }}>
+                                                <a
+                                                    href={`#${menu.id}`}
+                                                    className={isActive ? 'active' : ''}
+                                                    aria-expanded={isOpen}
+                                                    aria-controls={`submenu-${menu.id}`}
+                                                    style={{
+                                                        borderRadius: 0,
+                                                        backgroundColor: isActive ? '#1d4ed8' : 'transparent',
+                                                        color: '#ffffff',
+                                                        borderLeft: isActive ? '4px solid #ffffff' : '4px solid transparent',
+                                                        paddingLeft: '1.25rem',
+                                                        paddingRight: '1.25rem',
+                                                        paddingTop: '0.9rem',
+                                                        paddingBottom: '0.9rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        gap: '0.5rem',
+                                                        cursor: 'pointer',
+                                                        transition: 'background-color 0.2s ease, border-left 0.2s ease'
+                                                    }}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        toggleSubmenu(menu.id);
+                                                    }}
+                                                >
+                                                    <span
+                                                        className="label"
+                                                        style={{
+                                                            color: '#ffffff',
+                                                            fontSize: '1rem',
+                                                            fontWeight: isActive ? 700 : 600,
+                                                            letterSpacing: '-0.01em'
+                                                        }}
+                                                    >
+                                                        {menu.label}
+                                                    </span>
+                                                    <svg
+                                                        width="14"
+                                                        height="14"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2.5"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        aria-hidden="true"
+                                                        style={{
+                                                            flexShrink: 0,
+                                                            opacity: 0.85,
+                                                            transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                            transition: 'transform 0.2s ease'
+                                                        }}
+                                                    >
+                                                        <polyline points="9 18 15 12 9 6" />
+                                                    </svg>
+                                                </a>
+
+                                            {/* Child: menu sebenarnya, menjorok ke dalam */}
+                                            {isOpen && (
+                                                <ul id={`submenu-${menu.id}`} style={{ listStyle: 'none', margin: 0, padding: 0, backgroundColor: '#1e40af' }}>
+                                                    {menu.children.map((child) => {
+                                                        const childIsActive = activeTab === child.id;
+                                                        return (
+                                                            <li key={child.id} style={{ margin: 0, padding: 0, backgroundColor: '#1e40af' }}>
+                                                                <a
+                                                                    href={`#${child.id}`}
+                                                                    className={childIsActive ? 'active' : ''}
+                                                                    style={{
+                                                                        borderRadius: 0,
+                                                                        backgroundColor: childIsActive ? '#1d4ed8' : 'transparent',
+                                                                        color: '#ffffff',
+                                                                        borderLeft: childIsActive ? '4px solid #ffffff' : '4px solid transparent',
+                                                                        paddingLeft: '2.5rem',
+                                                                        paddingRight: '1.25rem',
+                                                                        paddingTop: '0.65rem',
+                                                                        paddingBottom: '0.65rem',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.5rem',
+                                                                        transition: 'background-color 0.2s ease, border-left 0.2s ease'
+                                                                    }}
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        onSelectTab(child.id);
+                                                                    }}
+                                                                >
+                                                                    <span
+                                                                        aria-hidden="true"
+                                                                        style={{
+                                                                            width: '5px',
+                                                                            height: '5px',
+                                                                            borderRadius: '50%',
+                                                                            flexShrink: 0,
+                                                                            backgroundColor: childIsActive ? '#ffffff' : 'rgba(255, 255, 255, 0.5)'
+                                                                        }}
+                                                                    />
+                                                                    <span
+                                                                        className="label"
+                                                                        style={{
+                                                                            color: '#ffffff',
+                                                                            fontSize: '0.875rem',
+                                                                            fontWeight: childIsActive ? 700 : 500,
+                                                                            letterSpacing: '-0.01em'
+                                                                        }}
+                                                                    >
+                                                                        {child.label}
+                                                                    </span>
+                                                                </a>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            )}
+                                            </li>
+                                        </>
+                                    ) : (
                                     <li style={{ borderRadius: 0, margin: '2px 0', padding: 0, backgroundColor: '#1e40af' }}>
                                     <a
                                         href={`#${menu.id}`}
@@ -495,6 +667,7 @@ export function Sidebar({
                                         </span>
                                     </a>
                                     </li>
+                                    )}
 
                                     {/* Menu terpisah: List Departement dengan ukuran, font, dan padding sama persis seperti menu lainnya */}
                                     {menu.id === 'departments' && user?.is_superadmin && (

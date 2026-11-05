@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { PcmSelect } from './SearchSelect';
 
 // Menu operasional: hanya ini yang ikut tersaring saat superadmin memilih
 // satu departemen. Dashboard dan menu administrasi selalu tampil.
@@ -687,7 +688,7 @@ export function Sidebar({
                                                 position: 'relative'
                                             }}
                                         >
-                                            <select
+                                            <PcmSelect
                                                 id="pcm-scope-dept"
                                                 className={`pcm-menu-dept-select ${departmentFilter ? 'active' : ''}`}
                                                 value={departmentFilter ?? ''}
@@ -700,22 +701,7 @@ export function Sidebar({
                                                         {d.name} ({d.code})
                                                     </option>
                                                 ))}
-                                            </select>
-                                            <span
-                                                style={{
-                                                    position: 'absolute',
-                                                    right: '1.25rem',
-                                                    top: '50%',
-                                                    transform: 'translateY(-50%)',
-                                                    color: '#ffffff',
-                                                    pointerEvents: 'none',
-                                                    fontSize: '0.75rem',
-                                                    opacity: 0.8
-                                                }}
-                                                aria-hidden="true"
-                                            >
-                                                ▼
-                                            </span>
+                                            </PcmSelect>
                                         </li>
                                     )}
                                 </React.Fragment>

@@ -7,6 +7,7 @@ import { BudgetCostSection } from './pm/BudgetCostSection';
 import { DailyLogSection } from './pm/DailyLogSection';
 import { MilestoneSection } from './pm/MilestoneSection';
 import { ExecutiveReportSection } from './pm/ExecutiveReportSection';
+import { PcmSelect } from './SearchSelect';
 
 /* -------------------------------------------------------------------------
  * Inline SVG Icons (Consistent with EngineeringTab, no emoji, standard grid)
@@ -327,8 +328,7 @@ export function ProjectManagerTab({
                                     onChange={(e) => setSearchFolder(e.target.value)}
                                 />
                             </div>
-                            <select
-                                className="form-select form-select-sm pcm-select"
+                            <PcmSelect
                                 aria-label="Filter client"
                                 value={clientFilter}
                                 onChange={(e) => setClientFilter(e.target.value)}
@@ -337,7 +337,7 @@ export function ProjectManagerTab({
                                 {clientOptions.map((client) => (
                                     <option key={client} value={client}>Client: {client}</option>
                                 ))}
-                            </select>
+                            </PcmSelect>
                         </div>
                         <span className="pcm-count">
                             Menampilkan <strong>{filteredFolders.length}</strong> folder proyek
@@ -427,8 +427,8 @@ export function ProjectManagerTab({
                         {/* Quick Project Switcher */}
                         <div className="d-flex align-items-center gap-2">
                             <span className="text-muted small">Pindah Proyek:</span>
-                            <select
-                                className="form-select form-select-sm"
+                                <PcmSelect
+                                
                                 style={{ width: 'auto' }}
                                 value={activeProject.id}
                                 onChange={(e) => handleSelectProject(e.target.value)}
@@ -438,7 +438,7 @@ export function ProjectManagerTab({
                                         {p.job_no ? `[${p.job_no}] ` : ''}{p.name}
                                     </option>
                                 ))}
-                            </select>
+                            </PcmSelect>
                         </div>
                     </div>
 

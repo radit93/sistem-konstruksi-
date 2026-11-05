@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
+import { PcmSelect } from '../SearchSelect';
 
 export function MaterialInspectionSection({ user, onToast }) {
     const [inspections, setInspections] = useState([]);
@@ -412,8 +413,8 @@ export function MaterialInspectionSection({ user, onToast }) {
                             />
                         </div>
                         <div className="col-6 col-md-3">
-                            <select
-                                className="form-select"
+                            <PcmSelect
+                                
                                 value={filterResult}
                                 onChange={(e) => setFilterResult(e.target.value)}
                             >
@@ -421,7 +422,7 @@ export function MaterialInspectionSection({ user, onToast }) {
                                 <option value="ACCEPTED">ACCEPTED (Lolos)</option>
                                 <option value="HOLD">HOLD (Ditahan)</option>
                                 <option value="REJECTED">REJECTED (Ditolak / NCR)</option>
-                            </select>
+                            </PcmSelect>
                         </div>
                         <div className="col-6 col-md-3 text-md-end text-muted small">
                             {filtered.length} dari {inspections.length} pemeriksaan
@@ -563,8 +564,8 @@ export function MaterialInspectionSection({ user, onToast }) {
                                     <div className="row g-3">
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Tautkan ke Batch Penerimaan</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 required
                                                 value={form.material_receiving_id}
                                                 disabled={Boolean(editingItem)}
@@ -576,7 +577,7 @@ export function MaterialInspectionSection({ user, onToast }) {
                                                         {r.shipment_no} - {r.item_name} ({r.heat_no || 'tanpa heat'}) — {r.status}
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">No. Laporan MIR</label>
@@ -634,49 +635,49 @@ export function MaterialInspectionSection({ user, onToast }) {
 
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Pemeriksaan Visual</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.visual_check}
                                                 onChange={(e) => setForm({ ...form, visual_check: e.target.value })}
                                             >
                                                 <option value="PASS">PASS (Bebas Cacat Fisik)</option>
                                                 <option value="FAIL">FAIL (Goresan / Deformasi)</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Cek Dimensi & Tebal</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.dimension_check}
                                                 onChange={(e) => setForm({ ...form, dimension_check: e.target.value })}
                                             >
                                                 <option value="PASS">PASS (Toleransi ASME)</option>
                                                 <option value="FAIL">FAIL (Di luar batas)</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Verifikasi MTC vs Fisik</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.mtc_check}
                                                 onChange={(e) => setForm({ ...form, mtc_check: e.target.value })}
                                             >
                                                 <option value="PASS">PASS (Sertifikat Valid)</option>
                                                 <option value="FAIL">FAIL (Tidak Sesuai / Hilang)</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
 
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Keputusan Hasil Akhir</label>
-                                            <select
-                                                className="form-select fw-bold"
+                                            <PcmSelect
+                                                className="fw-bold"
                                                 value={form.result}
                                                 onChange={(e) => setForm({ ...form, result: e.target.value })}
                                             >
                                                 <option value="ACCEPTED" className="text-success">ACCEPTED — Siap Masuk Gudang / Fabrikasi</option>
                                                 <option value="HOLD" className="text-warning">HOLD — Perlu Peninjauan Tambahan</option>
                                                 <option value="REJECTED" className="text-danger">REJECTED — Terbitkan NCR & Karantina</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Nomor NCR (Bila Ditolak)</label>

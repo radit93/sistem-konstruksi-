@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
+import { PcmSelect } from './SearchSelect';
 
 export function ScheduleTab({ scopes, user, onReload }) {
     const [showModal, setShowModal] = useState(false);
@@ -128,8 +129,8 @@ export function ScheduleTab({ scopes, user, onReload }) {
                                     {error && <div className="alert alert-danger py-2 small">{error}</div>}
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Pilih Item Scope</label>
-                                        <select
-                                            className="form-select"
+                                            <PcmSelect
+                                            
                                             value={selectedScopeId}
                                             onChange={e => setSelectedScopeId(e.target.value)}
                                             required
@@ -139,7 +140,7 @@ export function ScheduleTab({ scopes, user, onReload }) {
                                                     {s.scope} ({s.unit})
                                                 </option>
                                             ))}
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                     <div className="row g-2 mb-3">
                                         <div className="col-6">

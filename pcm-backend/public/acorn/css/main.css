@@ -2923,6 +2923,47 @@ html[data-placement=horizontal] .nav-container .logo .img {
     font-weight: 700;
 }
 
+/* Dropdown departemen memakai PcmSelect (SearchSelect) tetapi tetap gelap
+   mengikuti tema sidebar. Padding pindah ke input di dalamnya. */
+.pcm-menu-dept-select.pcm-searchselect {
+    padding: 0;
+}
+
+.pcm-menu-dept-select .pcm-searchselect__input {
+    height: auto !important;
+    min-height: 0;
+    padding: 0.9rem 2.5rem 0.9rem 1.25rem !important;
+    border: 0 !important;
+    border-radius: 0;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    color: #ffffff !important;
+    font-size: 1rem !important;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.pcm-menu-dept-select .pcm-searchselect__input::placeholder {
+    color: #cbd5e1;
+}
+
+.pcm-menu-dept-select .pcm-searchselect__caret,
+.pcm-menu-dept-select .pcm-searchselect__clear {
+    color: #ffffff;
+    right: 1.1rem;
+}
+
+.pcm-menu-dept-select .pcm-searchselect__clear:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* Penanda field sudah terisi (pengganti bg-success pada select lama) */
+.pcm-select-ok .pcm-searchselect__input {
+    border-color: #198754 !important;
+    background-color: rgba(25, 135, 84, 0.08) !important;
+}
+
 
 .pcm-btn {
     display: inline-flex;
@@ -3075,4 +3116,14 @@ html[data-placement=horizontal] .nav-container .logo .img {
     .pcm-form-grid__full {
         grid-column: auto;
     }
+}
+
+/* ==========================================================================
+   Ruang caret SearchSelect/PcmSelect
+   Diletakkan paling akhir dan memakai spesifisitas (0,2,1) agar tetap menang
+   atas aturan modal seperti `.pcm-modal input.form-control-sm` yang memaksa
+   padding input. Tanpa ini, teks akan menabrak ikon caret.
+   ========================================================================== */
+.pcm-searchselect input.pcm-searchselect__input {
+    padding-right: 1.9rem !important;
 }

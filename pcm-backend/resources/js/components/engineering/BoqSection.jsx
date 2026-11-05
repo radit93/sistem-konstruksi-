@@ -3,6 +3,7 @@ import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
+import { PcmSelect } from '../SearchSelect';
 
 export function BoqSection({ user, projects = [], drawings = [], activeProjectId = '', onToast }) {
     const [boqList, setBoqList] = useState([]);
@@ -220,8 +221,8 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                     />
                 </div>
                 {!isProjectLocked(activeProjectId) && (
-                    <select
-                        className="form-select form-select-sm"
+                    <PcmSelect
+                        
                         value={filterProject}
                         onChange={(e) => setFilterProject(e.target.value)}
                         style={{ width: 'auto' }}
@@ -232,7 +233,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                 {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
                             </option>
                         ))}
-                    </select>
+                    </PcmSelect>
                 )}
             </div>
 
@@ -347,8 +348,8 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Material Group</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.material_group}
                                                 onChange={(e) => setForm({ ...form, material_group: e.target.value })}
                                             >
@@ -356,7 +357,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                                 <option value="Stainless Steel">Stainless Steel</option>
                                                 <option value="Alloy Steel">Alloy Steel</option>
                                                 <option value="Structural Steel">Structural Steel</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-6 col-md-2">
                                             <label className="form-label small fw-bold">Total DI</label>
@@ -398,15 +399,15 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-bold">Status Estimasi</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.status}
                                                 onChange={(e) => setForm({ ...form, status: e.target.value })}
                                             >
                                                 <option value="ESTIMATED">ESTIMATED</option>
                                                 <option value="REVIEWED">REVIEWED</option>
                                                 <option value="APPROVED">APPROVED</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-bold">Line Number Terkait</label>

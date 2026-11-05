@@ -4,6 +4,7 @@ import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { MaterialDocumentsModal } from './MaterialDocumentsModal';
 import { MaterialReportModal } from './MaterialReportModal';
+import { PcmSelect } from '../SearchSelect';
 
 export function MaterialStoringSection({ user, onToast }) {
     const [storings, setStorings] = useState([]);
@@ -430,8 +431,8 @@ export function MaterialStoringSection({ user, onToast }) {
                             />
                         </div>
                         <div className="col-6 col-md-3">
-                            <select
-                                className="form-select"
+                            <PcmSelect
+                                
                                 value={filterCategory}
                                 onChange={(e) => setFilterCategory(e.target.value)}
                             >
@@ -442,18 +443,18 @@ export function MaterialStoringSection({ user, onToast }) {
                                 <option value="VALVE">VALVE (Gate, Globe, Check, Ball)</option>
                                 <option value="FASTENER">FASTENER (Stud Bolt & Nuts)</option>
                                 <option value="GASKET">GASKET (Spiral Wound / Sheet)</option>
-                            </select>
+                            </PcmSelect>
                         </div>
                         <div className="col-6 col-md-2">
-                            <select
-                                className="form-select"
+                            <PcmSelect
+                                
                                 value={filterStockStatus}
                                 onChange={(e) => setFilterStockStatus(e.target.value)}
                             >
                                 <option value="ALL">Semua Level Stok</option>
                                 <option value="OK">Aman (Normal)</option>
                                 <option value="LOW">Stok Kritis / Rendah</option>
-                            </select>
+                            </PcmSelect>
                         </div>
                         <div className="col-12 col-md-2 text-md-end text-muted small">
                             {filtered.length} dari {storings.length} item
@@ -649,8 +650,8 @@ export function MaterialStoringSection({ user, onToast }) {
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Kategori Komponen</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 disabled={Boolean(editingItem?.receiving_id)}
                                                 value={form.category}
                                                 onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -661,24 +662,24 @@ export function MaterialStoringSection({ user, onToast }) {
                                                 <option value="VALVE">VALVE</option>
                                                 <option value="FASTENER">FASTENER</option>
                                                 <option value="GASKET">GASKET</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Tipe Fasilitas</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.storage_type}
                                                 onChange={(e) => setForm({ ...form, storage_type: e.target.value })}
                                             >
                                                 <option value="OPEN_YARD">Open Yard (Luar Ruangan)</option>
                                                 <option value="WAREHOUSE">Warehouse (Dalam Ruangan)</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
 
                                         <div className="col-12">
                                             <label className="form-label small fw-semibold text-secondary">Kode Standar Material</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.material_standard_id}
                                                 onChange={(e) => handleStandardChange(e.target.value)}
                                                 disabled={Boolean(editingItem?.receiving_id) || (parseFloat(editingItem?.stock_out) || 0) > 0}
@@ -689,7 +690,7 @@ export function MaterialStoringSection({ user, onToast }) {
                                                         {standard.code} — {standard.specification} ({standard.category})
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                             <div className="form-text">
                                                 Stok dari receiving otomatis mengikuti kode standar receiving. Untuk stok manual, pilih kode agar ikut rekonsiliasi BOM.
                                             </div>
@@ -845,14 +846,14 @@ export function MaterialStoringSection({ user, onToast }) {
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold text-secondary">Tipe Fasilitas Tujuan</label>
-                                        <select
-                                            className="form-select"
+                                        <PcmSelect
+                                            
                                             value={transferForm.storage_type}
                                             onChange={(e) => setTransferForm({ ...transferForm, storage_type: e.target.value })}
                                         >
                                             <option value="OPEN_YARD">Open Yard (Luar Ruangan)</option>
                                             <option value="WAREHOUSE">Warehouse (Dalam Ruangan)</option>
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold text-secondary">Lokasi Tujuan</label>

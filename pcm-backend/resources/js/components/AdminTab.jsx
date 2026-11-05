@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { confirmDelete } from '../confirm';
+import { PcmSelect } from './SearchSelect';
 
 const SECTIONS = ['project', 'users', 'roles', 'access', 'departments'];
 
@@ -788,21 +789,21 @@ function DialogFields({ dialog, form, setForm, roles, departments }) {
                 )}
                 <div>
                     <label className="form-label pcm-form-label" htmlFor="adm-urole">Role</label>
-                    <select id="adm-urole" className="form-select" required value={form.role || ''} onChange={set('role')}>
+                    <PcmSelect id="adm-urole" required value={form.role || ''} onChange={set('role')}>
                         <option value="">Pilih role…</option>
                         {roles.map((role) => (
                             <option key={role.id} value={role.code}>{role.name}</option>
                         ))}
-                    </select>
+                    </PcmSelect>
                 </div>
                 <div>
                     <label className="form-label pcm-form-label" htmlFor="adm-udept">Departemen</label>
-                    <select id="adm-udept" className="form-select" value={form.department_id ?? ''} onChange={set('department_id')}>
+                    <PcmSelect id="adm-udept" value={form.department_id ?? ''} onChange={set('department_id')}>
                         <option value="">Tanpa departemen</option>
                         {departments.map((dept) => (
                             <option key={dept.id} value={dept.id}>{dept.name}</option>
                         ))}
-                    </select>
+                    </PcmSelect>
                 </div>
                 <div className="d-flex align-items-end">
                     <div className="form-check">
@@ -876,12 +877,12 @@ function DialogFields({ dialog, form, setForm, roles, departments }) {
             <div className="pcm-form-grid">
                 <div>
                     <label className="form-label pcm-form-label" htmlFor="adm-pcategory">Kategori</label>
-                    <select id="adm-pcategory" className="form-select" required
+                    <PcmSelect id="adm-pcategory" required
                         value={form.category || 'plant_area'} onChange={set('category')}>
                         <option value="plant_area">Plant Area</option>
                         <option value="distribution_target">Target Distribusi</option>
                         <option value="material_attribute">Label Atribut Material</option>
-                    </select>
+                    </PcmSelect>
                 </div>
                 <div>
                     <label className="form-label pcm-form-label" htmlFor="adm-pcode">

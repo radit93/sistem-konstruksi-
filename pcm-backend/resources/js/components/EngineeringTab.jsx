@@ -14,7 +14,7 @@ import { BomSection } from './engineering/BomSection';
 import { MaterialStandardSection } from './engineering/MaterialStandardSection';
 import { PipeScheduleSection } from './engineering/PipeScheduleSection';
 import { DocumentControlSection } from './engineering/DocumentControlSection';
-import { SearchSelect } from './SearchSelect';
+import { SearchSelect, PcmSelect } from './SearchSelect';
 
 export const ENG_SUB_TABS = [
     { id: 'project_list', label: 'List Project' },
@@ -985,8 +985,7 @@ export function EngineeringTab({
 
                         {/* Jika belum strict, sediakan dropdown kunci proyek langsung di baris search */}
                         {!selectedProjectId && (
-                            <select
-                                className="form-select form-select-sm pcm-select-theme"
+                            <PcmSelect
                                 value=""
                                 onChange={(e) => {
                                     if (e.target.value) {
@@ -1002,7 +1001,7 @@ export function EngineeringTab({
                                         {p.client ? `[${p.client}] ` : ''}{p.name} ({p.job_no || 'NO JOB'})
                                     </option>
                                 ))}
-                            </select>
+                            </PcmSelect>
                         )}
 
                         {canEdit && (
@@ -1394,9 +1393,9 @@ export function EngineeringTab({
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-rev">
                                                 Revision No <span className="text-danger">*</span>
                                             </label>
-                                            <select
+                                            <PcmSelect
                                                 id="pcm-dwg-rev"
-                                                className="form-select form-select-sm"
+                                                
                                                 value={drawingForm.rev}
                                                 onChange={(e) => setDrawingForm({ ...drawingForm, rev: e.target.value })}
                                             >
@@ -1405,7 +1404,7 @@ export function EngineeringTab({
                                                 <option value="B">Rev B (Client Review)</option>
                                                 <option value="1">Rev 1</option>
                                                 <option value="2">Rev 2 (As-Built)</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
 
                                         <div className="col-12 col-md-4">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
+import { PcmSelect } from './SearchSelect';
 
 export function HseTab({ hseLogs, user, onReload }) {
     const [showModal, setShowModal] = useState(false);
@@ -166,8 +167,8 @@ export function HseTab({ hseLogs, user, onReload }) {
                                         </div>
                                         <div className="col-6">
                                             <label className="form-label small fw-semibold">Jenis Acara HSE</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={formData.kind}
                                                 onChange={e => setFormData({ ...formData, kind: e.target.value })}
                                             >
@@ -176,7 +177,7 @@ export function HseTab({ hseLogs, user, onReload }) {
                                                 <option value="finding">Hazard Finding</option>
                                                 <option value="induction">Induksi</option>
                                                 <option value="inspection">Inspeksi</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                     </div>
                                     <div className="mb-3">
@@ -200,14 +201,14 @@ export function HseTab({ hseLogs, user, onReload }) {
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Status Penyelesaian</label>
-                                        <select
-                                            className="form-select"
+                                        <PcmSelect
+                                            
                                             value={formData.status}
                                             onChange={e => setFormData({ ...formData, status: e.target.value })}
                                         >
                                             <option value="open">OPEN (Perlu Tindak Lanjut Lapangan)</option>
                                             <option value="closed">CLOSED (Telah Dimengerti / Tuntas)</option>
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                 </div>
                                 <div className="modal-footer bg-light">

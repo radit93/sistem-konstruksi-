@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { PcmSelect } from '../SearchSelect';
 
 export function MilestoneSection({ project, user, onToast }) {
     const [milestones, setMilestones] = useState([]);
@@ -340,8 +341,8 @@ export function MilestoneSection({ project, user, onToast }) {
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Fase Konstruksi</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.phase}
                                                 onChange={(e) => setForm({ ...form, phase: e.target.value })}
                                             >
@@ -352,7 +353,7 @@ export function MilestoneSection({ project, user, onToast }) {
                                                 <option value="Erection">Field Erection &amp; NDT</option>
                                                 <option value="Testing">Hydrotest &amp; Reinstatement</option>
                                                 <option value="Closing">Closing &amp; Handover</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-6 col-md-2">
                                             <label className="form-label small fw-bold">Bobot (%)</label>
@@ -393,8 +394,8 @@ export function MilestoneSection({ project, user, onToast }) {
                                         </div>
                                         <div className="col-6 col-md-3">
                                             <label className="form-label small fw-bold">Status Gate</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.status}
                                                 onChange={(e) => setForm({ ...form, status: e.target.value })}
                                             >
@@ -402,7 +403,7 @@ export function MilestoneSection({ project, user, onToast }) {
                                                 <option value="IN_PROGRESS">IN_PROGRESS</option>
                                                 <option value="COMPLETED">COMPLETED</option>
                                                 <option value="DELAYED">DELAYED</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-6 col-md-3 d-flex align-items-center pt-3">
                                             <div className="form-check">

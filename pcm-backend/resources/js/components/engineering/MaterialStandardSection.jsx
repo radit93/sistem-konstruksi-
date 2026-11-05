@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
+import { PcmSelect } from '../SearchSelect';
 
 const naturalCompare = (a, b) => String(a).localeCompare(String(b), undefined, {
     numeric: true,
@@ -1128,8 +1129,8 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Kategori Komponen *</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.category}
                                                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                                             >
@@ -1139,12 +1140,12 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                 <option value="Valve">Valve</option>
                                                 <option value="Gasket">Gasket</option>
                                                 <option value="Fastener">Fastener (Bolt &amp; Nut)</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Material Group *</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.material_group}
                                                 onChange={(e) => setForm({ ...form, material_group: e.target.value })}
                                             >
@@ -1153,7 +1154,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                 <option value="Alloy Steel">Alloy Steel</option>
                                                 <option value="Duplex Steel">Duplex Steel</option>
                                                 <option value="Structural Steel">Structural Steel</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12">
                                             <label className="form-label small fw-bold">Spesifikasi Lengkap *</label>

@@ -3,6 +3,7 @@ import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
+import { PcmSelect } from '../SearchSelect';
 
 const PRESSURE_UNITS = ['bar', 'psi', 'kPa', 'MPa', 'kg/cm²'];
 const TEMPERATURE_UNITS = ['°C', '°F', 'K'];
@@ -25,8 +26,8 @@ function QtyField({ id, label, placeholder, value, unit, units, onValue, onUnit 
                     value={value}
                     onChange={(e) => onValue(e.target.value)}
                 />
-                <select
-                    className="form-select form-select-sm"
+                    <PcmSelect
+                    
                     value={unit}
                     onChange={(e) => onUnit(e.target.value)}
                     aria-label={`Satuan ${label}`}
@@ -34,7 +35,7 @@ function QtyField({ id, label, placeholder, value, unit, units, onValue, onUnit 
                     {options.map((u) => (
                         <option key={u} value={u}>{u}</option>
                     ))}
-                </select>
+                </PcmSelect>
             </div>
         </div>
     );

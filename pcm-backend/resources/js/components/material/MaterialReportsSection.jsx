@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
+import { PcmSelect } from '../SearchSelect';
 
 const REPORT_TABS = [
     {
@@ -854,8 +855,8 @@ export function MaterialReportsSection({
 
                         <div className="col-6 col-lg-2">
                             <label className="form-label small fw-semibold text-secondary mb-1">Project</label>
-                            <select
-                                className="form-select form-select-sm"
+                            <PcmSelect
+                                
                                 value={filters.project_id}
                                 onChange={(event) => setFilters({ ...filters, project_id: event.target.value })}
                             >
@@ -863,7 +864,7 @@ export function MaterialReportsSection({
                                 {projects.map((item) => (
                                     <option key={item.id} value={item.id}>{item.name}</option>
                                 ))}
-                            </select>
+                            </PcmSelect>
                         </div>
 
                         {(activeReport === 'receiving' || activeReport === 'issuing') && (
@@ -888,8 +889,8 @@ export function MaterialReportsSection({
                                 </div>
                                 <div className="col-6 col-lg-2">
                                     <label className="form-label small fw-semibold text-secondary mb-1">Status</label>
-                                    <select
-                                        className="form-select form-select-sm"
+                                    <PcmSelect
+                                        
                                         value={filters.status}
                                         onChange={(event) => setFilters({ ...filters, status: event.target.value })}
                                     >
@@ -909,7 +910,7 @@ export function MaterialReportsSection({
                                                 <option value="CANCELLED">CANCELLED</option>
                                             </>
                                         )}
-                                    </select>
+                                    </PcmSelect>
                                 </div>
                             </>
                         )}
@@ -918,15 +919,15 @@ export function MaterialReportsSection({
                             <>
                                 <div className="col-6 col-lg-2">
                                     <label className="form-label small fw-semibold text-secondary mb-1">Penyimpanan</label>
-                                    <select
-                                        className="form-select form-select-sm"
+                                    <PcmSelect
+                                        
                                         value={filters.storage_type}
                                         onChange={(event) => setFilters({ ...filters, storage_type: event.target.value })}
                                     >
                                         <option value="ALL">Semua</option>
                                         <option value="OPEN_YARD">Open Yard</option>
                                         <option value="WAREHOUSE">Warehouse</option>
-                                    </select>
+                                    </PcmSelect>
                                 </div>
                                 <div className="col-6 col-lg-2">
                                     <label className="form-label small fw-semibold text-secondary mb-1">Lokasi</label>
@@ -945,8 +946,8 @@ export function MaterialReportsSection({
                             <>
                                 <div className="col-6 col-lg-2">
                                     <label className="form-label small fw-semibold text-secondary mb-1">Kategori</label>
-                                    <select
-                                        className="form-select form-select-sm"
+                                    <PcmSelect
+                                        
                                         value={filters.category}
                                         onChange={(event) => setFilters({ ...filters, category: event.target.value })}
                                     >
@@ -954,12 +955,12 @@ export function MaterialReportsSection({
                                         {CATEGORY_OPTIONS.map((category) => (
                                             <option key={category} value={category}>{category}</option>
                                         ))}
-                                    </select>
+                                    </PcmSelect>
                                 </div>
                                 <div className="col-6 col-lg-2">
                                     <label className="form-label small fw-semibold text-secondary mb-1">Level Stok</label>
-                                    <select
-                                        className="form-select form-select-sm"
+                                    <PcmSelect
+                                        
                                         value={filters.stock_status}
                                         onChange={(event) => setFilters({ ...filters, stock_status: event.target.value })}
                                     >
@@ -967,7 +968,7 @@ export function MaterialReportsSection({
                                         <option value="NORMAL">Normal</option>
                                         <option value="LOW">Kritis / Rendah</option>
                                         <option value="OUT">Kosong</option>
-                                    </select>
+                                    </PcmSelect>
                                 </div>
                             </>
                         )}

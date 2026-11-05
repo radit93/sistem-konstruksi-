@@ -7,6 +7,7 @@
  * source renders as a dash, never as a guessed figure (DESIGN.md section 10).
  */
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { PcmSelect } from './SearchSelect';
 
 /* -------------------------------------------------------------------------
  * Icon set. Heroicons outline paths, one stroke weight, one 24x24 grid, drawn
@@ -843,8 +844,8 @@ export function OverviewTab({
                             </div>
                             <div className="d-flex flex-wrap align-items-center gap-2">
                                 {availableAreas.length > 0 && (
-                                    <select
-                                        className="form-select form-select-sm"
+                                    <PcmSelect
+                                        
                                         style={{ width: '10rem' }}
                                         value={filterArea}
                                         onChange={(e) => setFilterArea(e.target.value)}
@@ -854,7 +855,7 @@ export function OverviewTab({
                                         {availableAreas.map((area) => (
                                             <option key={area} value={area}>{area}</option>
                                         ))}
-                                    </select>
+                                    </PcmSelect>
                                 )}
                                 <input
                                     type="text"

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { jointLabel } from './FabricationTab';
+import { PcmSelect } from './SearchSelect';
 
 // Kolom nyata inspections: joint_id, kind, result, defect_type, report_no, insp_date, inspector, photo_path, remarks.
 const today = () => new Date().toISOString().split('T')[0];
@@ -315,8 +316,8 @@ export function QaqcTab({ joints, inspections, user, onReload }) {
                                     <div className="row g-2 mb-3">
                                         <div className="col-6">
                                             <label className="form-label small fw-semibold">Jenis Inspeksi</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={formData.kind}
                                                 onChange={e => setFormData({ ...formData, kind: e.target.value })}
                                             >
@@ -325,25 +326,25 @@ export function QaqcTab({ joints, inspections, user, onReload }) {
                                                 <option value="PT">PENETRANT TEST (PT)</option>
                                                 <option value="UT">ULTRASONIC TEST (UT)</option>
                                                 <option value="PMI">PMI ALLOY VERIFICATION</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-6">
                                             <label className="form-label small fw-semibold">Hasil Keputusan</label>
-                                            <select
-                                                className="form-select fw-bold"
+                                            <PcmSelect
+                                                className="fw-bold"
                                                 value={formData.result}
                                                 onChange={e => setFormData({ ...formData, result: e.target.value })}
                                             >
                                                 <option value="PASS" className="text-success">PASS (Diterima / Lolos)</option>
                                                 <option value="FAIL" className="text-danger">FAIL (Ditolak)</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                     </div>
                                     <div className="row g-2 mb-3">
                                         <div className="col-6">
                                             <label className="form-label small fw-semibold">Defect Type (Jika Ada)</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={formData.defect_type}
                                                 onChange={e => setFormData({ ...formData, defect_type: e.target.value })}
                                             >
@@ -353,7 +354,7 @@ export function QaqcTab({ joints, inspections, user, onReload }) {
                                                 <option value="INCOMPLETE_PENETRATION">Incomplete Penetration</option>
                                                 <option value="CRACK">Crack</option>
                                                 <option value="SLAG">Slag Inclusion</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-6">
                                             <label className="form-label small fw-semibold">Nama Inspector</label>

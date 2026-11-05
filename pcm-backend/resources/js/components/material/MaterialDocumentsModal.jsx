@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api';
+import { PcmSelect } from '../SearchSelect';
 
 const CATEGORY_OPTIONS = {
     receiving: ['PACKING_LIST', 'MTC', 'BAP', 'PHOTO', 'OTHER'],
@@ -171,8 +172,8 @@ export function MaterialDocumentsModal({
                                 <div className="row g-3">
                                     <div className="col-12 col-md-4">
                                         <label className="form-label small fw-semibold text-secondary">Jenis Dokumen</label>
-                                        <select
-                                            className="form-select"
+                                            <PcmSelect
+                                            
                                             value={category}
                                             onChange={(event) => setCategory(event.target.value)}
                                         >
@@ -181,7 +182,7 @@ export function MaterialDocumentsModal({
                                                     {CATEGORY_LABELS[option] || option.replaceAll('_', ' ')}
                                                 </option>
                                             ))}
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                     <div className="col-12 col-md-8">
                                         <label className="form-label small fw-semibold text-secondary">Berkas</label>

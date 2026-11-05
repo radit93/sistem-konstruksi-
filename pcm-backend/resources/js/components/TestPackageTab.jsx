@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
+import { PcmSelect } from './SearchSelect';
 
 // Kolom nyata test_packages: pkg_no, system_name, line_no, test_kind, test_pressure_bar,
 // holding_time_min, schedule_date, status, punch_list_open, blinds, blinds_installed, reinstated.
@@ -173,14 +174,14 @@ export function TestPackageTab({ testPackages, joints, user, onReload }) {
                                     <div className="row g-2 mb-3">
                                         <div className="col-6">
                                             <label className="form-label small fw-semibold">Media Uji</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={formData.test_kind}
                                                 onChange={e => setFormData({ ...formData, test_kind: e.target.value })}
                                             >
                                                 <option value="Hydro">Hydro (Air)</option>
                                                 <option value="Pneumatic">Pneumatic (Udara)</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-6">
                                             <label className="form-label small fw-semibold">Tekanan (Bar)</label>

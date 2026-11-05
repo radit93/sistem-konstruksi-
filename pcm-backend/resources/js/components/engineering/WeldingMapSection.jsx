@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
-import { SearchSelect } from '../SearchSelect';
+import { SearchSelect, PcmSelect } from '../SearchSelect';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
 import {
     buildAttributeLabels,
@@ -846,19 +846,17 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                 )}
 
                 {/* 3. Dropdown Spool */}
-                <select
-                    className="form-select form-select-sm pcm-select-theme"
+                <PcmSelect
                     value={filterSpool}
                     onChange={(e) => setFilterSpool(e.target.value)}
                     aria-label="Filter Spool"
                 >
                     <option value="ALL">Semua Spool ({spoolOptions.length})</option>
                     {spoolOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                </PcmSelect>
 
                 {/* 4. Dropdown Lokasi */}
-                <select
-                    className="form-select form-select-sm pcm-select-theme"
+                <PcmSelect
                     value={filterLocation}
                     onChange={(e) => setFilterLocation(e.target.value)}
                     aria-label="Filter Lokasi"
@@ -866,7 +864,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                     <option value="ALL">Semua Lokasi</option>
                     <option value="Shop">Shop (Workshop)</option>
                     <option value="Field">Field (Lapangan)</option>
-                </select>
+                </PcmSelect>
             </div>
 
             {/* Accordion grid: ISO > Spool > Joint */}
@@ -1230,8 +1228,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                             <div>
                                                 <label className="form-label small fw-bold">Spool No *</label>
                                                 {selectedDrawingSpools.length > 0 ? (
-                                                    <select
-                                                        className="form-select pcm-code fw-bold text-dark"
+                                                    <PcmSelect
+                                                        className="pcm-code fw-bold text-dark"
                                                         value={form.spool_no || ''}
                                                         onChange={(e) => {
                                                             const newSpool = e.target.value;
@@ -1245,7 +1243,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                 {sp.spool_no} (Estimasi: {sp.joints_count || 1} Joint)
                                                             </option>
                                                         ))}
-                                                    </select>
+                                                    </PcmSelect>
                                                 ) : (
                                                     <div className="input-group wm-prefix-group">
                                                         <span className="input-group-text">SP-</span>
@@ -1289,8 +1287,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                         });
 
                                                         return (
-                                                            <select
-                                                                className="form-select pcm-code fw-bold text-dark"
+                                                            <PcmSelect
+                                                                className="pcm-code fw-bold text-dark"
                                                                 value={form.joint_no || ''}
                                                                 onChange={(e) => setForm({ ...form, joint_no: e.target.value })}
                                                                 required
@@ -1301,7 +1299,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                         {opt.label}
                                                                     </option>
                                                                 ))}
-                                                            </select>
+                                                            </PcmSelect>
                                                         );
                                                     }
 
@@ -1332,8 +1330,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Tipe Sambungan</label>
-                                                <select
-                                                    className="form-select"
+                                                <PcmSelect
+                                                    
                                                     value={form.joint_type}
                                                     onChange={(e) => setForm({ ...form, joint_type: e.target.value })}
                                                 >
@@ -1341,12 +1339,12 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     <option value="SW">Socket Weld (SW)</option>
                                                     <option value="FW">Fillet Weld (FW)</option>
                                                     <option value="THD">Threaded (THD)</option>
-                                                </select>
+                                                </PcmSelect>
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Sheet</label>
-                                                <select
-                                                    className="form-select"
+                                                    <PcmSelect
+                                                    
                                                     value={form.sheet}
                                                     onChange={(e) => setForm({ ...form, sheet: e.target.value })}
                                                 >
@@ -1355,7 +1353,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                             {option.label}
                                                         </option>
                                                     ))}
-                                                </select>
+                                                </PcmSelect>
                                             </div>
                                         </div>
                                         <div className="wm-form-meta">
@@ -1543,26 +1541,26 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         <div className="wm-form-grid">
                                             <div>
                                                 <label className="form-label small fw-bold">Lokasi Las</label>
-                                                <select
-                                                    className="form-select"
+                                                <PcmSelect
+                                                    
                                                     value={form.location}
                                                     onChange={(e) => setForm({ ...form, location: e.target.value })}
                                                 >
                                                     <option value="Shop">Shop (Workshop)</option>
                                                     <option value="Field">Field (Lapangan)</option>
-                                                </select>
+                                                </PcmSelect>
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Status</label>
-                                                <select
-                                                    className="form-select"
+                                                    <PcmSelect
+                                                    
                                                     value={form.status}
                                                     onChange={(e) => setForm({ ...form, status: e.target.value })}
                                                 >
                                                     {STATUS_OPTIONS.map((status) => (
                                                         <option key={status} value={status}>{status}</option>
                                                     ))}
-                                                </select>
+                                                </PcmSelect>
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Line Number</label>

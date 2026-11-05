@@ -4,6 +4,7 @@ import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { MaterialDocumentsModal } from './MaterialDocumentsModal';
 import { MaterialReportModal } from './MaterialReportModal';
+import { PcmSelect } from '../SearchSelect';
 
 export function MaterialReceivingSection({ user, onToast }) {
     const [receivings, setReceivings] = useState([]);
@@ -329,8 +330,8 @@ export function MaterialReceivingSection({ user, onToast }) {
                             />
                         </div>
                         <div className="col-6 col-md-3">
-                            <select
-                                className="form-select"
+                            <PcmSelect
+                                
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
                             >
@@ -341,18 +342,18 @@ export function MaterialReceivingSection({ user, onToast }) {
                                 <option value="HOLD">HOLD (Ditahan)</option>
                                 <option value="REJECTED">REJECTED (NCR)</option>
                                 <option value="INSPECTED">INSPECTED (Legacy)</option>
-                            </select>
+                            </PcmSelect>
                         </div>
                         <div className="col-6 col-md-2">
-                            <select
-                                className="form-select"
+                            <PcmSelect
+                                
                                 value={filterStorage}
                                 onChange={(e) => setFilterStorage(e.target.value)}
                             >
                                 <option value="ALL">Semua Lokasi</option>
                                 <option value="OPEN_YARD">Open Yard</option>
                                 <option value="WAREHOUSE">Warehouse</option>
-                            </select>
+                            </PcmSelect>
                         </div>
                         <div className="col-12 col-md-2 text-md-end text-muted small">
                             {filtered.length} dari {receivings.length} batch
@@ -587,8 +588,8 @@ export function MaterialReceivingSection({ user, onToast }) {
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Kategori Material</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.category}
                                                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                                             >
@@ -599,13 +600,13 @@ export function MaterialReceivingSection({ user, onToast }) {
                                                 <option value="GASKET">GASKET</option>
                                                 <option value="FASTENER">FASTENER</option>
                                                 <option value="CONSUMABLE">CONSUMABLE</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
 
                                         <div className="col-12">
                                             <label className="form-label small fw-semibold text-secondary">Kode Standar Material</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.material_standard_id}
                                                 onChange={(e) => handleStandardChange(e.target.value)}
                                                 disabled={Boolean(editingItem?.storing)}
@@ -616,7 +617,7 @@ export function MaterialReceivingSection({ user, onToast }) {
                                                         {standard.code} — {standard.specification} ({standard.category})
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                             <div className="form-text">
                                                 Pilih kode dari katalog Engineering agar receiving ini ikut terhitung di dashboard kebutuhan material.
                                             </div>
@@ -714,8 +715,8 @@ export function MaterialReceivingSection({ user, onToast }) {
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Satuan</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.unit}
                                                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
                                             >
@@ -725,19 +726,19 @@ export function MaterialReceivingSection({ user, onToast }) {
                                                 <option value="kg">kg</option>
                                                 <option value="drum">drum</option>
                                                 <option value="box">box</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
 
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Jenis Penyimpanan</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.storage_type}
                                                 onChange={(e) => setForm({ ...form, storage_type: e.target.value })}
                                             >
                                                 <option value="OPEN_YARD">Open Yard (Luar Ruangan)</option>
                                                 <option value="WAREHOUSE">Warehouse (Dalam Ruangan)</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Lokasi Detil Simpan</label>

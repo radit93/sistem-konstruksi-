@@ -36,8 +36,24 @@ export function SearchSelect({
     className = '',
     emptyText = 'Tidak ada pilihan.',
     ariaLabel,
+    inputId,
+    required = false,
+    children,
 }) {
-    const list = useMemo(() => normalizeOptions(options), [options]);
+    const list = useMemo(() => {
+        /* Dukungan <option> anak: memudahkan pemakaian sebagai pengganti
+           <select> biasa tanpa harus menyusun array options. */
+        const kids = React.Children.toArray(children)
+            .filter((child) => React.isValidElement(child) && child.type === 'option');
+        if (kids.length > 0) {
+            return kids.map((child) => ({
+                value: String(child.props.value ?? ''),
+                label: String(child.props.children ?? child.props.value ?? ''),
+                hint: ''
+            }));
+        }
+        return normalizeOptions(options);
+    }, [children, options]);
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [highlight, setHighlight] = useState(0);
@@ -169,6 +185,8 @@ export function SearchSelect({
         <div className={`pcm-searchselect ${className}`.trim()} ref={wrapRef}>
             <input
                 ref={inputRef}
+                id={inputId}
+                required={required}
                 type="text"
                 className="form-control form-control-sm pcm-searchselect__input"
                 value={open ? query : selectedLabel}
@@ -261,5 +279,66 @@ export function SearchSelect({
                 document.body
             )}
         </div>
+    );
+}
+
+/**
+ * PcmSelect — pengganti drop-in untuk <select> biasa.
+ *
+ * Semua dropdown lama memakai pola:
+ *   <select className="form-select" value={x} onChange={(e) => setX(e.target.value)}>
+ *     <option value="">Pilih...</option>
+ *     ...
+ *   </select>
+ *
+ * PcmSelect mempertahankan pola itu (anak <option> dan onChange bergaya event)
+ * tetapi merender SearchSelect, sehingga tampilan & perilaku seluruh dropdown
+ * di aplikasi seragam: bisa dicari, ada caret, tombol kosongkan, dan panel
+ * pilihan yang konsisten.
+ */
+export function PcmSelect({
+    value = '',
+    onChange,
+    children,
+    placeholder,
+    disabled = false,
+    required = false,
+    id,
+    className = '',
+    ariaLabel,
+    emptyText,
+}) {
+    const { options, placeholderOption } = useMemo(() => {
+        const kids = React.Children.toArray(children)
+            .filter((child) => React.isValidElement(child) && child.type === 'option')
+            .map((child) => ({
+                value: String(child.props.value ?? ''),
+                label: String(child.props.children ?? child.props.value ?? ''),
+            }));
+        return {
+            options: kids.filter((opt) => opt.value !== ''),
+            placeholderOption: kids.find((opt) => opt.value === ''),
+        };
+    }, [children]);
+
+    /* onChange tetap menerima event-like agar seluruh pemanggil lama
+       (e.target.value) tidak perlu diubah. */
+    const handleChange = (next) => {
+        onChange?.({ target: { value: next } });
+    };
+
+    return (
+        <SearchSelect
+            value={String(value ?? '')}
+            onChange={handleChange}
+            options={options}
+            placeholder={placeholder || placeholderOption?.label || 'Pilih...'}
+            disabled={disabled}
+            className={className}
+            ariaLabel={ariaLabel}
+            inputId={id}
+            required={required}
+            emptyText={emptyText}
+        />
     );
 }

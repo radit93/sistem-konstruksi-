@@ -17,7 +17,22 @@ export function Header({
     onGlobalDashboardLocked,
     isAtRisk = false
 }) {
-    const currentMenu = ROLE_SIDEBAR_MENUS.find(m => m.id === activeTab) || ROLE_SIDEBAR_MENUS[0];
+    /* Menu bisa berada di dalam sub-menu (children). Tanpa resolusi ini,
+       tab anak tidak ditemukan dan header jatuh ke menu pertama
+       (Global Dashboard) sehingga judul halaman jadi salah. */
+    const findCurrentMenu = () => {
+        const top = ROLE_SIDEBAR_MENUS.find((m) => m.id === activeTab);
+        if (top) return { menu: top, parent: null };
+        const parent = ROLE_SIDEBAR_MENUS.find(
+            (m) => Array.isArray(m.children) && m.children.some((c) => c.id === activeTab)
+        );
+        if (parent) {
+            return { menu: parent.children.find((c) => c.id === activeTab), parent };
+        }
+        return { menu: ROLE_SIDEBAR_MENUS[0], parent: null };
+    };
+
+    const { menu: currentMenu, parent: parentMenu } = findCurrentMenu();
 
     return (
         <div className="page-title-container mb-4">
@@ -40,6 +55,11 @@ export function Header({
                                     PCM Piping 2428
                                 </a>
                             </li>
+                            {parentMenu && (
+                                <li className="breadcrumb-item">
+                                    {parentMenu.label}
+                                </li>
+                            )}
                             <li className="breadcrumb-item active" aria-current="page">
                                 {currentMenu.desc}
                             </li>

@@ -630,7 +630,13 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
             {/* Header Toolbar */}
             <div className="mb-4">
                 <h2 className="h3 fw-bolder text-dark mb-0" style={{ letterSpacing: '-0.02em' }}>
-                    Katalog Standar Material ASTM
+                    {activeStandardView === 'material'
+                        ? 'Katalog Standar Material ASTM'
+                        : scope === 'pipe'
+                            ? 'Dimensi & Ketebalan Pipa ASME B36.10M'
+                            : scope === 'fitting'
+                                ? 'Dimensi & Berat Fitting ASME B16.9 / MSS SP-97'
+                                : 'Master Diameter & Ketebalan'}
                 </h2>
             </div>
 

@@ -265,8 +265,22 @@ function App() {
                 : false;
         };
 
-        const menu = ROLE_SIDEBAR_MENUS.find((m) => m.id === activeTab);
-        if (menu && allowed(menu) && inScope(menu)) return;
+        /* Menu bisa berada di dalam sub-menu (children). Izin & cakupan
+           departemen mengikuti menu induknya, jadi id anak harus diresolusi
+           dulu — kalau tidak, tab anak akan dianggap tidak dikenal dan
+           pengguna terlempar ke Global Dashboard. */
+        const resolveMenu = (id) => {
+            const top = ROLE_SIDEBAR_MENUS.find((m) => m.id === id);
+            if (top) return { target: top, owner: top };
+            const parent = ROLE_SIDEBAR_MENUS.find(
+                (m) => Array.isArray(m.children) && m.children.some((c) => c.id === id)
+            );
+            if (!parent) return null;
+            return { target: parent.children.find((c) => c.id === id), owner: parent };
+        };
+
+        const resolved = resolveMenu(activeTab);
+        if (resolved && allowed(resolved.owner) && inScope(resolved.owner)) return;
 
         const fallback = ROLE_SIDEBAR_MENUS.find((m) => allowed(m) && inScope(m))?.id || 'overview';
         setActiveTab(fallback);

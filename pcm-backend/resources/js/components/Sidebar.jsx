@@ -135,12 +135,12 @@ export const ROLE_SIDEBAR_MENUS = [
         children: [
             {
                 id: 'pipe_table',
-                label: 'Tabel Pipa',
+                label: 'Pipa',
                 desc: 'Dimensi & ketebalan pipa ASME B36.10M'
             },
             {
                 id: 'fitting_table',
-                label: 'Tabel Fitting',
+                label: 'Fitting',
                 desc: 'Dimensi & berat fitting (elbow, tee, reducer, weld-o-let)'
             }
         ]

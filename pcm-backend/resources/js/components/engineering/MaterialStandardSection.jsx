@@ -83,6 +83,23 @@ const getCategoryBadgeStyle = (cat) => {
     }
 };
 
+/* Label tampilan untuk tab kategori — nilai data (id) tetap utuh agar filter tidak rusak */
+const CATEGORY_TAB_LABELS = {
+    ALL: 'Semua Kategori',
+    Pipe: 'Pipe',
+    Fitting: 'Fitting',
+    'Elbow Long Radius': 'Elbow LR',
+    'Elbow Short Radius': 'Elbow SR',
+    Tee: 'Tee Equal',
+    'Tee Reducer': 'Tee Reducing',
+    Reducer: 'Reducer',
+    Weldolet: 'Weld-o-let',
+    Flange: 'Flange',
+    Valve: 'Valve',
+    Gasket: 'Gasket',
+    Fastener: 'Fastener'
+};
+
 /* Parser untuk memisahkan Rating Tekanan (#) dan Pressure Class bila ada data gabungan lama */
 const parseRatingClass = (val) => {
     if (!val || val === 'N/A' || val === '—' || val === '-') {
@@ -323,12 +340,12 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
 
     const fittingCategories = [
         { id: 'Pipe', label: 'Pipe' },
-        { id: 'Elbow Long Radius', label: 'Elbow Long Radius' },
-        { id: 'Elbow Short Radius', label: 'Elbow Short Radius' },
+        { id: 'Elbow Long Radius', label: 'Elbow LR' },
+        { id: 'Elbow Short Radius', label: 'Elbow SR' },
+        { id: 'Tee', label: 'Tee Equal' },
+        { id: 'Tee Reducer', label: 'Tee Reducing' },
         { id: 'Reducer', label: 'Reducer' },
-        { id: 'Tee', label: 'Tee' },
-        { id: 'Tee Reducer', label: 'Tee Reducer' },
-        { id: 'Weldolet', label: 'Weldolet' },
+        { id: 'Weldolet', label: 'Weld-o-let' },
     ];
 
     const canEdit = can(user, 'drawing.write');
@@ -368,9 +385,9 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         'Fitting',
         'Elbow Long Radius',
         'Elbow Short Radius',
-        'Reducer',
         'Tee',
         'Tee Reducer',
+        'Reducer',
         'Weldolet',
         'Flange',
         'Valve',
@@ -596,21 +613,19 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                 <>
                     {/* Kategori Berada di Atas Search */}
                     <div className="mb-3">
-                        <div className="btn-group flex-wrap" role="group" aria-label="Filter Kategori Material">
+                        <div className="pcm-tabbar" role="tablist" aria-label="Filter Kategori Material">
                             {categories.map(cat => {
                                 const isSel = filterCategory === cat;
-                                const badgeStyle = cat === 'ALL'
-                                    ? { backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }
-                                    : getCategoryBadgeStyle(cat);
                                 return (
                                     <button
                                         key={cat}
                                         type="button"
-                                        className={`btn btn-sm ${isSel ? 'fw-bold' : 'btn-outline-secondary'}`}
-                                        style={isSel ? { ...badgeStyle, boxShadow: '0 2px 4px rgba(0,0,0,0.18)' } : {}}
+                                        role="tab"
+                                        aria-selected={isSel}
+                                        className={`pcm-tabbar__item${isSel ? ' is-active' : ''}`}
                                         onClick={() => setFilterCategory(cat)}
                                     >
-                                        {cat === 'ALL' ? 'Semua Kategori' : cat}
+                                        {CATEGORY_TAB_LABELS[cat] || cat}
                                     </button>
                                 );
                             })}
@@ -805,17 +820,22 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
             {activeStandardView === 'pipe' && (
                 <>
                     <div className="mb-3">
-                        <div className="btn-group flex-wrap" role="group" aria-label="Filter komponen master diameter">
-                            {fittingCategories.map((item) => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    className={`btn btn-sm ${fittingCategory === item.id ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
-                                    onClick={() => setFittingCategory(item.id)}
-                                >
-                                    {item.label}
-                                </button>
-                            ))}
+                        <div className="pcm-tabbar" role="tablist" aria-label="Filter komponen master diameter">
+                            {fittingCategories.map((item) => {
+                                const isSel = fittingCategory === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={isSel}
+                                        className={`pcm-tabbar__item${isSel ? ' is-active' : ''}`}
+                                        onClick={() => setFittingCategory(item.id)}
+                                    >
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                     {fittingCategory !== 'Pipe' && (
@@ -836,7 +856,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                     <tbody>
                                         <tr>
                                             <td colSpan={7} className="text-center py-5 pcm-cell-sub">
-                                                Belum ada data {fittingCategory}. Layout tabel sudah disiapkan dan siap diisi setelah data diberikan.
+                                                Belum ada data {(fittingCategories.find((f) => f.id === fittingCategory) || {}).label || fittingCategory}. Layout tabel sudah disiapkan dan siap diisi setelah data diberikan.
                                             </td>
                                         </tr>
                                     </tbody>

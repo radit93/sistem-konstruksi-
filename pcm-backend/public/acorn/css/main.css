@@ -2157,6 +2157,28 @@ html[data-placement=horizontal] .nav-container .logo .img {
     gap: .75rem;
 }
 
+/* Toolbar Welding Map: samakan tinggi semua kontrol dengan field di modal
+   Tambah Joint (40px) supaya sebaris rapi. */
+.wm-toolbar .pcm-searchselect {
+    flex: 0 0 auto;
+    width: 190px;
+    max-width: 220px;
+}
+
+.wm-toolbar .pcm-searchselect__input,
+.wm-toolbar .pcm-filter-input,
+.wm-toolbar .btn {
+    height: 40px !important;
+    min-height: 40px !important;
+    box-sizing: border-box !important;
+}
+
+.wm-toolbar .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Material A/B: Material Group, Kategori, Size, Sch, Spesifikasi sejajar. */
 .wm-form-grid--5 {
     grid-template-columns: repeat(5, minmax(0, 1fr));

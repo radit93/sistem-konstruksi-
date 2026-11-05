@@ -816,7 +816,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
             </div>
 
             {/* Toolbar Sejajar: Search, Tambah, Spool, Lokasi, dan Tombol Arrow Buka/Tutup */}
-            <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
+            <div className="wm-toolbar d-flex flex-wrap align-items-center gap-2 mb-4">
                 {/* 1. Search */}
                 <div className="flex-grow-1 min-w-0" style={{ minWidth: '220px' }}>
                     <div className="pcm-search w-100" style={{ maxWidth: '100%' }}>
@@ -851,7 +851,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                     onChange={(e) => setFilterSpool(e.target.value)}
                     aria-label="Filter Spool"
                 >
-                    <option value="ALL">Semua Spool ({spoolOptions.length})</option>
+                    <option value="ALL">Semua Spool</option>
                     {spoolOptions.map((s) => <option key={s} value={s}>{s}</option>)}
                 </PcmSelect>
 
@@ -1240,7 +1240,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                         <option value="">-- Pilih Spool --</option>
                                                         {selectedDrawingSpools.map((sp, idx) => (
                                                             <option key={idx} value={sp.spool_no}>
-                                                                {sp.spool_no} (Estimasi: {sp.joints_count || 1} Joint)
+                                                                {sp.spool_no}
                                                             </option>
                                                         ))}
                                                     </PcmSelect>
@@ -1283,7 +1283,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     if (maxJoints != null) {
                                                         const jointOptions = Array.from({ length: maxJoints }, (_, i) => {
                                                             const num = String(i + 1).padStart(2, '0');
-                                                            return { val: `J-${num}`, label: `J-${num} (Joint ${i + 1} of ${maxJoints})` };
+                                                            return { val: `J-${num}`, label: `J-${num}` };
                                                         });
 
                                                         return (
@@ -1293,7 +1293,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                 onChange={(e) => setForm({ ...form, joint_no: e.target.value })}
                                                                 required
                                                             >
-                                                                <option value="">-- Pilih Joint No ({form.spool_no}) --</option>
+                                                                <option value="">-- Pilih Joint No --</option>
                                                                 {jointOptions.map(opt => (
                                                                     <option key={opt.val} value={opt.val}>
                                                                         {opt.label}

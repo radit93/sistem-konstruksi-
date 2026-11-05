@@ -1157,6 +1157,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                         const dId = e.target.value;
                                                         const dwg = drawings.find((d) => String(d.id) === String(dId));
                                                         let nextSpoolNo = form.spool_no;
+                                                        let nextJointNo = '';
                                                         if (dwg) {
                                                             let sps = dwg.spool_data;
                                                             if (typeof sps === 'string') {
@@ -1164,6 +1165,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                             }
                                                             if (Array.isArray(sps) && sps.length > 0 && sps[0].spool_no) {
                                                                 nextSpoolNo = sps[0].spool_no;
+                                                                nextJointNo = 'J-01';
                                                             }
                                                         }
                                                         setForm({
@@ -1173,7 +1175,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                             line_no: dwg ? dwg.line_no : form.line_no,
                                                             project_id: dwg?.project_id ? String(dwg.project_id) : form.project_id,
                                                             sheet: dwg ? getDrawingSheet(dwg) : '',
-                                                            spool_no: nextSpoolNo
+                                                            spool_no: nextSpoolNo,
+                                                            joint_no: nextJointNo
                                                         });
                                                     }}
                                                     required
@@ -1195,7 +1198,10 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     <select
                                                         className="form-select pcm-code fw-bold text-dark"
                                                         value={form.spool_no || ''}
-                                                        onChange={(e) => setForm({ ...form, spool_no: e.target.value })}
+                                                        onChange={(e) => {
+                                                            const newSpool = e.target.value;
+                                                            setForm({ ...form, spool_no: newSpool, joint_no: 'J-01' });
+                                                        }}
                                                         required
                                                     >
                                                         <option value="">-- Pilih Spool --</option>
@@ -1240,42 +1246,52 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     const currentSpoolObj = selectedDrawingSpools.find(s => s.spool_no === form.spool_no);
                                                     const maxJoints = currentSpoolObj ? parseInt(currentSpoolObj.joints_count, 10) || 1 : null;
 
+                                                    // Jika drawing memiliki data spool, jadikan DROPDOWN langsung
+                                                    if (maxJoints != null) {
+                                                        const jointOptions = Array.from({ length: maxJoints }, (_, i) => {
+                                                            const num = String(i + 1).padStart(2, '0');
+                                                            return { val: `J-${num}`, label: `J-${num} (Joint ${i + 1} of ${maxJoints})` };
+                                                        });
+
+                                                        return (
+                                                            <select
+                                                                className="form-select pcm-code fw-bold text-dark"
+                                                                value={form.joint_no || ''}
+                                                                onChange={(e) => setForm({ ...form, joint_no: e.target.value })}
+                                                                required
+                                                            >
+                                                                <option value="">-- Pilih Joint No ({form.spool_no}) --</option>
+                                                                {jointOptions.map(opt => (
+                                                                    <option key={opt.val} value={opt.val}>
+                                                                        {opt.label}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        );
+                                                    }
+
+                                                    // Fallback input teks jika manual tanpa spool_data
                                                     return (
-                                                        <>
-                                                            <div className="input-group wm-prefix-group">
-                                                                <span className="input-group-text">J-</span>
-                                                                <input
-                                                                    type="text"
-                                                                    className="form-control pcm-code"
-                                                                    inputMode="numeric"
-                                                                    pattern="[0-9]*"
-                                                                    placeholder="01"
-                                                                    list="wm-joint-quick-options"
-                                                                    value={stripSequence(form.joint_no, 'J')}
-                                                                    onChange={(e) => {
-                                                                        const next = withSequencePrefix(e.target.value, 'J');
-                                                                        setForm((prev) => ({ ...prev, joint_no: next }));
-                                                                    }}
-                                                                    onBlur={(e) => {
-                                                                        const next = formatSequence(e.target.value, 'J');
-                                                                        setForm((prev) => ({ ...prev, joint_no: next }));
-                                                                    }}
-                                                                    required
-                                                                />
-                                                            </div>
-                                                            {maxJoints != null && (
-                                                                <datalist id="wm-joint-quick-options">
-                                                                    {Array.from({ length: maxJoints }, (_, i) => String(i + 1).padStart(2, '0')).map(num => (
-                                                                        <option key={num} value={num} label={`Joint ${num} (${form.spool_no})`} />
-                                                                    ))}
-                                                                </datalist>
-                                                            )}
-                                                            {maxJoints != null && (
-                                                                <div className="text-muted small mt-1" style={{ fontSize: '0.6875rem' }}>
-                                                                    Rekomendasi urutan: J-01 s/d J-{String(maxJoints).padStart(2, '0')}
-                                                                </div>
-                                                            )}
-                                                        </>
+                                                        <div className="input-group wm-prefix-group">
+                                                            <span className="input-group-text">J-</span>
+                                                            <input
+                                                                type="text"
+                                                                className="form-control pcm-code"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9]*"
+                                                                placeholder="01"
+                                                                value={stripSequence(form.joint_no, 'J')}
+                                                                onChange={(e) => {
+                                                                    const next = withSequencePrefix(e.target.value, 'J');
+                                                                    setForm((prev) => ({ ...prev, joint_no: next }));
+                                                                }}
+                                                                onBlur={(e) => {
+                                                                    const next = formatSequence(e.target.value, 'J');
+                                                                    setForm((prev) => ({ ...prev, joint_no: next }));
+                                                                }}
+                                                                required
+                                                            />
+                                                        </div>
                                                     );
                                                 })()}
                                             </div>

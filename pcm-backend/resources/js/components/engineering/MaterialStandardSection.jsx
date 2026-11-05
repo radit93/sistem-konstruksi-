@@ -578,7 +578,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         e.preventDefault();
         setPipeFormError('');
         if (!pipeForm.nps.trim() || !pipeForm.schedule.trim()) {
-            setPipeFormError('Diameter Nominal (NPS) dan Schedule / Ketebalan wajib diisi.');
+            setPipeFormError('Nominal Pipe Size (NPS) and Schedule / Wall Thickness are required.');
             return;
         }
 
@@ -633,7 +633,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                     {activeStandardView === 'material'
                         ? 'Katalog Standar Material ASTM'
                         : scope === 'pipe'
-                            ? 'Dimensi & Ketebalan Pipa ASME B36.10M'
+                            ? 'Pipe Dimension & Wall Thickness ASME B36.10M'
                             : scope === 'fitting'
                                 ? 'Dimensi & Berat Fitting ASME B16.9 / MSS SP-97'
                                 : 'Master Diameter & Ketebalan'}
@@ -906,7 +906,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                             <input
                                 type="text"
                                 className="form-control form-control-sm pcm-filter-input w-100"
-                                placeholder="Cari Diameter (NPS), DN, Schedule..."
+                                placeholder="Search diameter (NPS), DN, or schedule..."
                                 value={pipeSearch}
                                 onChange={(e) => setPipeSearch(e.target.value)}
                             />
@@ -918,7 +918,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                 style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                                 onClick={() => handleOpenPipeModal()}
                             >
-                                + Tambah Ukuran Pipa
+                                + Add Pipe Size
                             </button>
                         )}
                     </div>
@@ -940,11 +940,11 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                 <thead>
                                      <tr>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Ukuran Nominal</span>
+                                             <span className="pcm-th-title">Nominal Size</span>
                                              <span className="pcm-th-unit">NPS (inch)</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Metrik</span>
+                                             <span className="pcm-th-title">Metric</span>
                                              <span className="pcm-th-unit">DN (mm)</span>
                                          </th>
                                          <th className="text-center">
@@ -952,15 +952,15 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                              <span className="pcm-th-unit">SCH</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Tebal Dinding</span>
+                                             <span className="pcm-th-title">Wall Thickness</span>
                                              <span className="pcm-th-unit">mm</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Diameter Luar</span>
+                                             <span className="pcm-th-title">Outside Diameter</span>
                                              <span className="pcm-th-unit">OD (mm)</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Berat Nominal</span>
+                                             <span className="pcm-th-title">Nominal Weight</span>
                                              <span className="pcm-th-unit">kg/m</span>
                                          </th>
                                          <th className="text-center">
@@ -968,12 +968,12 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                              <span className="pcm-th-unit">m</span>
                                          </th>
                                          <th className="text-center">
-                                             <span className="pcm-th-title">Berat Pipe</span>
+                                             <span className="pcm-th-title">Pipe Weight</span>
                                              <span className="pcm-th-unit">kg</span>
                                          </th>
                                          {canEdit && (
                                              <th className="text-center pe-3">
-                                                <span className="pcm-th-title">Aksi</span>
+                                                <span className="pcm-th-title">Action</span>
                                             </th>
                                         )}
                                     </tr>
@@ -982,13 +982,13 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                     {pipeLoading ? (
                                         <tr>
                                             <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
-                                                Memuat data Master Diameter Pipa...
+                                                Loading pipe master data...
                                             </td>
                                         </tr>
                                     ) : filteredPipes.length === 0 ? (
                                         <tr>
                                             <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
-                                                Belum ada master diameter pipa yang terdaftar. Silakan tambahkan ukuran pipa baru.
+                                                No pipe master data registered yet. Add a new pipe size to begin.
                                             </td>
                                         </tr>
                                     ) : (
@@ -1048,7 +1048,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                 currentPage={pipeCurrentPage}
                                 totalPages={totalPipePages}
                                 totalItems={filteredPipes.length}
-                                itemName="ukuran pipa"
+                                itemName="pipe sizes"
                                 onPageChange={(p) => setPipeCurrentPage(p)}
                             />
                         )}
@@ -1190,7 +1190,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                             <form onSubmit={handleSavePipe}>
                                 <div className="modal-header">
                                     <h5 className="modal-title fw-bold">
-                                        {editingPipeItem ? 'Edit Master Ukuran Pipa' : 'Tambah Master Ukuran Pipa Baru'}
+                                        {editingPipeItem ? 'Edit Pipe Size' : 'Add New Pipe Size'}
                                     </h5>
                                     <button type="button" className="btn-close" onClick={() => setShowPipeModal(false)}></button>
                                 </div>
@@ -1204,28 +1204,28 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                             <input
                                                 type="text"
                                                 className="form-control pcm-code"
-                                                placeholder='Contoh: 4", 2", 1/2"'
+                                                placeholder='e.g. 4", 2", 1/2"'
                                                 value={pipeForm.nps}
                                                 onChange={(e) => setPipeForm({ ...pipeForm, nps: e.target.value })}
                                                 required
                                             />
                                         </div>
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Diameter Nominal (DN Metric)</label>
+                                            <label className="form-label small fw-bold">Nominal Diameter (DN, metric)</label>
                                             <input
                                                 type="text"
                                                 className="form-control pcm-code"
-                                                placeholder="Contoh: DN 100, DN 50"
+                                                placeholder="e.g. DN 100, DN 50"
                                                 value={pipeForm.dn}
                                                 onChange={(e) => setPipeForm({ ...pipeForm, dn: e.target.value })}
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Schedule / Ketebalan *</label>
+                                            <label className="form-label small fw-bold">Schedule / Wall Thickness *</label>
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                placeholder="Contoh: Sch 40, Sch 80, Sch STD"
+                                                placeholder="e.g. Sch 40, Sch 80, STD"
                                                 value={pipeForm.schedule}
                                                 onChange={(e) => setPipeForm({ ...pipeForm, schedule: e.target.value })}
                                                 required
@@ -1237,29 +1237,29 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                 type="number"
                                                 step="0.01"
                                                 className="form-control pcm-code"
-                                                placeholder="Contoh: 6.02"
+                                                placeholder="e.g. 6.02"
                                                 value={pipeForm.wall_thickness_mm}
                                                 onChange={(e) => setPipeForm({ ...pipeForm, wall_thickness_mm: e.target.value })}
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Outer Diameter (OD mm)</label>
+                                            <label className="form-label small fw-bold">Outside Diameter (OD mm)</label>
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 className="form-control pcm-code"
-                                                placeholder="Contoh: 114.30"
+                                                placeholder="e.g. 114.30"
                                                 value={pipeForm.outer_diameter_mm}
                                                 onChange={(e) => setPipeForm({ ...pipeForm, outer_diameter_mm: e.target.value })}
                                             />
                                         </div>
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Berat Nominal Pipa (kg/m)</label>
+                                            <label className="form-label small fw-bold">Nominal Weight (kg/m)</label>
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 className="form-control pcm-code"
-                                                placeholder="Contoh: 16.07"
+                                                placeholder="e.g. 16.07"
                                                 value={pipeForm.weight_kg_m}
                                                 onChange={(e) => {
                                                     const value = e.target.value;
@@ -1272,7 +1272,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                             />
                                         </div>
                                         <div className="col-12 col-md-3">
-                                            <label className="form-label small fw-bold">Panjang Batang (m)</label>
+                                            <label className="form-label small fw-bold">Length per Piece (m)</label>
                                             <input
                                                 type="number"
                                                 min="0"
@@ -1291,29 +1291,29 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                             />
                                         </div>
                                         <div className="col-12 col-md-3">
-                                            <label className="form-label small fw-bold">Berat per Batang (kg)</label>
+                                            <label className="form-label small fw-bold">Weight per Piece (kg)</label>
                                             <input
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
                                                 className="form-control pcm-code"
-                                                placeholder="Otomatis"
+                                                placeholder="Auto"
                                                 value={pipeForm.weight_kg_stick}
                                                 onChange={(e) => setPipeForm({ ...pipeForm, weight_kg_stick: e.target.value })}
                                             />
                                         </div>
                                     </div>
                                     <p className="pcm-cell-sub small mt-3 mb-0">
-                                        Berat per batang dihitung otomatis dari berat kg/m × panjang batang. Nilai dapat
-                                        disesuaikan bila data standar perusahaan berbeda.
+                                        Weight per piece is calculated automatically from kg/m × length per piece.
+                                        Adjust it manually when company standard data differs.
                                     </p>
                                 </div>
                                 <div className="modal-footer">
                                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowPipeModal(false)}>
-                                        Batal
+                                        Cancel
                                     </button>
                                     <button type="submit" className="btn btn-primary btn-sm fw-bold" disabled={pipeFormLoading}>
-                                        {pipeFormLoading ? 'Menyimpan...' : (editingPipeItem ? 'Perbarui Ukuran Pipa' : 'Simpan Ukuran Pipa')}
+                                        {pipeFormLoading ? 'Saving...' : (editingPipeItem ? 'Update Pipe Size' : 'Save Pipe Size')}
                                     </button>
                                 </div>
                             </form>

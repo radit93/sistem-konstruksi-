@@ -482,7 +482,8 @@ export function Sidebar({
                         {displayedMenus.map((menu, index) => {
                             const hasChildren = Array.isArray(menu.children) && menu.children.length > 0;
                             const childActive = hasChildren && menu.children.some((c) => c.id === activeTab);
-                            const isActive = activeTab === menu.id || childActive;
+                            const parentSelfActive = activeTab === menu.id;
+                            const isActive = parentSelfActive || childActive;
                             const isOpen = hasChildren ? Boolean(openSubmenus[menu.id]) : false;
                             const isOperational = OPERATIONAL_MENU_IDS.includes(menu.id);
                             const groupName = menu.group || (isOperational ? (currentDepartment ? `Departemen: ${currentDepartment.name}` : 'Modul Departemen') : null);
@@ -517,14 +518,14 @@ export function Sidebar({
                                             <li style={{ borderRadius: 0, margin: '2px 0', padding: 0, backgroundColor: '#1e40af' }}>
                                                 <a
                                                     href={`#${menu.id}`}
-                                                    className={isActive ? 'active' : ''}
+                                                    className={parentSelfActive ? 'active' : ''}
                                                     aria-expanded={isOpen}
                                                     aria-controls={`submenu-${menu.id}`}
                                                     style={{
                                                         borderRadius: 0,
-                                                        backgroundColor: isActive ? '#1d4ed8' : 'transparent',
+                                                        backgroundColor: parentSelfActive ? '#1d4ed8' : 'transparent',
                                                         color: '#ffffff',
-                                                        borderLeft: isActive ? '4px solid #ffffff' : '4px solid transparent',
+                                                        borderLeft: parentSelfActive ? '4px solid #ffffff' : '4px solid transparent',
                                                         paddingLeft: '1.25rem',
                                                         paddingRight: '1.25rem',
                                                         paddingTop: '0.9rem',
@@ -546,7 +547,7 @@ export function Sidebar({
                                                         style={{
                                                             color: '#ffffff',
                                                             fontSize: '1rem',
-                                                            fontWeight: isActive ? 700 : 600,
+                                                            fontWeight: parentSelfActive ? 700 : 600,
                                                             letterSpacing: '-0.01em'
                                                         }}
                                                     >
@@ -573,7 +574,7 @@ export function Sidebar({
                                                     </svg>
                                                 </a>
 
-                                            {/* Child: menu sebenarnya, menjorok ke dalam */}
+                                            {/* Child: menu sebenarnya, rata kiri tanpa bullet */}
                                             {isOpen && (
                                                 <ul id={`submenu-${menu.id}`} style={{ listStyle: 'none', margin: 0, padding: 0, backgroundColor: '#1e40af' }}>
                                                     {menu.children.map((child) => {
@@ -588,13 +589,12 @@ export function Sidebar({
                                                                         backgroundColor: childIsActive ? '#1d4ed8' : 'transparent',
                                                                         color: '#ffffff',
                                                                         borderLeft: childIsActive ? '4px solid #ffffff' : '4px solid transparent',
-                                                                        paddingLeft: '2.5rem',
+                                                                        paddingLeft: '2.75rem',
                                                                         paddingRight: '1.25rem',
                                                                         paddingTop: '0.65rem',
                                                                         paddingBottom: '0.65rem',
                                                                         display: 'flex',
                                                                         alignItems: 'center',
-                                                                        gap: '0.5rem',
                                                                         transition: 'background-color 0.2s ease, border-left 0.2s ease'
                                                                     }}
                                                                     onClick={(e) => {
@@ -602,16 +602,6 @@ export function Sidebar({
                                                                         onSelectTab(child.id);
                                                                     }}
                                                                 >
-                                                                    <span
-                                                                        aria-hidden="true"
-                                                                        style={{
-                                                                            width: '5px',
-                                                                            height: '5px',
-                                                                            borderRadius: '50%',
-                                                                            flexShrink: 0,
-                                                                            backgroundColor: childIsActive ? '#ffffff' : 'rgba(255, 255, 255, 0.5)'
-                                                                        }}
-                                                                    />
                                                                     <span
                                                                         className="label"
                                                                         style={{

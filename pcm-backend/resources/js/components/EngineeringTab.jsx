@@ -111,7 +111,7 @@ const emptyDrawingForm = () => ({
     line_no: '',
     line_service: '',
     line_service_id: '',
-    area: 'MPP Area',
+    area: '',
     sheet_num: 1,
     sheet_total: 1,
     sheet: 'Sheet 1 of 1',
@@ -119,7 +119,7 @@ const emptyDrawingForm = () => ({
     total_dia_inch: '',
     total_joints: '',
     fitup_specs: [],
-    distributed_to: 'Workshop Spool Fabrication',
+    distributed_to: '',
     distribution_date: new Date().toISOString().split('T')[0],
     status: 'active'
 });
@@ -422,12 +422,15 @@ export function EngineeringTab({
         ));
     }, [selectedProjectId, drawings, unassignedDrawings, searchDrawing]);
 
+    const [autoGenerateRemainingSheets, setAutoGenerateRemainingSheets] = useState(true);
+
     // Buka modal untuk input drawing baru
     const handleOpenCreateDrawing = (projectId = null) => {
         setEditingDrawing(null);
         setDrawingForm(emptyDrawingForm());
         setDrawingFile(null);
         setDrawingError('');
+        setAutoGenerateRemainingSheets(true);
         const chosenId = projectId || (selectedProjectId && selectedProjectId !== 'unassigned' ? selectedProjectId : '') || (projects[0]?.id ? String(projects[0].id) : '');
         setTargetProjectId(chosenId ? String(chosenId) : '');
         setShowDrawingModal(true);
@@ -467,7 +470,7 @@ export function EngineeringTab({
             line_no: drawing.line_no || '',
             line_service: drawing.line_service || '',
             line_service_id: matchedService ? String(matchedService.id) : '',
-            area: drawing.area || 'MPP Area',
+            area: drawing.area || '',
             sheet_num: sNum,
             sheet_total: sTot,
             sheet: drawing.sheet || `Sheet ${sNum} of ${sTot}`,
@@ -477,7 +480,7 @@ export function EngineeringTab({
             total_dia_inch: drawing.total_dia_inch || '',
             total_joints: drawing.total_joints || '',
             fitup_specs: specs,
-            distributed_to: drawing.distributed_to || 'Workshop Spool Fabrication',
+            distributed_to: drawing.distributed_to || '',
             distribution_date: drawing.distribution_date ? drawing.distribution_date.split('T')[0] : new Date().toISOString().split('T')[0],
             status: drawing.status || 'active'
         });
@@ -545,6 +548,60 @@ export function EngineeringTab({
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
                 throw new Error(errData.message || 'Gagal menyimpan berkas drawing');
+            }
+
+            // Automasi Opsi B: Buat lembar berikutnya (Sheet 2..N) sebagai draft bersih jika checkbox aktif
+            if (!editingDrawing && autoGenerateRemainingSheets && Number(drawingForm.sheet_num) === 1 && Number(drawingForm.sheet_total) > 1) {
+                const totalSheets = Number(drawingForm.sheet_total);
+                const baseDrawingNo = drawingForm.drawing_no.trim();
+
+                const deriveSheetDrawingNo = (base, sheetNum) => {
+                    // Jika berakhiran SHT1, SHT-1, SHEET-1, SH1
+                    if (/(?:-|_)SHT\s*1$/i.test(base)) {
+                        return base.replace(/(?:-|_)SHT\s*1$/i, `-SHT${sheetNum}`);
+                    }
+                    if (/(?:-|_)SHEET\s*1$/i.test(base)) {
+                        return base.replace(/(?:-|_)SHEET\s*1$/i, `-SHEET${sheetNum}`);
+                    }
+                    if (/(?:-|_)SH\s*1$/i.test(base)) {
+                        return base.replace(/(?:-|_)SH\s*1$/i, `-SH${sheetNum}`);
+                    }
+                    return `${base}-SHT${sheetNum}`;
+                };
+
+                for (let s = 2; s <= totalSheets; s++) {
+                    const sheetData = new FormData();
+                    sheetData.append('project_id', targetProjectId);
+                    sheetData.append('drawing_no', deriveSheetDrawingNo(baseDrawingNo, s));
+                    sheetData.append('line_no', drawingForm.line_no || '');
+                    sheetData.append('line_service', drawingForm.line_service || '');
+                    if (drawingForm.line_service_id) {
+                        sheetData.append('line_service_id', drawingForm.line_service_id);
+                    }
+                    sheetData.append('area', drawingForm.area || 'MPP Area');
+                    sheetData.append('sheet', `Sheet ${s} of ${totalSheets}`);
+                    sheetData.append('rev', drawingForm.rev || '0');
+                    sheetData.append('title', `${drawingForm.title || 'Isometric Drawing'} (Sheet ${s})`);
+                    sheetData.append('distributed_to', drawingForm.distributed_to || 'Workshop Spool Fabrication');
+                    sheetData.append('distribution_date', drawingForm.distribution_date || new Date().toISOString().split('T')[0]);
+                    sheetData.append('status', drawingForm.status || 'active');
+
+                    // Sesuai Opsi B: Spesifikasi material, total_joints, total_dia_inch, dan berkas file dikosongkan
+                    sheetData.append('fitup_specs', JSON.stringify([]));
+                    sheetData.append('material_spec', '');
+                    sheetData.append('size_range', '');
+                    sheetData.append('total_dia_inch', '0');
+                    sheetData.append('total_joints', '0');
+
+                    await fetch('/api/drawings', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {})
+                        },
+                        body: sheetData
+                    }).catch(err => console.error(`Failed auto-generating sheet ${s}:`, err));
+                }
             }
 
             setShowDrawingModal(false);
@@ -792,15 +849,11 @@ export function EngineeringTab({
                                 </div>
                             </div>
 
-                            {/* 3 Box Metrik Kompak & Simetris */}
+                            {/* 2 Box Metrik Kompak & Simetris (DI dihitung di Welding Map) */}
                             <div className="d-flex align-items-center gap-2">
                                 <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
                                     <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Drawing</span>
                                     <strong className="h5 fw-bolder text-dark mb-0">{activeProject.drawings_count || 0}</strong>
-                                </div>
-                                <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
-                                    <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Total DI</span>
-                                    <strong className="h5 fw-bolder text-dark mb-0 pcm-code">{(activeProject.total_dia_inch || 0).toFixed(1)}</strong>
                                 </div>
                                 <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
                                     <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Joints</span>
@@ -855,8 +908,8 @@ export function EngineeringTab({
                                         <th scope="col" className="text-center" style={{ minWidth: '150px' }}>
                                             <span className="pcm-th-title">Fit-Up Specs</span>
                                         </th>
-                                        <th scope="col" className="text-center" style={{ minWidth: '110px' }}>
-                                            <span className="pcm-th-title">DI &amp; Joints</span>
+                                        <th scope="col" className="text-center" style={{ width: '90px' }}>
+                                            <span className="pcm-th-title">Joints</span>
                                         </th>
                                         <th scope="col" className="text-center" style={{ width: '110px' }}>
                                             <span className="pcm-th-title">CAD / PDF</span>
@@ -934,13 +987,10 @@ export function EngineeringTab({
                                                             {specCount > 0 ? `${specCount} Specs` : '+ Input Fit-Up'}
                                                         </button>
                                                     </td>
-                                                    <td className="text-center pcm-code font-monospace" style={{ fontSize: '0.8125rem' }}>
-                                                        <div className="fw-bold text-dark">
-                                                            {d.total_dia_inch ? `${parseFloat(d.total_dia_inch).toFixed(1)} DI` : '—'}
-                                                        </div>
-                                                        <div className="text-muted small">
-                                                            {d.total_joints ? `${d.total_joints} JTS` : '—'}
-                                                        </div>
+                                                    <td className="text-center font-monospace" style={{ fontSize: '0.8125rem' }}>
+                                                        <span className="fw-bold text-dark">
+                                                            {d.total_joints ? `${d.total_joints} J` : '—'}
+                                                        </span>
                                                     </td>
                                                     <td className="text-center">
                                                         {d.scan_path ? (
@@ -1211,7 +1261,7 @@ export function EngineeringTab({
                                                     className="form-control form-control-sm text-center"
                                                     value={drawingForm.sheet_total || 1}
                                                     onChange={(e) => {
-                                                        const tot = parseInt(e.target.value, 10) || 1;
+                                                        const tot = Math.max(parseInt(e.target.value, 10) || 1, 1);
                                                         setDrawingForm({
                                                             ...drawingForm,
                                                             sheet_total: tot,
@@ -1220,6 +1270,20 @@ export function EngineeringTab({
                                                     }}
                                                 />
                                             </div>
+                                            {!editingDrawing && (drawingForm.sheet_total || 1) > 1 && (drawingForm.sheet_num || 1) === 1 && (
+                                                <div className="form-check mt-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input"
+                                                        id="pcm-auto-gen-sheets"
+                                                        checked={autoGenerateRemainingSheets}
+                                                        onChange={(e) => setAutoGenerateRemainingSheets(e.target.checked)}
+                                                    />
+                                                    <label className="form-check-label small fw-bold text-dark cursor-pointer text-nowrap" htmlFor="pcm-auto-gen-sheets">
+                                                        Terbitkan otomatis Sheet 2 s/d {drawingForm.sheet_total} (Draft)
+                                                    </label>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="col-12 col-md-4">
@@ -1286,13 +1350,13 @@ export function EngineeringTab({
                                     </div>
                                 </div>
 
-                                {/* Bagian 3: Estimasi Volume & Berkas CAD/PDF (3 Kolom) */}
+                                {/* Bagian 3: Estimasi Titik Joint & Berkas CAD/PDF (2 Kolom) */}
                                 <div className="pcm-form-section mb-4">
-                                    <div className="pcm-form-section__title mb-2">3. Estimasi Volume &amp; Berkas CAD/PDF</div>
+                                    <div className="pcm-form-section__title mb-2">3. Estimasi Joint &amp; Berkas CAD/PDF</div>
                                     <div className="row g-3">
-                                        <div className="col-12 col-md-4">
+                                        <div className="col-12 col-md-6">
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-joints">
-                                                Estimasi Total Joint (Titik Las)
+                                                Estimasi Total Joint (Titik Sambungan)
                                             </label>
                                             <input
                                                 id="pcm-dwg-joints"
@@ -1305,23 +1369,7 @@ export function EngineeringTab({
                                             />
                                         </div>
 
-                                        <div className="col-12 col-md-4">
-                                            <label className="form-label pcm-form-label" htmlFor="pcm-dwg-di">
-                                                Total Diameter Inch (DI)
-                                            </label>
-                                            <input
-                                                id="pcm-dwg-di"
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                className="form-control form-control-sm pcm-code"
-                                                placeholder="Contoh: 72.00"
-                                                value={drawingForm.total_dia_inch}
-                                                onChange={(e) => setDrawingForm({ ...drawingForm, total_dia_inch: e.target.value })}
-                                            />
-                                        </div>
-
-                                        <div className="col-12 col-md-4">
+                                        <div className="col-12 col-md-6">
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-file">
                                                 Berkas Drawing (CAD / PDF)
                                             </label>
@@ -1680,7 +1728,7 @@ export function EngineeringTab({
                                     <div className="col-12 col-md-4">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Plant Area</span>
-                                            <span className="pcm-spec__value">{selectedDrawing.area || 'MPP Area'}</span>
+                                            <span className="pcm-spec__value">{selectedDrawing.area || '-'}</span>
                                         </div>
                                     </div>
 
@@ -1707,23 +1755,13 @@ export function EngineeringTab({
                                     </div>
 
                                     {/* Baris 3: Ukuran & Volume Pekerjaan (3 Kolom) */}
-                                    <div className="col-12 col-md-4">
+                                    <div className="col-12 col-md-6">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Size Range &amp; Schedule</span>
                                             <span className="pcm-spec__value">{selectedDrawing.size_range || '-'}</span>
                                         </div>
                                     </div>
-                                    <div className="col-12 col-md-4">
-                                        <div className="pcm-spec">
-                                            <span className="pcm-spec__label">Total Diameter Inch</span>
-                                            <span className="pcm-spec__value pcm-code">
-                                                {selectedDrawing.total_dia_inch
-                                                    ? `${parseFloat(selectedDrawing.total_dia_inch).toFixed(2)} DI`
-                                                    : '-'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="col-12 col-md-4">
+                                    <div className="col-12 col-md-6">
                                         <div className="pcm-spec">
                                             <span className="pcm-spec__label">Total Joint Count</span>
                                             <span className="pcm-spec__value">{selectedDrawing.total_joints || 0} joints</span>

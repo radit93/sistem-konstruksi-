@@ -93,6 +93,8 @@ const CATEGORY_TAB_LABELS = {
     Tee: 'Tee Equal',
     'Tee Reducer': 'Tee Reducing',
     Reducer: 'Reducer',
+    'Reducer Concentric': 'Reducer Concentric',
+    'Reducer Eccentric': 'Reducer Eccentric',
     Weldolet: 'Weld-o-let',
     Flange: 'Flange',
     Valve: 'Valve',
@@ -344,7 +346,8 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         { id: 'Elbow Short Radius', label: 'Elbow SR' },
         { id: 'Tee', label: 'Tee Equal' },
         { id: 'Tee Reducer', label: 'Tee Reducing' },
-        { id: 'Reducer', label: 'Reducer' },
+        { id: 'Reducer Concentric', label: 'Reducer Concentric' },
+        { id: 'Reducer Eccentric', label: 'Reducer Eccentric' },
         { id: 'Weldolet', label: 'Weld-o-let' },
     ];
 
@@ -387,7 +390,8 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         'Elbow Short Radius',
         'Tee',
         'Tee Reducer',
-        'Reducer',
+        'Reducer Concentric',
+        'Reducer Eccentric',
         'Weldolet',
         'Flange',
         'Valve',

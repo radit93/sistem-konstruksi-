@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Department;
+use App\Models\LineService;
 use App\Models\MaterialStandard;
 use App\Models\PipeStandard;
 use Illuminate\Database\Seeder;
@@ -50,6 +51,30 @@ class InterimMasterDataSeeder extends Seeder
                 ])
             );
         }
+
+        // Standard Industrial Line Services Master
+        foreach ($this->lineServiceRows() as $row) {
+            LineService::updateOrCreate(
+                ['line_no' => $row['line_no']],
+                array_merge($row, [
+                    'department_id' => $engId,
+                ])
+            );
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function lineServiceRows(): array
+    {
+        $path = database_path('data/standard_line_services.json');
+        if (! is_file($path)) {
+            return [];
+        }
+
+        $rows = json_decode(file_get_contents($path), true);
+        return is_array($rows) ? $rows : [];
     }
 
     /**

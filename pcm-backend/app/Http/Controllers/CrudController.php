@@ -200,6 +200,7 @@ class CrudController extends Controller
     private array $companyWide = [
         'material-standards',
         'pipe-standards',
+        'line-services',
     ];
 
     /**

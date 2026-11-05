@@ -307,7 +307,7 @@ class InterimMasterDataSeeder extends Seeder
             ],
             [
                 'code' => 'BOLT-A193-B7',
-                'category' => 'Bolt',
+                'category' => 'Fastener',
                 'specification' => 'ASTM A193 Gr. B7',
                 'material_group' => 'Alloy Steel',
                 'rating' => '150# / 300#',
@@ -319,7 +319,7 @@ class InterimMasterDataSeeder extends Seeder
             ],
             [
                 'code' => 'NUT-A194-2H',
-                'category' => 'Bolt',
+                'category' => 'Fastener',
                 'specification' => 'ASTM A194 Gr. 2H',
                 'material_group' => 'Carbon Steel',
                 'rating' => '150# / 300#',

@@ -447,12 +447,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
     const attributeLabelA = attributeLabelFor(form.mat_a_category);
     const attributeLabelB = attributeLabelFor(form.mat_b_category);
 
+    /* Length hanya relevan bila Material A adalah pipa. Untuk data lama yang
+       belum punya kategori, field tetap tampil selama sudah ada nilainya
+       supaya angka lama masih bisa diperbaiki. */
+    const showLengthA = form.mat_a_category === 'Pipe'
+        || (!form.mat_a_category && form.length_mm !== '' && form.length_mm != null);
+
     const modalStandard = findStandard(form.mat_a_size, form.mat_a_sch);
     const modalStandardB = findStandard(form.mat_b_size, form.mat_b_sch);
-    const modalLength = parseFloat(form.length_mm) || 0;
-    const modalWeight = modalStandard?.weight_kg_m && modalLength
-        ? (parseFloat(modalStandard.weight_kg_m) * modalLength) / 1000
-        : null;
 
     const stickLengthA = parseFloat(modalStandard?.standard_length_m) || 6;
     const stickWeightA = modalStandard?.weight_kg_stick != null
@@ -478,11 +480,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                 next[key('sch')] = '';
                 next[key('spec')] = '';
                 next[key('item')] = '';
+                if (which === 'a') next.length_mm = '';
             } else if (field === 'category') {
                 next[key('size')] = '';
                 next[key('sch')] = '';
                 next[key('spec')] = '';
                 next[key('item')] = value;
+                /* Length hanya relevan saat Material A adalah pipa. */
+                if (which === 'a' && value !== 'Pipe') next.length_mm = '';
             } else if (field === 'size') {
                 next[key('sch')] = '';
                 next[key('spec')] = '';
@@ -494,6 +499,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                     next[key('group')] = row.group;
                     next[key('category')] = row.category;
                     next[key('item')] = row.category;
+                    if (which === 'a' && row.category !== 'Pipe') next.length_mm = '';
 
                     /* Pertahankan Size/Sch hanya bila masih valid untuk baris ini. */
                     const currentSize = next[key('size')];
@@ -1131,8 +1137,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                                             </div>
                                                                                             {weight == null && (
                                                                                                 <p className="wm-calc__note">
-                                                                                                    Isi Length (mm) lewat tombol Edit dan pastikan master pipa
-                                                                                                    tersedia agar berat dihitung otomatis.
+                                                                                                    Isi Length (mm) di bagian Material A (muncul bila Kategori = Pipe)
+                                                                                                    dan pastikan master pipa tersedia agar berat dihitung otomatis.
                                                                                                 </p>
                                                                                             )}
                                                                                         </div>
@@ -1446,6 +1452,21 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     ariaLabel="Spesifikasi Material A"
                                                 />
                                             </div>
+                                            {showLengthA && (
+                                                <div>
+                                                    <label className="form-label small fw-bold" htmlFor="wm-len-a">Length (mm)</label>
+                                                    <input
+                                                        id="wm-len-a"
+                                                        type="number"
+                                                        min="0"
+                                                        step="1"
+                                                        className="form-control pcm-code"
+                                                        placeholder="1200"
+                                                        value={form.length_mm}
+                                                        onChange={(e) => setForm({ ...form, length_mm: e.target.value })}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="wm-form-meta">
                                             {modalStandard
@@ -1513,61 +1534,6 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                             {modalStandardB
                                                 ? `Master: ${fmt(modalStandardB.wall_thickness_mm)} mm · ${fmt(modalStandardB.weight_kg_m)} kg/m${stickWeightB != null ? ` · ${fmt(stickWeightB)} kg/batang (${fmt(stickLengthB, 0)} m)` : ''}`
                                                 : 'Kombinasi size & schedule ini belum ada di master pipa.'}
-                                        </div>
-                                    </div>
-
-                                    {/* Dimensi & Perhitungan */}
-                                    <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">Dimensi &amp; Perhitungan</span>
-                                        <div className="wm-form-grid">
-                                            <div>
-                                                <label className="form-label small fw-bold">Length (mm)</label>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    step="1"
-                                                    className="form-control pcm-code"
-                                                    placeholder="1200"
-                                                    value={form.length_mm}
-                                                    onChange={(e) => setForm({ ...form, length_mm: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="form-label small fw-bold">Thickness (auto)</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control pcm-code"
-                                                    placeholder="Sch 40 (6.02 mm)"
-                                                    value={form.thickness}
-                                                    onChange={(e) => setForm({ ...form, thickness: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="form-label small fw-bold">Diameter-Inch (auto)</label>
-                                                <div className="form-control bg-light pcm-code fw-bold d-flex align-items-center">
-                                                    {fmt(form.dia_inch, 1)} DI
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="form-label small fw-bold">Berat (auto)</label>
-                                                <div className="form-control bg-light pcm-code fw-bold d-flex align-items-center">
-                                                    {modalWeight != null ? `${fmt(modalWeight, 3)} kg` : '—'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="wm-form-meta">
-                                            {(() => {
-                                                const iA = parseInch(form.mat_a_size);
-                                                const iB = parseInch(form.mat_b_size);
-                                                if (iA > 0 && iB > 0 && iA !== iB) {
-                                                    return `Reducer ${form.mat_a_size} × ${form.mat_b_size} — DI memakai ukuran terbesar (${fmt(form.dia_inch, 1)} DI).`;
-                                                }
-                                                if (iA > 0 || iB > 0) {
-                                                    return `Sambungan seukuran ${form.mat_a_size || form.mat_b_size} — ${fmt(form.dia_inch, 1)} DI.`;
-                                                }
-                                                return 'Pilih Size Material A & B untuk menghitung DI otomatis.';
-                                            })()}
-                                            {modalWeight != null && ' Berat = berat/m master × panjang ÷ 1000.'}
                                         </div>
                                     </div>
 

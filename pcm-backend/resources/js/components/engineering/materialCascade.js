@@ -143,6 +143,23 @@ export const buildAttributeLabels = (systemParameters) => {
     return map;
 };
 
-export const resolveAttributeLabel = (labelMap, category) => (
-    (labelMap && labelMap.get(String(category || '').toLowerCase())) || 'Class / Sch'
-);
+/**
+ * Label bawaan supaya judul kolom sudah benar sejak render pertama,
+ * sebelum /system-parameters selesai dimuat. Nilai dari Master Parameter
+ * selalu menang bila tersedia.
+ */
+const DEFAULT_ATTRIBUTE_LABELS = {
+    pipe: 'Sch',
+    fitting: 'Sch',
+    flange: 'Sch & Facing',
+    valve: 'End Connection',
+    gasket: 'Gasket Type',
+    fastener: 'Thread & Head'
+};
+
+export const resolveAttributeLabel = (labelMap, category) => {
+    const key = String(category || '').toLowerCase();
+    const fromMaster = labelMap && labelMap.get(key);
+    if (fromMaster) return fromMaster;
+    return DEFAULT_ATTRIBUTE_LABELS[key] || 'Class / Sch';
+};

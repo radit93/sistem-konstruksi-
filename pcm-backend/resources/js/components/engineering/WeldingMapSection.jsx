@@ -678,6 +678,16 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         return options;
     }, [selectedDrawing, form.sheet]);
 
+    const availableDrawingOptions = useMemo(() => {
+        return (availableDrawings || []).map((d) => {
+            const sheetInfo = d.sheet ? `(${d.sheet})` : '';
+            return {
+                value: String(d.id),
+                label: `${d.drawing_no} ${sheetInfo} ${d.line_no ? `· Line: ${d.line_no}` : ''}`
+            };
+        });
+    }, [availableDrawings]);
+
     const drawingSpoolOptions = useMemo(() => {
         // Prioritas 1: Ambil langsung dari spool_data drawing terpilih jika sudah diinput di drawing
         if (selectedDrawing) {
@@ -1150,11 +1160,10 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         <div className="wm-form-grid">
                                             <div className="wm-form-grid__full">
                                                 <label className="form-label small fw-bold">Isometric Drawing *</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={form.drawing_id || ''}
-                                                    onChange={(e) => {
-                                                        const dId = e.target.value;
+                                                <SearchSelect
+                                                    value={form.drawing_id ? String(form.drawing_id) : ''}
+                                                    onChange={(val) => {
+                                                        const dId = val;
                                                         const dwg = drawings.find((d) => String(d.id) === String(dId));
                                                         let nextSpoolNo = form.spool_no;
                                                         let nextJointNo = '';
@@ -1179,18 +1188,11 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                             joint_no: nextJointNo
                                                         });
                                                     }}
-                                                    required
-                                                >
-                                                    <option value="">-- Pilih Isometric Drawing --</option>
-                                                    {availableDrawings.map((d) => {
-                                                        const sheetInfo = d.sheet ? `(${d.sheet})` : '';
-                                                        return (
-                                                            <option key={d.id} value={d.id}>
-                                                                {d.drawing_no} {sheetInfo} {d.line_no ? `· Line: ${d.line_no}` : ''}
-                                                            </option>
-                                                        );
-                                                    })}
-                                                </select>
+                                                    options={availableDrawingOptions}
+                                                    placeholder="Cari & pilih nomor drawing / sheet..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Pilih Isometric Drawing"
+                                                />
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Spool No *</label>

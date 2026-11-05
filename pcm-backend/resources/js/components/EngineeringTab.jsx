@@ -175,6 +175,15 @@ export function EngineeringTab({
     const [materialStandards, setMaterialStandards] = useState([]);
     const [pipeStandards, setPipeStandards] = useState([]);
 
+    const lineServiceOptions = useMemo(() => {
+        return (lineServices || []).map((s) => ({
+            value: String(s.id),
+            label: `${s.line_no} — ${s.service_name}${s.fluid_code ? ` (${s.fluid_code})` : ''}${s.piping_class ? ` · Class: ${s.piping_class}` : ''}`,
+            line_no: s.line_no,
+            service_name: s.service_name
+        }));
+    }, [lineServices]);
+
     useEffect(() => {
         api.get('/line-services').then(res => {
             setLineServices(Array.isArray(res) ? res : []);
@@ -1250,15 +1259,12 @@ export function EngineeringTab({
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-service">
                                                 Line Service (Master Acuan)
                                             </label>
-                                            <select
-                                                id="pcm-dwg-service"
-                                                className="form-select form-select-sm"
+                                            <SearchSelect
                                                 value={drawingForm.line_service_id || ''}
-                                                onChange={(e) => {
-                                                    const sId = e.target.value;
+                                                onChange={(val) => {
+                                                    const sId = val;
                                                     const chosen = lineServices.find((s) => String(s.id) === String(sId));
                                                     let autoDrawingNo = drawingForm.drawing_no;
-                                                    // Jika nomor drawing belum diisi atau masih default, bantu buat format profesional otomatis
                                                     if (!autoDrawingNo && chosen && activeProject) {
                                                         const cleanJob = (activeProject.job_no || 'PROJ').trim();
                                                         autoDrawingNo = `${cleanJob}-ISO-${chosen.line_no}-SHT1`;
@@ -1271,14 +1277,11 @@ export function EngineeringTab({
                                                         drawing_no: autoDrawingNo || drawingForm.drawing_no
                                                     });
                                                 }}
-                                            >
-                                                <option value="">-- Pilih Master Line Service --</option>
-                                                {lineServices.map((s) => (
-                                                    <option key={s.id} value={s.id}>
-                                                        {s.line_no} — {s.service_name} {s.fluid_code ? `(${s.fluid_code})` : ''} {s.piping_class ? `· Class: ${s.piping_class}` : ''}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                options={lineServiceOptions}
+                                                placeholder="Cari & pilih Line Service..."
+                                                allowCustom={false}
+                                                ariaLabel="Line Service Master Acuan"
+                                            />
                                         </div>
 
                                         <div className="col-12 col-md-6">

@@ -85,6 +85,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PipeScheduleSeeder::class,
             PipingClassTemplateSeeder::class,
+            SystemParameterSeeder::class,
         ]);
     }
 

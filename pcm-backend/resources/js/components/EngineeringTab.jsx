@@ -174,6 +174,7 @@ export function EngineeringTab({
     const [lineServices, setLineServices] = useState([]);
     const [materialStandards, setMaterialStandards] = useState([]);
     const [pipeStandards, setPipeStandards] = useState([]);
+    const [systemParameters, setSystemParameters] = useState([]);
 
     const lineServiceOptions = useMemo(() => {
         return (lineServices || []).map((s) => ({
@@ -184,9 +185,31 @@ export function EngineeringTab({
         }));
     }, [lineServices]);
 
+    const plantAreaOptions = useMemo(() => {
+        const active = (systemParameters || []).filter(
+            (p) => p.category === 'plant_area' && p.is_active !== false
+        );
+        return active
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+            .map((p) => ({ value: p.name, label: p.description ? `${p.name} — ${p.description}` : p.name }));
+    }, [systemParameters]);
+
+    const distributionTargetOptions = useMemo(() => {
+        const active = (systemParameters || []).filter(
+            (p) => p.category === 'distribution_target' && p.is_active !== false
+        );
+        return active
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+            .map((p) => ({ value: p.name, label: p.description ? `${p.name} — ${p.description}` : p.name }));
+    }, [systemParameters]);
+
     useEffect(() => {
         api.get('/line-services').then(res => {
             setLineServices(Array.isArray(res) ? res : []);
+        }).catch(() => {});
+
+        api.get('/system-parameters').then(res => {
+            setSystemParameters(Array.isArray(res) ? res : []);
         }).catch(() => {});
 
         Promise.all([
@@ -1411,14 +1434,13 @@ export function EngineeringTab({
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-area">
                                                 Plant Area <span className="text-danger">*</span>
                                             </label>
-                                            <input
-                                                id="pcm-dwg-area"
-                                                type="text"
-                                                required
-                                                className="form-control form-control-sm"
-                                                placeholder="Contoh: MPP Area"
-                                                value={drawingForm.area}
-                                                onChange={(e) => setDrawingForm({ ...drawingForm, area: e.target.value })}
+                                            <SearchSelect
+                                                value={drawingForm.area || ''}
+                                                onChange={(val) => setDrawingForm({ ...drawingForm, area: val })}
+                                                options={plantAreaOptions}
+                                                placeholder="Pilih Plant Area..."
+                                                allowCustom
+                                                ariaLabel="Plant Area"
                                             />
                                         </div>
 
@@ -1426,13 +1448,13 @@ export function EngineeringTab({
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-dist">
                                                 Target Distribusi
                                             </label>
-                                            <input
-                                                id="pcm-dwg-dist"
-                                                type="text"
-                                                className="form-control form-control-sm"
-                                                placeholder="Contoh: Workshop Spool Fabrication"
-                                                value={drawingForm.distributed_to}
-                                                onChange={(e) => setDrawingForm({ ...drawingForm, distributed_to: e.target.value })}
+                                            <SearchSelect
+                                                value={drawingForm.distributed_to || ''}
+                                                onChange={(val) => setDrawingForm({ ...drawingForm, distributed_to: val })}
+                                                options={distributionTargetOptions}
+                                                placeholder="Pilih Target Distribusi..."
+                                                allowCustom
+                                                ariaLabel="Target Distribusi"
                                             />
                                         </div>
                                     </div>

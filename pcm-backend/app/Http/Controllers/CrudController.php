@@ -24,6 +24,7 @@ use App\Models\Project;
 use App\Models\ProjectMilestone;
 use App\Models\Scope;
 use App\Models\StockMove;
+use App\Models\SystemParameter;
 use App\Models\TestPackage;
 use App\Models\WeldingMap;
 use App\Services\MaterialFlowService;
@@ -117,6 +118,11 @@ class CrudController extends Controller
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
+        'system-parameters' => [SystemParameter::class, [
+            'create' => 'project.create',
+            'update' => 'project.update',
+            'delete' => 'project.delete',
+        ]],
         'piping-class-templates' => [PipingClassTemplate::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
@@ -201,6 +207,7 @@ class CrudController extends Controller
         'material-standards',
         'pipe-standards',
         'line-services',
+        'system-parameters',
     ];
 
     /**

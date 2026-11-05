@@ -89,7 +89,7 @@ export function AdminTab({ section, user, onReload, onToast }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const [rows, setRows] = useState({ projects: [], users: [], roles: [], departments: [], permissions: [] });
+    const [rows, setRows] = useState({ projects: [], users: [], roles: [], departments: [], permissions: [], parameters: [] });
 
     const [dialog, setDialog] = useState(null); // { type, record }
     const [form, setForm] = useState({});
@@ -133,6 +133,9 @@ export function AdminTab({ section, user, onReload, onToast }) {
             } else if (section === 'departments') {
                 const list = await api.get('/admin/departments');
                 setRows((r) => ({ ...r, departments: list || [] }));
+            } else if (section === 'parameters') {
+                const list = await api.get('/system-parameters');
+                setRows((r) => ({ ...r, parameters: list || [] }));
             }
         } catch (err) {
             setError(err.message || 'Tidak dapat memuat data administrasi.');
@@ -226,6 +229,19 @@ export function AdminTab({ section, user, onReload, onToast }) {
                 if (record) await api.put(`/admin/departments/${record.id}`, body);
                 else await api.post('/admin/departments', body);
                 return done(record ? 'Department diperbarui' : 'Department dibuat');
+            }
+            if (type === 'parameter') {
+                const body = {
+                    category: form.category || 'plant_area',
+                    name: form.name,
+                    code: form.code || null,
+                    description: form.description || null,
+                    sort_order: Number(form.sort_order || 0),
+                    is_active: form.is_active !== false
+                };
+                if (record) await api.put(`/system-parameters/${record.id}`, body);
+                else await api.post('/system-parameters', body);
+                return done(record ? 'Parameter diperbarui' : 'Parameter dibuat');
             }
         } catch (err) {
             return fail(err);
@@ -595,6 +611,71 @@ export function AdminTab({ section, user, onReload, onToast }) {
                 </Section>
             )}
 
+            {section === 'parameters' && (
+                <Section
+                    toolbar={
+                        <>
+                            {searchBox}
+                            {user?.is_superadmin && (
+                                <button type="button" className="pcm-btn pcm-btn--primary" onClick={() => openDialog('parameter', null)}>
+                                    + Parameter Baru
+                                </button>
+                            )}
+                        </>
+                    }
+                >
+                    {loading && <State kind="loading">Memuat parameter…</State>}
+                    {!loading && (
+                        <div className="pcm-table-wrap">
+                            <table className="table pcm-table">
+                                <thead>
+                                    <tr>
+                                        <th>Kategori</th>
+                                        <th>Nama Parameter (Opsi Dropdown)</th>
+                                        <th>Kode Singkat</th>
+                                        <th>Deskripsi</th>
+                                        <th className="text-center">Status</th>
+                                        {user?.is_superadmin && <th className="text-end" aria-label="Aksi">Aksi</th>}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered(rows.parameters || [], ['category', 'name', 'code', 'description']).map((row) => (
+                                        <tr key={row.id}>
+                                            <td>
+                                                <span className={`pcm-chip ${row.category === 'plant_area' ? 'pcm-chip--primary' : 'pcm-chip--neutral'}`}>
+                                                    {row.category === 'plant_area' ? 'Plant Area' : 'Target Distribusi'}
+                                                </span>
+                                            </td>
+                                            <td className="pcm-cell-strong">{row.name}</td>
+                                            <td className="pcm-code">{row.code || '—'}</td>
+                                            <td className="pcm-cell-sub">{row.description || '—'}</td>
+                                            <td className="text-center">
+                                                <span className={`pcm-chip pcm-chip--${row.is_active ? 'success' : 'danger'}`}>
+                                                    {row.is_active ? 'Aktif' : 'Nonaktif'}
+                                                </span>
+                                            </td>
+                                            {user?.is_superadmin && (
+                                                <td className="text-end text-nowrap">
+                                                    <button type="button" className="pcm-btn pcm-btn--sm me-1" onClick={() => openDialog('parameter', row)}>
+                                                        Ubah
+                                                    </button>
+                                                    <button type="button" className="pcm-btn pcm-btn--sm pcm-btn--danger" onClick={() => remove(`/system-parameters/${row.id}`, `Yakin ingin menghapus parameter ${row.name}?`)}>
+                                                        Hapus
+                                                    </button>
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {filtered(rows.parameters || [], ['category', 'name', 'code', 'description']).length === 0 && (
+                                <State kind="empty">Belum ada parameter yang cocok.</State>
+                            )}
+                        </div>
+                    )}
+                </Section>
+            )}
+
             {dialog && (
                 <Modal
                     title={dialogTitle(dialog)}
@@ -633,7 +714,8 @@ function dialogTitle(dialog) {
         user: 'User',
         password: 'Reset Password',
         role: 'Role',
-        department: 'Department'
+        department: 'Department',
+        parameter: 'Master Parameter'
     };
     return `${dialog.record ? 'Ubah' : 'Buat'} ${map[dialog.type] || ''}`.trim();
 }
@@ -775,6 +857,49 @@ function DialogFields({ dialog, form, setForm, roles, departments }) {
                         <input id="adm-dactive" className="form-check-input" type="checkbox"
                             checked={form.is_active !== false} onChange={set('is_active')} />
                         <label className="form-check-label" htmlFor="adm-dactive">Aktif</label>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (dialog.type === 'parameter') {
+        return (
+            <div className="pcm-form-grid">
+                <div>
+                    <label className="form-label pcm-form-label" htmlFor="adm-pcategory">Kategori</label>
+                    <select id="adm-pcategory" className="form-select" required
+                        value={form.category || 'plant_area'} onChange={set('category')}>
+                        <option value="plant_area">Plant Area</option>
+                        <option value="distribution_target">Target Distribusi</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="form-label pcm-form-label" htmlFor="adm-pcode">Kode Singkat</label>
+                    <input id="adm-pcode" className="form-control pcm-code" maxLength={64}
+                        value={form.code || ''} onChange={set('code')} placeholder="mis. MPP" />
+                </div>
+                <div className="pcm-form-grid__full">
+                    <label className="form-label pcm-form-label" htmlFor="adm-pname">Nama Parameter (tampil di dropdown)</label>
+                    <input id="adm-pname" className="form-control" required maxLength={128}
+                        value={form.name || ''} onChange={set('name')} placeholder="mis. MPP Area" />
+                </div>
+                <div className="pcm-form-grid__full">
+                    <label className="form-label pcm-form-label" htmlFor="adm-pdesc">Deskripsi</label>
+                    <input id="adm-pdesc" className="form-control" maxLength={255}
+                        value={form.description || ''} onChange={set('description')}
+                        placeholder="mis. Main Process Plant Area" />
+                </div>
+                <div>
+                    <label className="form-label pcm-form-label" htmlFor="adm-psort">Urutan</label>
+                    <input id="adm-psort" className="form-control" type="number" min={0} max={999}
+                        value={form.sort_order ?? 0} onChange={set('sort_order')} />
+                </div>
+                <div className="d-flex align-items-end">
+                    <div className="form-check">
+                        <input id="adm-pactive" className="form-check-input" type="checkbox"
+                            checked={form.is_active !== false} onChange={set('is_active')} />
+                        <label className="form-check-label" htmlFor="adm-pactive">Aktif</label>
                     </div>
                 </div>
             </div>

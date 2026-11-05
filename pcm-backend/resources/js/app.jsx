@@ -472,7 +472,7 @@ function App() {
                             }}
                         />
                     )}
-                    {['project', 'users', 'roles', 'access', 'departments'].includes(activeTab) && (
+                    {['project', 'users', 'roles', 'access', 'departments', 'parameters'].includes(activeTab) && (
                         <AdminTab
                             key={activeTab}
                             section={activeTab}

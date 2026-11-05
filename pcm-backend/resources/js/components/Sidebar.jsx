@@ -295,6 +295,13 @@ export const ROLE_SIDEBAR_MENUS = [
         perm: 'department.view',
         group: 'Administrasi',
         desc: 'Unit organisasi pemilik data. Departemen yang masih dipakai user tidak bisa dihapus.'
+    },
+    {
+        id: 'parameters',
+        label: 'Master Parameter',
+        perm: 'project.create',
+        group: 'Administrasi',
+        desc: 'Katalog master Plant Area, Target Distribusi, dan parameter global sistem.'
     }
 ];
 
@@ -322,7 +329,7 @@ export function Sidebar({
     // Untuk superadmin: susun menu utama dan administrasi secara ringkas.
     // Dropdown departemen ditaruh langsung di dalam menu sidebar, tepat di bawah Departments.
     if (user?.is_superadmin) {
-        const adminOrder = ['overview', 'project', 'users', 'roles', 'access', 'departments'];
+        const adminOrder = ['overview', 'project', 'users', 'roles', 'access', 'departments', 'parameters'];
         const department = departments.find((d) => d.id === Number(departmentFilter));
         const deptModules = department ? DEPARTMENT_MENUS[department.code] || [] : [];
 

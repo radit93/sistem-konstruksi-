@@ -1,10 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { can } from '../auth';
 import { FabricationTab } from './FabricationTab';
-import { FieldErectionTab } from './FieldErectionTab';
 
 export function ConstructionLayout({ projects, joints, user, onReload }) {
-    const [subTab, setSubTab] = useState('fabrication');
     const [activeProjectId, setActiveProjectId] = useState(() => {
         return localStorage.getItem('pcm_active_construction_project_id') || '';
     });
@@ -120,43 +118,12 @@ export function ConstructionLayout({ projects, joints, user, onReload }) {
                 </div>
             </div>
 
-            <div className="d-flex gap-2 mb-4 flex-wrap">
-                <button
-                    type="button"
-                    className={`btn ${subTab === 'fabrication' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
-                    onClick={() => setSubTab('fabrication')}
-                >
-                    Construction Shop
-                </button>
-                <button
-                    type="button"
-                    className={`btn ${subTab === 'erection' ? 'btn-primary fw-bold' : 'btn-outline-secondary'}`}
-                    onClick={() => setSubTab('erection')}
-                >
-                    Field Erection
-                </button>
-            </div>
-
-            {error && (
-                <div className="alert alert-danger py-2 small">{error}</div>
-            )}
-
-            {subTab === 'fabrication' && (
-                <FabricationTab
-                    joints={filteredJoints}
-                    user={user}
-                    onReload={onReload}
-                    activeProjectId={activeProjectId}
-                />
-            )}
-            {subTab === 'erection' && (
-                <FieldErectionTab
-                    joints={filteredJoints}
-                    user={user}
-                    onReload={onReload}
-                    activeProjectId={activeProjectId}
-                />
-            )}
+            <FabricationTab
+                joints={filteredJoints}
+                user={user}
+                onReload={onReload}
+                activeProjectId={activeProjectId}
+            />
         </div>
     );
 }

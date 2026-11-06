@@ -66,7 +66,7 @@ export const DEPARTMENT_MENUS = {
         'mat_openyard',
         'mat_issuing'
     ],
-    CONS: ['material_standard', 'master_pipe', 'construction'],
+    CONS: ['material_standard', 'master_pipe', 'construction', 'erection'],
     QAQC: ['material_standard', 'master_pipe', 'qaqc', 'testpackage', 'mat_inspection'],
     HSE: ['hse']
 };
@@ -222,9 +222,15 @@ export const ROLE_SIDEBAR_MENUS = [
     },
     {
         id: 'construction',
-        label: 'Construction',
+        label: 'Construction Shop',
         perm: 'joint.view',
-        desc: 'Halaman Construction per project: fabrikasi spool, field erection, checklist fit-up & repair'
+        desc: 'Fabrikasi spool, fit-up QC, dan repair tracking per project'
+    },
+    {
+        id: 'erection',
+        label: 'Field Erection',
+        perm: 'joint.view',
+        desc: 'Pemasangan spool dan monitoring joint di lapangan per project'
     },
     {
         id: 'qaqc',

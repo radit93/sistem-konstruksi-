@@ -344,6 +344,17 @@ class CrudController extends Controller
         [$model] = $this->resolve($res);
         $q = $this->scope($request, $model::query(), $res);
 
+        if ($res === 'fitting-standards') {
+            // Kolom panjang (URL sumber, material SS, dimensi sekunder) tidak
+            // ditampilkan di UI; memotongnya menjaga respons tetap ringan
+            // karena memuat seluruh master fitting sekaligus.
+            $q->select([
+                'id', 'item_code', 'category', 'fitting_type', 'connection',
+                'nps_main', 'nps_secondary', 'schedule_class',
+                'material_cs', 'dimension_primary_mm', 'weight_cs_kg',
+            ]);
+        }
+
         if ($res === 'joints') {
             $q->with('inspections');
             if ($request->filled('search')) {

@@ -742,15 +742,15 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                     {/* Table Material Standards */}
                     <div className="pcm-card" style={{ minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
                         <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
-                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1170px', width: '100%' }}>
+                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1141px', width: '100%' }}>
                                 <colgroup>
-                                    <col style={{ width: '160px' }} />
-                                    <col style={{ width: '130px' }} />
-                                    <col style={{ width: '200px' }} />
                                     <col style={{ width: '150px' }} />
+                                    <col style={{ width: '168px' }} />
+                                    <col style={{ width: '205px' }} />
                                     <col style={{ width: '145px' }} />
-                                    <col style={{ width: '135px' }} />
-                                    <col style={{ width: '130px' }} />
+                                    <col style={{ width: '115px' }} />
+                                    <col style={{ width: '120px' }} />
+                                    <col style={{ width: '118px' }} />
                                     {canEdit && <col style={{ width: '120px' }} />}
                                 </colgroup>
                                 <thead>
@@ -813,7 +813,20 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                         </div>
                                                     </td>
                                                     <td className="text-center">
-                                                        <span className="pcm-chip" style={getCategoryBadgeStyle(s.category)}>
+                                                        <span
+                                                            className="pcm-chip"
+                                                            style={{
+                                                                ...getCategoryBadgeStyle(s.category),
+                                                                fontSize: '0.72rem',
+                                                                padding: '0.2rem 0.5rem',
+                                                                display: 'inline-block',
+                                                                maxWidth: '150px',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap',
+                                                            }}
+                                                            title={s.category}
+                                                        >
                                                             {s.category}
                                                         </span>
                                                     </td>

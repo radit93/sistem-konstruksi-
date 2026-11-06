@@ -45,19 +45,31 @@ class FittingStandardSeeder extends Seeder
                             $row['connection'],
                         ]))),
                         'material_group' => $row['material_cs'] ?: 'Carbon Steel',
-                        'rating_class' => $row['schedule_class'],
+                        'rating_class' => $this->pressureClass($row),
+                        'class' => $this->pressureClass($row),
                         'schedule' => $row['schedule_class'],
                         'size_range' => trim(implode(' x ', array_filter([$row['nps_main'], $row['nps_secondary']]))),
                         'description' => trim(implode(' | ', array_filter([
                             'Master fitting '.$row['item_code'],
                             $row['material_cs'],
                             $row['material_ss'],
-                            $row['source_reference'],
                         ]))),
                     ]
                 );
             }
         }
+    }
+
+    /**
+     * Pressure class hanya berlaku untuk forged fitting (B16.11): 3000#/6000#.
+     * Butt-weld B16.9 memakai schedule, jadi kolom Pressure Class dikosongkan
+     * agar tidak menduplikasi kolom Schedule.
+     */
+    private function pressureClass(array $row): ?string
+    {
+        return str_starts_with((string) $row['item_code'], 'FG-')
+            ? ($row['schedule_class'] ?? null)
+            : null;
     }
 
     private function materialCategory(string $type): string

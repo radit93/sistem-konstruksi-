@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { api } from '../api';
 import { can } from '../auth';
 import { FabricationTab } from './FabricationTab';
 import { FieldErectionTab } from './FieldErectionTab';
@@ -10,8 +9,6 @@ export function ConstructionLayout({ projects, joints, user, onReload }) {
         return localStorage.getItem('pcm_active_construction_project_id') || '';
     });
     const [search, setSearch] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
 
     const canEdit = can(user, 'joint.write');
 
@@ -99,6 +96,22 @@ export function ConstructionLayout({ projects, joints, user, onReload }) {
                             </option>
                         ))}
                     </select>
+                    <input
+                        type="search"
+                        className="form-control form-control-sm"
+                        style={{ width: '220px' }}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Cari drawing, line, spool, seq..."
+                        aria-label="Cari joint Construction"
+                    />
+                    <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => handleSetActiveProject('')}
+                    >
+                        Ganti Project
+                    </button>
                     {!canEdit && (
                         <span className="badge bg-light text-muted border p-2">
                             Mode Baca (Akses edit: Construction / Manager)

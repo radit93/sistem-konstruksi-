@@ -2,12 +2,18 @@ import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { PcmSelect } from './SearchSelect';
+import {
+    ConstructionChecklistSection,
+    emptyConstructionFields,
+    formatJointSpec,
+    pickConstructionFields
+} from './ConstructionChecklist';
 
 // Kolom nyata joints: drawing_no, line_no, spool_no, seq, item_a, spec_a, item_b, spec_b,
 // size_in, shop_field ('Shop'/'Field'), joint_type, method, wps, welder, fit_date, weld_date, visual, status.
 const isShop = j => (j.shop_field || '').toLowerCase() === 'shop';
 export const jointLabel = j => j.spool_no || `#${j.seq ?? j.id}`;
-const specLabel = j => [j.spec_a || j.spec_b, j.size_in ? `${j.size_in}"` : ''].filter(Boolean).join(' ');
+const specLabel = formatJointSpec;
 
 export function FabricationTab({ joints, user, onReload }) {
     const [search, setSearch] = useState('');
@@ -41,6 +47,8 @@ export function FabricationTab({ joints, user, onReload }) {
             welder: j.welder || 'W-005',
             fit_date: j.fit_date || new Date().toISOString().split('T')[0],
             weld_date: j.weld_date || new Date().toISOString().split('T')[0],
+            ...emptyConstructionFields,
+            ...pickConstructionFields(j)
         });
     };
 
@@ -214,7 +222,7 @@ export function FabricationTab({ joints, user, onReload }) {
             {/* Modal Update Joint */}
             {selectedJoint && (
                 <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-dialog modal-lg modal-dialog-centered">
                         <div className="modal-content border-0 shadow">
                             <form onSubmit={handleUpdate}>
                                 <div className="modal-header bg-primary text-white">
@@ -268,6 +276,8 @@ export function FabricationTab({ joints, user, onReload }) {
                                             />
                                         </div>
                                     </div>
+
+                                    <ConstructionChecklistSection editData={editData} setEditData={setEditData} />
                                 </div>
                                 <div className="modal-footer bg-light">
                                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelectedJoint(null)}>Batal</button>

@@ -28,6 +28,7 @@ export const OPERATIONAL_MENU_IDS = [
     'mat_issuing',
     'fabrication',
     'erection',
+    'construction',
     'qaqc',
     'testpackage',
     'hse',
@@ -65,7 +66,7 @@ export const DEPARTMENT_MENUS = {
         'mat_openyard',
         'mat_issuing'
     ],
-    CONS: ['material_standard', 'master_pipe', 'fabrication', 'erection'],
+    CONS: ['material_standard', 'master_pipe', 'construction'],
     QAQC: ['material_standard', 'master_pipe', 'qaqc', 'testpackage', 'mat_inspection'],
     HSE: ['hse']
 };
@@ -220,16 +221,10 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Distribusi Pengeluaran Material ke Workshop/Spool Fab'
     },
     {
-        id: 'fabrication',
-        label: 'Construction Shop',
+        id: 'construction',
+        label: 'Construction',
         perm: 'joint.view',
-        desc: 'Spool Fabrication & Joint Fit-up'
-    },
-    {
-        id: 'erection',
-        label: 'Field Erection',
-        perm: 'joint.view',
-        desc: 'Pemasangan Spool di Lapangan'
+        desc: 'Halaman Construction per project: fabrikasi spool, field erection, checklist fit-up & repair'
     },
     {
         id: 'qaqc',

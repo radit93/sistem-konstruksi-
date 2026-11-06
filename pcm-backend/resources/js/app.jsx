@@ -15,6 +15,7 @@ import { EngineeringTab } from './components/EngineeringTab';
 import { MaterialTab } from './components/MaterialTab';
 import { FabricationTab } from './components/FabricationTab';
 import { FieldErectionTab } from './components/FieldErectionTab';
+import { ConstructionLayout } from './components/ConstructionLayout';
 import { QaqcTab } from './components/QaqcTab';
 import { TestPackageTab } from './components/TestPackageTab';
 import { HseTab } from './components/HseTab';
@@ -27,7 +28,7 @@ const ROLE_DEFAULT_TABS = {
     project_manager: 'overview',
     engineer: 'engineering',
     material: 'material',
-    construction: 'fabrication',
+    construction: 'construction',
     qaqc: 'qaqc',
     testpackage: 'testpackage',
     hse: 'hse'
@@ -435,6 +436,17 @@ function App() {
                             onReload={() => {
                                 loadData();
                                 showToast('Status Field Erection diperbarui');
+                            }}
+                        />
+                    )}
+                    {activeTab === 'construction' && (
+                        <ConstructionLayout
+                            projects={projects}
+                            joints={joints}
+                            user={user}
+                            onReload={() => {
+                                loadData();
+                                showToast('Status Konstruksi diperbarui');
                             }}
                         />
                     )}

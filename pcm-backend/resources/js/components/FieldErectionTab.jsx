@@ -3,9 +3,15 @@ import { api } from '../api';
 import { can } from '../auth';
 import { jointLabel } from './FabricationTab';
 import { PcmSelect } from './SearchSelect';
+import {
+    ConstructionChecklistSection,
+    emptyConstructionFields,
+    formatJointSpec,
+    pickConstructionFields
+} from './ConstructionChecklist';
 
 const isField = j => (j.shop_field || '').toLowerCase() === 'field';
-const specLabel = j => [j.spec_a || j.spec_b, j.size_in ? `${j.size_in}"` : ''].filter(Boolean).join(' ');
+const specLabel = formatJointSpec;
 
 export function FieldErectionTab({ joints, user, onReload }) {
     const [selectedJoint, setSelectedJoint] = useState(null);
@@ -29,6 +35,8 @@ export function FieldErectionTab({ joints, user, onReload }) {
             welder: j.welder || 'W-007',
             fit_date: j.fit_date || new Date().toISOString().split('T')[0],
             weld_date: j.weld_date || new Date().toISOString().split('T')[0],
+            ...emptyConstructionFields,
+            ...pickConstructionFields(j)
         });
     };
 
@@ -171,7 +179,7 @@ export function FieldErectionTab({ joints, user, onReload }) {
             {/* Modal Update */}
             {selectedJoint && (
                 <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-dialog modal-lg modal-dialog-centered">
                         <div className="modal-content border-0 shadow">
                             <form onSubmit={handleUpdate}>
                                 <div className="modal-header bg-primary text-white">
@@ -224,6 +232,8 @@ export function FieldErectionTab({ joints, user, onReload }) {
                                             />
                                         </div>
                                     </div>
+
+                                    <ConstructionChecklistSection editData={editData} setEditData={setEditData} />
                                 </div>
                                 <div className="modal-footer bg-light">
                                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelectedJoint(null)}>Batal</button>

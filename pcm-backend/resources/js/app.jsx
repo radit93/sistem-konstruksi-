@@ -524,7 +524,7 @@ function App() {
                             <div className="col-sm-6 d-none d-sm-block text-end">
                                 <ul className="breadcrumb pt-0 pe-0 mb-0 float-end">
                                     <li className="breadcrumb-item mb-0 text-medium">
-                                        <span className="badge bg-outline-primary me-2">MariaDB 3307</span>
+                                        <span className="badge bg-outline-primary me-2">MySQL 3306</span>
                                     </li>
                                     <li className="breadcrumb-item mb-0 text-medium">
                                         <span className="badge bg-outline-success">Sanctum Token</span>

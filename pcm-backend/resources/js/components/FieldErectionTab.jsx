@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { jointLabel } from './FabricationTab';
@@ -13,7 +13,7 @@ import {
 const isField = j => (j.shop_field || '').toLowerCase() === 'field';
 const specLabel = formatJointSpec;
 
-export function FieldErectionTab({ joints, user, onReload }) {
+export function FieldErectionTab({ projects = [], joints, user, onReload }) {
     const [selectedJoint, setSelectedJoint] = useState(null);
     const [editData, setEditData] = useState({
         status: 'WELDED',
@@ -25,8 +25,22 @@ export function FieldErectionTab({ joints, user, onReload }) {
     const [error, setError] = useState('');
 
     const canEdit = can(user, 'joint.write');
+    const [activeProjectId, setActiveProjectId] = useState(() => (
+        localStorage.getItem('pcm_active_erection_project_id') || ''
+    ));
 
-    const fieldJoints = (joints || []).filter(isField);
+    const activeProject = useMemo(
+        () => projects.find(project => String(project.id) === String(activeProjectId)) || null,
+        [projects, activeProjectId]
+    );
+    const projectJoints = useMemo(() => {
+        if (!activeProjectId) return [];
+        return (joints || []).filter(joint => (
+            String(joint.project_id || '') === String(activeProjectId)
+            || (!joint.project_id && String(projects[0]?.id) === String(activeProjectId))
+        ));
+    }, [joints, projects, activeProjectId]);
+    const fieldJoints = projectJoints.filter(isField);
 
     const openEdit = (j) => {
         setSelectedJoint(j);
@@ -79,7 +93,25 @@ export function FieldErectionTab({ joints, user, onReload }) {
                         Monitoring Sambungan Lapangan (Field Joints), Tie-In Titik Pasang & Welder Lapangan (Job 2428)
                     </p>
                 </div>
-                <div>
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <select
+                        className="form-select form-select-sm"
+                        style={{ width: '240px' }}
+                        value={activeProjectId}
+                        onChange={(e) => {
+                            const id = e.target.value;
+                            setActiveProjectId(id);
+                            localStorage.setItem('pcm_active_erection_project_id', id);
+                        }}
+                        aria-label="Pilih project Field Erection"
+                    >
+                        <option value="">-- Pilih Project --</option>
+                        {projects.map(project => (
+                            <option key={project.id} value={project.id}>
+                                {project.name || project.job_no || `Project #${project.id}`}
+                            </option>
+                        ))}
+                    </select>
                     {!canEdit && (
                         <span className="badge bg-light text-muted border p-2">
                             Mode Baca (Akses edit: Construction / Manager)

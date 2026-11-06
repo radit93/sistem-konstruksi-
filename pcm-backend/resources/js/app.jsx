@@ -431,6 +431,7 @@ function App() {
                     )}
                     {activeTab === 'erection' && (
                         <FieldErectionTab
+                            projects={projects}
                             joints={joints}
                             user={user}
                             onReload={() => {

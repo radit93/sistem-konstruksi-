@@ -329,6 +329,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
 
     // 2. Pipe Standards (Diameter & Thickness) State
     const [pipeStandards, setPipeStandards] = useState([]);
+    const [fittingStandards, setFittingStandards] = useState([]);
     const [pipeLoading, setPipeLoading] = useState(false);
     const [pipeSearch, setPipeSearch] = useState('');
     const [showPipeModal, setShowPipeModal] = useState(false);
@@ -400,6 +401,15 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         }
     }, []);
 
+    const loadFittingData = useCallback(async () => {
+        try {
+            const data = await api.get('/fitting-standards');
+            setFittingStandards(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load fitting standards:', err);
+        }
+    }, []);
+
     const loadPipeData = useCallback(async () => {
         setPipeLoading(true);
         try {
@@ -415,7 +425,8 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
     useEffect(() => {
         loadData();
         loadPipeData();
-    }, [loadData, loadPipeData]);
+        loadFittingData();
+    }, [loadData, loadPipeData, loadFittingData]);
 
     const categories = [
         'ALL',
@@ -929,11 +940,26 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <td colSpan={7} className="text-center py-5 pcm-cell-sub">
-                                                Belum ada data {(fittingCategories.find((f) => f.id === fittingCategory) || {}).label || fittingCategory}. Layout tabel sudah disiapkan dan siap diisi setelah data diberikan.
-                                            </td>
-                                        </tr>
+                                        {fittingStandards.filter((row) => {
+                                            const type = (row.fitting_type || '').toLowerCase();
+                                            if (fittingCategory === 'Elbow Long Radius') return type.includes('long radius') || type.includes('return bend');
+                                            if (fittingCategory === 'Elbow Short Radius') return type.includes('short radius');
+                                            if (fittingCategory === 'Tee') return type.includes('equal tee') || type === 'tee';
+                                            if (fittingCategory === 'Tee Reducer') return type.includes('reducing tee');
+                                            if (fittingCategory === 'Reducer Concentric') return type.includes('concentric reducer') || type === 'reducer';
+                                            if (fittingCategory === 'Reducer Eccentric') return type.includes('eccentric reducer');
+                                            return type.includes(fittingCategory.toLowerCase());
+                                        }).slice(0, 100).map((row) => (
+                                            <tr key={row.id}>
+                                                <td className="text-center">{row.nps_main || '—'}{row.nps_secondary ? ` × ${row.nps_secondary}` : ''}</td>
+                                                <td>{row.fitting_type}</td>
+                                                <td>{row.material_cs || '—'}</td>
+                                                <td className="text-center">{row.schedule_class || '—'}</td>
+                                                <td className="text-center">{row.schedule_class || '—'}</td>
+                                                <td className="text-center">{row.dimension_primary_mm ? `${row.dimension_primary_mm} mm` : '—'}</td>
+                                                <td className="text-center">{row.weight_cs_kg || '—'}</td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>

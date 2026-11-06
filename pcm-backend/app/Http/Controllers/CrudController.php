@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\DocumentControl;
 use App\Models\Drawing;
 use App\Models\EngineeringBoq;
+use App\Models\FittingStandard;
 use App\Models\HseLog;
 use App\Models\Inspection;
 use App\Models\Joint;
@@ -19,6 +20,7 @@ use App\Models\MaterialReceiving;
 use App\Models\MaterialStandard;
 use App\Models\MaterialStoring;
 use App\Models\PipeSchedule;
+use App\Models\PipeStandard;
 use App\Models\PipingClassTemplate;
 use App\Models\Project;
 use App\Models\ProjectMilestone;
@@ -33,6 +35,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -113,7 +116,12 @@ class CrudController extends Controller
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-        'pipe-standards' => [\App\Models\PipeStandard::class, [
+        'fitting-standards' => [FittingStandard::class, [
+            'create' => 'drawing.write',
+            'update' => 'drawing.write',
+            'delete' => 'drawing.write',
+        ]],
+        'pipe-standards' => [PipeStandard::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
@@ -458,8 +466,8 @@ class CrudController extends Controller
             $q->where($col, 'like', "%{$s}%");
         }
 
-        if ($request->filled('project_id') && \Illuminate\Support\Facades\Schema::hasColumn($q->getModel()->getTable(), 'project_id')) {
-            $q->where($q->getModel()->getTable() . '.project_id', $request->project_id);
+        if ($request->filled('project_id') && Schema::hasColumn($q->getModel()->getTable(), 'project_id')) {
+            $q->where($q->getModel()->getTable().'.project_id', $request->project_id);
         }
 
         // app.jsx memanggil api.get('/x') lalu memakai hasilnya sebagai array langsung.
@@ -783,7 +791,7 @@ class CrudController extends Controller
             if (preg_match('/(\d+)/', (string) $obj->joint_no, $m)) {
                 $jointSeq = (int) $m[1];
             }
-            \App\Models\Joint::where('drawing_no', $obj->iso_drawing_no)
+            Joint::where('drawing_no', $obj->iso_drawing_no)
                 ->where('spool_no', $obj->spool_no)
                 ->where('seq', $jointSeq)
                 ->delete();
@@ -834,7 +842,7 @@ class CrudController extends Controller
         return response()->json(['message' => 'OK']);
     }
 
-    private function syncWeldingMapToJoint(\App\Models\WeldingMap $map): void
+    private function syncWeldingMapToJoint(WeldingMap $map): void
     {
         $jointSeq = null;
         if (preg_match('/(\d+)/', (string) $map->joint_no, $m)) {
@@ -843,7 +851,7 @@ class CrudController extends Controller
 
         $consDeptId = Department::where('code', 'CONS')->value('id') ?? $map->department_id;
 
-        \App\Models\Joint::updateOrCreate(
+        Joint::updateOrCreate(
             [
                 'drawing_no' => $map->iso_drawing_no,
                 'spool_no' => $map->spool_no,
@@ -865,6 +873,7 @@ class CrudController extends Controller
             ]
         );
     }
+
     public function requestMaterialInspection(Request $request, int $id): JsonResponse
     {
         $this->checkWrite($request, 'material-receivings', 'update');

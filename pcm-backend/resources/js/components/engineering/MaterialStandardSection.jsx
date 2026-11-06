@@ -329,6 +329,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
 
     // 2. Pipe Standards (Diameter & Thickness) State
     const [pipeStandards, setPipeStandards] = useState([]);
+    const [fittingStandards, setFittingStandards] = useState([]);
     const [pipeLoading, setPipeLoading] = useState(false);
     const [pipeSearch, setPipeSearch] = useState('');
     const [showPipeModal, setShowPipeModal] = useState(false);
@@ -400,6 +401,15 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         }
     }, []);
 
+    const loadFittingData = useCallback(async () => {
+        try {
+            const data = await api.get('/fitting-standards');
+            setFittingStandards(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load fitting standards:', err);
+        }
+    }, []);
+
     const loadPipeData = useCallback(async () => {
         setPipeLoading(true);
         try {
@@ -415,7 +425,8 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
     useEffect(() => {
         loadData();
         loadPipeData();
-    }, [loadData, loadPipeData]);
+        loadFittingData();
+    }, [loadData, loadPipeData, loadFittingData]);
 
     const categories = [
         'ALL',
@@ -731,15 +742,15 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                     {/* Table Material Standards */}
                     <div className="pcm-card" style={{ minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
                         <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
-                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1170px', width: '100%' }}>
+                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1141px', width: '100%' }}>
                                 <colgroup>
-                                    <col style={{ width: '160px' }} />
-                                    <col style={{ width: '130px' }} />
-                                    <col style={{ width: '200px' }} />
                                     <col style={{ width: '150px' }} />
+                                    <col style={{ width: '168px' }} />
+                                    <col style={{ width: '205px' }} />
                                     <col style={{ width: '145px' }} />
-                                    <col style={{ width: '135px' }} />
-                                    <col style={{ width: '130px' }} />
+                                    <col style={{ width: '115px' }} />
+                                    <col style={{ width: '120px' }} />
+                                    <col style={{ width: '118px' }} />
                                     {canEdit && <col style={{ width: '120px' }} />}
                                 </colgroup>
                                 <thead>
@@ -802,7 +813,20 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                         </div>
                                                     </td>
                                                     <td className="text-center">
-                                                        <span className="pcm-chip" style={getCategoryBadgeStyle(s.category)}>
+                                                        <span
+                                                            className="pcm-chip"
+                                                            style={{
+                                                                ...getCategoryBadgeStyle(s.category),
+                                                                fontSize: '0.72rem',
+                                                                padding: '0.2rem 0.5rem',
+                                                                display: 'inline-block',
+                                                                maxWidth: '150px',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap',
+                                                            }}
+                                                            title={s.category}
+                                                        >
                                                             {s.category}
                                                         </span>
                                                     </td>
@@ -929,11 +953,26 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <td colSpan={7} className="text-center py-5 pcm-cell-sub">
-                                                Belum ada data {(fittingCategories.find((f) => f.id === fittingCategory) || {}).label || fittingCategory}. Layout tabel sudah disiapkan dan siap diisi setelah data diberikan.
-                                            </td>
-                                        </tr>
+                                        {fittingStandards.filter((row) => {
+                                            const type = (row.fitting_type || '').toLowerCase();
+                                            if (fittingCategory === 'Elbow Long Radius') return type.includes('long radius') || type.includes('return bend');
+                                            if (fittingCategory === 'Elbow Short Radius') return type.includes('short radius');
+                                            if (fittingCategory === 'Tee') return type.includes('equal tee') || type === 'tee';
+                                            if (fittingCategory === 'Tee Reducer') return type.includes('reducing tee');
+                                            if (fittingCategory === 'Reducer Concentric') return type.includes('concentric reducer') || type === 'reducer';
+                                            if (fittingCategory === 'Reducer Eccentric') return type.includes('eccentric reducer');
+                                            return type.includes(fittingCategory.toLowerCase());
+                                        }).slice(0, 100).map((row) => (
+                                            <tr key={row.id}>
+                                                <td className="text-center">{row.nps_main || '—'}{row.nps_secondary ? ` × ${row.nps_secondary}` : ''}</td>
+                                                <td>{row.fitting_type}</td>
+                                                <td>{row.material_cs || '—'}</td>
+                                                <td className="text-center">{row.schedule_class || '—'}</td>
+                                                <td className="text-center">{row.schedule_class || '—'}</td>
+                                                <td className="text-center">{row.dimension_primary_mm ? `${row.dimension_primary_mm} mm` : '—'}</td>
+                                                <td className="text-center">{row.weight_cs_kg || '—'}</td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>

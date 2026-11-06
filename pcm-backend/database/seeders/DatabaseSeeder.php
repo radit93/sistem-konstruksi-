@@ -86,6 +86,7 @@ class DatabaseSeeder extends Seeder
             PipeScheduleSeeder::class,
             PipingClassTemplateSeeder::class,
             SystemParameterSeeder::class,
+            FittingStandardSeeder::class,
         ]);
     }
 

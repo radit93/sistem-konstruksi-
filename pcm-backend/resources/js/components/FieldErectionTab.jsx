@@ -29,17 +29,20 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
         localStorage.getItem('pcm_active_erection_project_id') || ''
     ));
 
+    const selectedProjectId = projects.some(project => String(project.id) === String(activeProjectId))
+        ? activeProjectId
+        : String(projects[0]?.id || '');
     const activeProject = useMemo(
-        () => projects.find(project => String(project.id) === String(activeProjectId)) || null,
-        [projects, activeProjectId]
+        () => projects.find(project => String(project.id) === String(selectedProjectId)) || null,
+        [projects, selectedProjectId]
     );
     const projectJoints = useMemo(() => {
-        if (!activeProjectId) return [];
+        if (!selectedProjectId) return [];
         return (joints || []).filter(joint => (
-            String(joint.project_id || '') === String(activeProjectId)
-            || (!joint.project_id && String(projects[0]?.id) === String(activeProjectId))
+            String(joint.project_id || '') === String(selectedProjectId)
+            || (!joint.project_id && String(projects[0]?.id) === String(selectedProjectId))
         ));
-    }, [joints, projects, activeProjectId]);
+    }, [joints, projects, selectedProjectId]);
     const fieldJoints = projectJoints.filter(isField);
 
     const openEdit = (j) => {
@@ -97,7 +100,7 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
                     <select
                         className="form-select form-select-sm"
                         style={{ width: '240px' }}
-                        value={activeProjectId}
+                        value={selectedProjectId}
                         onChange={(e) => {
                             const id = e.target.value;
                             setActiveProjectId(id);

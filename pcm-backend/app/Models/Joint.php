@@ -15,7 +15,7 @@ class Joint extends Model
         'fitup_inspector', 'fitup_inspection_date', 'welding_process', 'filler_material',
         'preheat', 'interpass_temperature', 'construction_remarks',
         // Repair tracking
-        'repair_no', 'repair_defect', 'repair_method', 'repair_welder', 'repair_date', 'repair_remarks',
+        'repair_no', 'repair_defect', 'repair_method', 'repair_welder', 'repair_date', 'repair_status', 'repair_remarks',
     ];
 
     public function inspections()

@@ -5,6 +5,8 @@ import { jointLabel } from './FabricationTab';
 import { PcmSelect } from './SearchSelect';
 import {
     ConstructionChecklistSection,
+    ConstructionKpiCards,
+    downloadConstructionCsv,
     emptyConstructionFields,
     formatJointSpec,
     pickConstructionFields
@@ -97,6 +99,13 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
                     </p>
                 </div>
                 <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success"
+                        onClick={() => downloadConstructionCsv(fieldJoints, 'field-erection.csv', 'Data Field Erection')}
+                    >
+                        <i className="cs-document me-1"></i>Export CSV
+                    </button>
                     <select
                         className="form-select form-select-sm"
                         style={{ width: '240px' }}
@@ -123,34 +132,7 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
                 </div>
             </div>
 
-            {/* Field Erection Highlight Cards */}
-            <div className="row g-3 mb-4">
-                <div className="col-md-4">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">TOTAL FIELD JOINTS</small>
-                        <h3 className="fw-bold text-primary mb-0">{fieldJoints.length}</h3>
-                        <small className="text-muted mt-1">Sambungan tie-in di lapangan</small>
-                    </div>
-                </div>
-                <div className="col-md-4">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">SELESAI FIT-UP & WELD</small>
-                        <h3 className="fw-bold text-success mb-0">
-                            {fieldJoints.filter(j => ['WELDED', 'VISUAL_OK', 'NDT_OK'].includes(j.status)).length}
-                        </h3>
-                        <small className="text-muted mt-1">Welder Lapangan W-007</small>
-                    </div>
-                </div>
-                <div className="col-md-4">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">STATUS SYSTEM</small>
-                        <h3 className="fw-bold text-info mb-0">
-                            {fieldJoints.length > 0 && fieldJoints.every(j => ['VISUAL_OK', 'NDT_OK', 'TESTED'].includes(j.status)) ? 'READY HYDROTEST' : 'IN PROGRESS'}
-                        </h3>
-                        <small className="text-muted mt-1">Kesiapan paket hydrotest</small>
-                    </div>
-                </div>
-            </div>
+            <ConstructionKpiCards items={fieldJoints} readyLabel="Kesiapan hydrotest" />
 
             {/* Table */}
             <div className="card shadow-sm border-0 bg-white">
@@ -168,6 +150,7 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
                                 <th>Tgl Fit-up</th>
                                 <th>Tgl Weld</th>
                                 <th>Status QC</th>
+                                <th>Repair</th>
                                 <th className="text-end">Aksi</th>
                             </tr>
                         </thead>
@@ -189,6 +172,7 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
                                     <td className="text-muted">{j.fit_date || '-'}</td>
                                     <td className="text-muted">{j.weld_date || '-'}</td>
                                     <td>{statusBadge(j.status)}</td>
+                                    <td>{j.repair_no ? <span className={`badge ${j.repair_status === 'CLOSED' ? 'bg-success' : 'bg-warning text-dark'}`}>{j.repair_no} · {j.repair_status || 'OPEN'}</span> : <span className="text-muted">-</span>}</td>
                                     <td className="text-end">
                                         {canEdit ? (
                                             <button

@@ -4,6 +4,8 @@ import { can } from '../auth';
 import { PcmSelect } from './SearchSelect';
 import {
     ConstructionChecklistSection,
+    ConstructionKpiCards,
+    downloadConstructionCsv,
     emptyConstructionFields,
     formatJointSpec,
     pickConstructionFields
@@ -100,43 +102,7 @@ export function FabricationTab({ joints, user, onReload }) {
                 </div>
             </div>
 
-            {/* Metrics */}
-            <div className="row g-3 mb-4">
-                <div className="col-md-3">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">TOTAL SHOP JOINTS</small>
-                        <h3 className="fw-bold text-primary mb-0">{shopJoints.length}</h3>
-                        <small className="text-muted mt-1">Target spool bengkel</small>
-                    </div>
-                </div>
-                <div className="col-md-3">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">FIT-UP VERIFIED</small>
-                        <h3 className="fw-bold text-info mb-0">
-                            {shopJoints.filter(j => ['FITUP_OK', 'WELDED', 'VISUAL_OK', 'NDT_OK'].includes(j.status)).length}
-                        </h3>
-                        <small className="text-muted mt-1">Lolos pengecekan celah & bevel</small>
-                    </div>
-                </div>
-                <div className="col-md-3">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">SELESAI PENGELASAN</small>
-                        <h3 className="fw-bold text-warning mb-0">
-                            {shopJoints.filter(j => ['WELDED', 'VISUAL_OK', 'NDT_OK'].includes(j.status)).length}
-                        </h3>
-                        <small className="text-muted mt-1">Welder W-005</small>
-                    </div>
-                </div>
-                <div className="col-md-3">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">LOLOS QC / NDT</small>
-                        <h3 className="fw-bold text-success mb-0">
-                            {shopJoints.filter(j => ['VISUAL_OK', 'NDT_OK'].includes(j.status)).length}
-                        </h3>
-                        <small className="text-muted mt-1">Siap kirim ke field</small>
-                    </div>
-                </div>
-            </div>
+            <ConstructionKpiCards items={shopJoints} readyLabel="Siap kirim ke field" />
 
             {/* Filter Search */}
             <div className="card shadow-sm border-0 mb-4 bg-white p-3">
@@ -153,8 +119,15 @@ export function FabricationTab({ joints, user, onReload }) {
                             />
                         </div>
                     </div>
-                    <div className="col-md-6 text-md-end text-muted small">
-                        Menampilkan <strong>{filtered.length}</strong> shop joints
+                    <div className="col-md-6 text-md-end text-muted small d-flex justify-content-end align-items-center gap-3">
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-success"
+                            onClick={() => downloadConstructionCsv(filtered, 'construction-shop.csv', 'Data Construction Shop')}
+                        >
+                            <i className="cs-document me-1"></i>Export CSV
+                        </button>
+                        <span>Menampilkan <strong>{filtered.length}</strong> shop joints</span>
                     </div>
                 </div>
             </div>
@@ -175,6 +148,7 @@ export function FabricationTab({ joints, user, onReload }) {
                                 <th>Tgl Fit-up</th>
                                 <th>Tgl Weld</th>
                                 <th>Status</th>
+                                <th>Repair</th>
                                 <th className="text-end">Aksi</th>
                             </tr>
                         </thead>
@@ -197,6 +171,7 @@ export function FabricationTab({ joints, user, onReload }) {
                                     <td className="text-muted">{j.fit_date || '-'}</td>
                                     <td className="text-muted">{j.weld_date || '-'}</td>
                                     <td>{statusBadge(j.status)}</td>
+                                    <td>{j.repair_no ? <span className={`badge ${j.repair_status === 'CLOSED' ? 'bg-success' : 'bg-warning text-dark'}`}>{j.repair_no} · {j.repair_status || 'OPEN'}</span> : <span className="text-muted">-</span>}</td>
                                     <td className="text-end">
                                         {canEdit ? (
                                             <button

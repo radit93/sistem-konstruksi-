@@ -27,6 +27,7 @@ export const constructionFieldNames = [
     'repair_method',
     'repair_welder',
     'repair_date',
+    'repair_status',
     'repair_remarks'
 ];
 
@@ -64,6 +65,93 @@ export const formatJointSpec = (j) => {
     if (size) parts.push(size);
     return parts.join(' · ');
 };
+
+/** repair_status: OPEN (masih berjalan) / CLOSED (selesai). */
+export const REPAIR_STATUS_OPTIONS = ['OPEN', 'CLOSED'];
+
+export const repairStatusOf = (joint) => {
+    if (!joint?.repair_no) return '';
+    return joint.repair_status || 'OPEN';
+};
+
+/** Persentase progres: joint NDT_OK / TESTED sebagai selesai. */
+export const constructionProgress = (items) => {
+    const total = (items || []).length;
+    const completed = (items || []).filter(j => ['NDT_OK', 'TESTED'].includes(j.status)).length;
+    const percent = total ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, percent };
+};
+
+export const constructionStats = (items) => {
+    const all = items || [];
+    const repairs = all.filter(j => j.repair_no);
+    const openRepairs = repairs.filter(j => repairStatusOf(j) === 'OPEN');
+    const progress = constructionProgress(all);
+    return { ...progress, repairTotal: repairs.length, repairOpen: openRepairs.length, repairClosed: repairs.length - openRepairs.length };
+};
+
+/** Satu blok kartu KPI: TOTAL, PROGRES %, REPAIR OPEN, REPAIR CLOSED. */
+export function ConstructionKpiCards({ items, readyLabel = 'READY HYDROTEST' }) {
+    const stats = constructionStats(items);
+    return (
+        <div className="row g-3 mb-4">
+            <div className="col-md-3">
+                <div className="card p-3 shadow-sm border-0 bg-white">
+                    <small className="text-muted fw-bold">TOTAL JOINT</small>
+                    <h3 className="fw-bold text-primary mb-0">{stats.total}</h3>
+                    <small className="text-muted mt-1">Joint pada project aktif</small>
+                </div>
+            </div>
+            <div className="col-md-3">
+                <div className="card p-3 shadow-sm border-0 bg-white">
+                    <small className="text-muted fw-bold">PROGRES SELESAI</small>
+                    <h3 className="fw-bold text-success mb-0">{stats.percent}%</h3>
+                    <small className="text-muted mt-1">{stats.completed} joint NDT_OK / TESTED</small>
+                </div>
+            </div>
+            <div className="col-md-3">
+                <div className="card p-3 shadow-sm border-0 bg-white">
+                    <small className="text-muted fw-bold">REPAIR TERBUKA</small>
+                    <h3 className="fw-bold text-warning mb-0">{stats.repairOpen}</h3>
+                    <small className="text-muted mt-1">Dari {stats.repairTotal} total repair</small>
+                </div>
+            </div>
+            <div className="col-md-3">
+                <div className="card p-3 shadow-sm border-0 bg-white">
+                    <small className="text-muted fw-bold">REPAIR SELESAI</small>
+                    <h3 className="fw-bold text-info mb-0">{stats.repairClosed}</h3>
+                    <small className="text-muted mt-1">{readyLabel}</small>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/** Header kolom payload CSV untuk unduhan data konstruksi (Shop/Field). */
+export const constructionExportRows = (items, title = 'Data Konstruksi') => {
+    const header = ['Seq', 'Spool No', 'Line No', 'Drawing No', 'Komponen', 'Spec & Size', 'Welder', 'Tgl Fit-up', 'Tgl Weld', 'Status', 'No. Repair', 'Status Repair', 'Defect', 'Metode Repair', 'Welder Repair', 'Tgl Repair'];
+    const body = (items || []).map(j => ([
+        j.seq || '', j.spool_no || '', j.line_no || '', j.drawing_no || '',
+        `${j.item_a || ''} -> ${j.item_b || ''}`.trim(), formatJointSpec(j),
+        j.welder || '', j.fit_date || '', j.weld_date || '', j.status || '',
+        j.repair_no || '', j.repair_no ? repairStatusOf(j) : '',
+        j.repair_defect || '', j.repair_method || '', j.repair_welder || '', j.repair_date || ''
+    ]));
+    const stamp = new Date().toISOString().slice(0, 10);
+    const lines = [`${title}; diekspor ${stamp}`, header.join(','), ...body.map(row => row.map(cell => `"${String(cell).replaceAll('"', '""')}"`).join(','))];
+    return lines.join('\n');
+};
+
+export function downloadConstructionCsv(items, filename, title) {
+    const csv = constructionExportRows(items, title);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+}
 
 const QC_VALUE_OPTIONS = ['OK', 'NOK', 'N/A'];
 const WELDING_PROCESS_OPTIONS = ['GTAW', 'SMAW', 'GTAW + SMAW', 'FCAW', 'GMAW'];
@@ -184,6 +272,17 @@ export function ConstructionChecklistSection({ editData, setEditData }) {
                     REPAIR TRACKING
                 </span>
                 <div className="row g-2">
+                    <div className="col-6 col-lg-4">
+                        <label className="form-label small fw-semibold">Status Repair</label>
+                        <PcmSelect
+                            value={editData.repair_status || (editData.repair_no ? 'OPEN' : '')}
+                            onChange={set('repair_status')}
+                        >
+                            <option value="">-- Pilih Status --</option>
+                            <option value="OPEN">OPEN (Masih Berjalan)</option>
+                            <option value="CLOSED">CLOSED (Selesai)</option>
+                        </PcmSelect>
+                    </div>
                     <div className="col-6 col-lg-4">
                         <label className="form-label small fw-semibold">No. Repair</label>
                         <input

@@ -369,12 +369,13 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                 const cat = (row.category || '').toLowerCase();
                 /* Filter kategori — matching ketat berdasarkan kategori atau fitting_type */
                 let catMatch = true;
-                if (activeCat === 'Elbow Long Radius') catMatch = type.includes('long radius') || type.includes('return bend') || cat.includes('elbow');
-                else if (activeCat === 'Elbow Short Radius') catMatch = type.includes('short radius') || cat.includes('short');
-                else if (activeCat === 'Tee') catMatch = type.includes('equal tee') || type === 'tee' || cat.includes('tee (percabangan)') && !type.includes('reducing');
-                else if (activeCat === 'Tee Reducer') catMatch = type.includes('reducing tee') || type.includes('tee reducer');
-                else if (activeCat === 'Reducer Concentric') catMatch = type.includes('concentric reducer') || cat.includes('concentric');
-                else if (activeCat === 'Reducer Eccentric') catMatch = type.includes('eccentric reducer') || cat.includes('eccentric');
+                if (activeCat === 'Elbow Long Radius') catMatch = type.includes('long radius') || type.includes('return bend') || (cat.includes('elbow') && !type.includes('short radius'));
+                else if (activeCat === 'Elbow Short Radius') catMatch = type.includes('short radius') || cat.includes('short radius');
+                else if (activeCat === 'Tee') catMatch = (type.includes('equal') || type.includes('straight')) && (cat.includes('tee') || type.includes('tee')) && !type.includes('reducing');
+                else if (activeCat === 'Tee Reducer') catMatch = type.includes('reducing') && (cat.includes('tee') || type.includes('tee'));
+                else if (activeCat === 'Reducer Concentric') catMatch = type.includes('concentric');
+                else if (activeCat === 'Reducer Eccentric') catMatch = type.includes('eccentric');
+                else if (activeCat === 'Weldolet') catMatch = type.includes('weldolet') || cat.includes('weldolet');
                 else if (activeCat !== 'Pipe') catMatch = true;
 
                 /* Search */

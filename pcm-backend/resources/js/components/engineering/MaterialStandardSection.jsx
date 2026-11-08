@@ -800,43 +800,43 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                     {/* Table Material Standards */}
                     <div className="pcm-card" style={{ minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
                         <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
-                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1180px', width: '100%' }}>
+                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1170px', width: '100%' }}>
                                 <colgroup>
-                                    <col style={{ width: '150px' }} />
-                                    <col style={{ width: '168px' }} />
-                                    <col style={{ width: '205px' }} />
-                                    <col style={{ width: '145px' }} />
-                                    <col style={{ width: '115px' }} />
+                                    <col style={{ width: '160px' }} />
+                                    <col style={{ width: '130px' }} />
+                                    <col style={{ width: '220px' }} />
+                                    <col style={{ width: '140px' }} />
                                     <col style={{ width: '120px' }} />
-                                    <col style={{ width: '118px' }} />
+                                    <col style={{ width: '130px' }} />
+                                    <col style={{ width: '130px' }} />
                                     {canEdit && <col style={{ width: '140px' }} />}
                                 </colgroup>
                                 <thead>
                                     <tr>
-                                        <th className="text-center">
-                                            <span className="pcm-th-title">Kode Standar</span>
+                                        <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                            <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Kode Standar</span>
                                         </th>
-                                        <th className="text-center">
-                                             <span className="pcm-th-title">Kategori</span>
+                                        <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                             <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Kategori</span>
                                         </th>
-                                        <th className="text-center">
-                                             <span className="pcm-th-title">Spesifikasi Material</span>
+                                        <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                             <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Spesifikasi Material</span>
                                         </th>
-                                        <th className="text-center">
-                                             <span className="pcm-th-title">Material Group</span>
+                                        <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                             <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Material Group</span>
                                         </th>
-                                        <th className="text-center">
-                                             <span className="pcm-th-title">Pressure Class</span>
+                                        <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                             <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Pressure Class</span>
                                         </th>
-                                        <th className="text-center">
-                                             <span className="pcm-th-title">Schedule</span>
+                                        <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                             <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Schedule</span>
                                         </th>
-                                        <th className="text-center">
-                                             <span className="pcm-th-title">Rentang Ukuran</span>
+                                        <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                             <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Rentang Ukuran</span>
                                         </th>
                                         {canEdit && (
-                                            <th className="text-center pe-3">
-                                                <span className="pcm-th-title">Aksi</span>
+                                            <th className="text-center pe-3 text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Aksi</span>
                                             </th>
                                         )}
                                     </tr>
@@ -861,24 +861,18 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
 
                                             return (
                                                 <tr key={s.id}>
-                                                    <td className="ps-3 text-start fw-bold pcm-code" style={{ color: '#0f172a', verticalAlign: 'middle', padding: '0.45rem 0.65rem' }}>
-                                                        <div
-                                                            className="pcm-table-cell-2line text-start"
-                                                            style={{ fontSize: '0.8125rem' }}
-                                                            title={s.code}
-                                                        >
-                                                            {s.code}
-                                                        </div>
+                                                    <td className="ps-3 text-start fw-bold pcm-code text-nowrap" style={{ color: '#0f172a', verticalAlign: 'middle', padding: '0.45rem 0.65rem', fontSize: '0.78rem', whiteSpace: 'nowrap' }} title={s.code}>
+                                                        {s.code}
                                                     </td>
-                                                    <td className="text-center">
+                                                    <td className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                                         <span
                                                             className="pcm-chip"
                                                             style={{
                                                                 ...getCategoryBadgeStyle(s.category),
                                                                 fontSize: '0.72rem',
-                                                                padding: '0.2rem 0.5rem',
+                                                                padding: '0.15rem 0.45rem',
                                                                 display: 'inline-block',
-                                                                maxWidth: '150px',
+                                                                maxWidth: '125px',
                                                                 overflow: 'hidden',
                                                                 textOverflow: 'ellipsis',
                                                                 whiteSpace: 'nowrap',
@@ -888,13 +882,8 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                             {s.category}
                                                         </span>
                                                     </td>
-                                                    <td className="text-start pcm-cell-strong" style={{ verticalAlign: 'middle', padding: '0.45rem 0.65rem' }}>
-                                                        <div
-                                                            className={`text-start pcm-table-cell-2line ${isSpecLong ? 'pcm-table-cell-2line--dense' : 'pcm-table-cell-2line--normal'}`}
-                                                            title={s.specification}
-                                                        >
-                                                            {s.specification}
-                                                        </div>
+                                                    <td className="text-start pcm-cell-strong text-nowrap" style={{ verticalAlign: 'middle', padding: '0.45rem 0.65rem', fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={s.specification}>
+                                                        {s.specification}
                                                     </td>
                                                     <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
                                                         <span className="pcm-chip" style={getMaterialGroupBadgeStyle(s.material_group)}>
@@ -1014,35 +1003,48 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                 </span>
                             </div>
                             <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
-                                <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1060px', width: '100%' }}>
+                                <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1080px', width: '100%' }}>
                                     <colgroup>
+                                        <col style={{ width: '140px' }} />
+                                        <col style={{ width: '125px' }} />
+                                        <col style={{ width: '100px' }} />
+                                        <col style={{ width: '130px' }} />
+                                        <col style={{ width: '90px' }} />
                                         <col style={{ width: '120px' }} />
-                                        <col style={{ width: '135px' }} />
-                                        <col style={{ width: '110px' }} />
                                         <col style={{ width: '130px' }} />
-                                        <col style={{ width: '95px' }} />
-                                        <col style={{ width: '135px' }} />
-                                        <col style={{ width: '130px' }} />
-                                        <col style={{ width: '85px' }} />
-                                        {canEdit && <col style={{ width: '120px' }} />}
+                                        <col style={{ width: '100px' }} />
+                                        {canEdit && <col style={{ width: '145px' }} />}
                                     </colgroup>
                                     <thead>
                                         <tr>
-                                            <th className="text-center"><span className="pcm-th-title">Item Code</span></th>
-                                            <th className="text-center"><span className="pcm-th-title">Kategori / Tipe</span></th>
-                                            <th className="text-center"><span className="pcm-th-title">Standar ASME</span></th>
-                                            <th className="text-center"><span className="pcm-th-title">Koneksi</span></th>
-                                            <th className="text-center">
-                                                <span className="pcm-th-title">Ukuran Nominal</span>
-                                                <span className="pcm-th-unit">NPS</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Item Code</span>
                                             </th>
-                                            <th className="text-center">
-                                                <span className="pcm-th-title text-wrap" style={{ lineHeight: '1.2' }}>Schedule /<br />Pressure Class</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Kategori / Tipe</span>
                                             </th>
-                                            <th className="text-center"><span className="pcm-th-title">Material CS</span></th>
-                                            <th className="text-center"><span className="pcm-th-title">Berat (kg)</span></th>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Standar ASME</span>
+                                            </th>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Koneksi</span>
+                                            </th>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Ukuran (NPS)</span>
+                                            </th>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Schedule / Class</span>
+                                            </th>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Material CS</span>
+                                            </th>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Berat (kg)</span>
+                                            </th>
                                             {canEdit && (
-                                                <th className="text-center pe-3"><span className="pcm-th-title">Aksi</span></th>
+                                                <th className="text-center pe-3 text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                    <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Aksi</span>
+                                                </th>
                                             )}
                                         </tr>
                                     </thead>
@@ -1060,20 +1062,18 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                     : null;
                                                 return (
                                                     <tr key={row.id}>
-                                                        <td className="ps-3 text-start fw-bold pcm-code" style={{ color: '#0f172a', verticalAlign: 'middle', padding: '0.45rem 0.65rem' }}>
-                                                            <div className="pcm-table-cell-2line text-start" style={{ fontSize: '0.8125rem' }} title={row.item_code}>
-                                                                {row.item_code}
-                                                            </div>
+                                                        <td className="ps-3 pe-2 text-start fw-bold pcm-code text-nowrap" style={{ color: '#0f172a', verticalAlign: 'middle', padding: '0.45rem 0.5rem', fontSize: '0.78rem', whiteSpace: 'nowrap' }} title={row.item_code}>
+                                                            {row.item_code}
                                                         </td>
-                                                        <td className="text-center">
+                                                        <td className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                                             <span
                                                                 className="pcm-chip"
                                                                 style={{
                                                                     ...getCategoryBadgeStyle(row.category || 'Fitting'),
                                                                     fontSize: '0.72rem',
-                                                                    padding: '0.2rem 0.5rem',
+                                                                    padding: '0.15rem 0.45rem',
                                                                     display: 'inline-block',
-                                                                    maxWidth: '140px',
+                                                                    maxWidth: '135px',
                                                                     overflow: 'hidden',
                                                                     textOverflow: 'ellipsis',
                                                                     whiteSpace: 'nowrap',
@@ -1083,39 +1083,39 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                                 {row.category}
                                                             </span>
                                                         </td>
-                                                        <td className="text-center pcm-code font-monospace" style={{ fontSize: '0.8125rem' }}>
+                                                        <td className="text-center pcm-code font-monospace text-nowrap" style={{ fontSize: '0.78rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                                             {row.asme_standard || '—'}
                                                         </td>
-                                                        <td className="text-center pcm-cell-sub" style={{ fontSize: '0.8125rem' }}>
+                                                        <td className="text-center pcm-cell-sub text-nowrap" style={{ fontSize: '0.76rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }} title={row.connection}>
                                                             {row.connection || '—'}
                                                         </td>
-                                                        <td className="text-center pcm-code" style={{ fontSize: '0.875rem' }}>
+                                                        <td className="text-center pcm-code fw-semibold text-nowrap" style={{ fontSize: '0.8rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                                             {row.nps_main || '—'}
                                                             {row.nps_secondary ? ` × ${row.nps_secondary}` : ''}
                                                         </td>
-                                                        <td className="text-center" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                                        <td className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                                             {renderDynamicSchedule(row.schedule_class)}
                                                         </td>
-                                                        <td className="text-center pcm-cell-sub" style={{ fontSize: '0.8125rem' }}>
+                                                        <td className="text-center pcm-cell-sub text-nowrap" style={{ fontSize: '0.76rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }} title={row.material_cs}>
                                                             {row.material_cs || '—'}
                                                         </td>
-                                                        <td className="text-center pcm-code fw-semibold" style={{ fontSize: '0.875rem' }}>
-                                                            {row.weight_cs_kg != null && row.weight_cs_kg !== '' ? row.weight_cs_kg : '—'}
+                                                        <td className="text-center pcm-code fw-semibold text-nowrap" style={{ fontSize: '0.8rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                            {row.weight_cs_kg != null && row.weight_cs_kg !== '' ? `${parseFloat(row.weight_cs_kg).toFixed(3)} kg` : '—'}
                                                         </td>
                                                         {canEdit && (
-                                                            <td className="text-center pe-2 text-nowrap">
-                                                                <div className="d-inline-flex align-items-center justify-content-center gap-1">
+                                                            <td className="text-center pe-2 text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                                <div className="d-inline-flex align-items-center justify-content-center gap-1.5">
                                                                     <button
                                                                         type="button"
                                                                         className="btn btn-primary btn-sm px-2 py-0.5 fw-bold"
-                                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.75rem' }}
+                                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.72rem' }}
                                                                     >
                                                                         Edit
                                                                     </button>
                                                                     <button
                                                                         type="button"
                                                                         className="btn btn-danger btn-sm px-2 py-0.5 fw-bold"
-                                                                        style={{ fontSize: '0.75rem' }}
+                                                                        style={{ fontSize: '0.72rem' }}
                                                                         onClick={() => handleDeleteFitting(row.id)}
                                                                     >
                                                                         Hapus
@@ -1178,17 +1178,17 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
 
                     <div className="pcm-card" style={{ minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
                         <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
-                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1170px', width: '100%' }}>
+                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1080px', width: '100%' }}>
                                 <colgroup>
+                                    <col style={{ width: '110px' }} />
+                                    <col style={{ width: '90px' }} />
+                                    <col style={{ width: '100px' }} />
                                     <col style={{ width: '125px' }} />
+                                    <col style={{ width: '130px' }} />
+                                    <col style={{ width: '130px' }} />
                                     <col style={{ width: '105px' }} />
-                                    <col style={{ width: '120px' }} />
-                                    <col style={{ width: '140px' }} />
                                     <col style={{ width: '145px' }} />
-                                    <col style={{ width: '140px' }} />
-                                    <col style={{ width: '125px' }} />
-                                    <col style={{ width: '140px' }} />
-                                    {canEdit && <col style={{ width: '130px' }} />}
+                                    {canEdit && <col style={{ width: '145px' }} />}
                                 </colgroup>
                                 <thead>
                                      <tr>
@@ -1260,19 +1260,20 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                 <td className="text-center pcm-code">{p.standard_length_m ? `${parseFloat(p.standard_length_m).toFixed(2)} m` : '6.00 m'}</td>
                                                 <td className="text-center pcm-code fw-semibold">{stickWeightOf(p) != null ? `${stickWeightOf(p).toFixed(2)} kg` : '—'}</td>
                                                 {canEdit && (
-                                                    <td className="text-center pe-3 text-nowrap">
+                                                    <td className="text-center pe-2 text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                                         <div className="d-inline-flex align-items-center justify-content-center gap-1.5">
                                                             <button
                                                                 type="button"
-                                                                className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
-                                                                style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
+                                                                className="btn btn-primary btn-sm px-2 py-0.5 fw-bold"
+                                                                style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.72rem' }}
                                                                 onClick={() => handleOpenPipeModal(p)}
                                                             >
                                                                 Edit
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
+                                                                className="btn btn-danger btn-sm px-2 py-0.5 fw-bold"
+                                                                style={{ fontSize: '0.72rem' }}
                                                                 onClick={() => handleDeletePipe(p.id)}
                                                             >
                                                                 Hapus

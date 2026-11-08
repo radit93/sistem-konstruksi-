@@ -345,12 +345,13 @@ class CrudController extends Controller
         $q = $this->scope($request, $model::query(), $res);
 
         if ($res === 'fitting-standards') {
-            // Kolom panjang (URL sumber, material SS, dimensi sekunder) tidak
-            // ditampilkan di UI; memotongnya menjaga respons tetap ringan
-            // karena memuat seluruh master fitting sekaligus.
+            // Master fitting dipisah ke tabel dedicated (fitting_standards);
+            // select ringan hanya memuat kolom yang ditampilkan di UI.
+            // Kolom panjang (source_reference, material_ss, secondary)
+            // tetap di exclude agar payload tetap ringan (~1 MB untuk 2.303 baris).
             $q->select([
-                'id', 'item_code', 'category', 'fitting_type', 'connection',
-                'nps_main', 'nps_secondary', 'schedule_class',
+                'id', 'item_code', 'category', 'fitting_type', 'asme_standard',
+                'connection', 'nps_main', 'nps_secondary', 'schedule_class',
                 'material_cs', 'dimension_primary_mm', 'weight_cs_kg',
             ]);
         }

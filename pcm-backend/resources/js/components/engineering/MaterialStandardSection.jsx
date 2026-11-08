@@ -348,8 +348,66 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         weight_kg_stick: ''
     });
 
-    const [pipeForm, setPipeForm] = useState(emptyPipeForm);
+    const [pipeForm, setPipeForm] = useState(emptyPipeForm());
     const [fittingCategory, setFittingCategory] = useState(scope === 'fitting' ? 'Elbow Long Radius' : 'Pipe');
+    const [fittingSearch, setFittingSearch] = useState('');
+    const [fittingPage, setFittingPage] = useState(1);
+
+    /* Reset halaman fitting ketika search / kategori berubah */
+    useEffect(() => {
+        setFittingPage(1);
+    }, [fittingSearch, fittingCategory]);
+
+    /* Filter + sort + pagination untuk tabel fitting (tidak ada slice(0,100)) */
+    const filteredFittings = useMemo(() => {
+        const q = fittingSearch.toLowerCase();
+        /* Set kategori aktif — hanya matching baris yang sesuai kategori */
+        const activeCat = fittingCategory;
+        return fittingStandards
+            .filter((row) => {
+                const type = (row.fitting_type || '').toLowerCase();
+                const cat = (row.category || '').toLowerCase();
+                /* Filter kategori — matching ketat berdasarkan kategori atau fitting_type */
+                let catMatch = true;
+                if (activeCat === 'Elbow Long Radius') catMatch = type.includes('long radius') || type.includes('return bend') || cat.includes('elbow');
+                else if (activeCat === 'Elbow Short Radius') catMatch = type.includes('short radius') || cat.includes('short');
+                else if (activeCat === 'Tee') catMatch = type.includes('equal tee') || type === 'tee' || cat.includes('tee (percabangan)') && !type.includes('reducing');
+                else if (activeCat === 'Tee Reducer') catMatch = type.includes('reducing tee') || type.includes('tee reducer');
+                else if (activeCat === 'Reducer Concentric') catMatch = type.includes('concentric reducer') || cat.includes('concentric');
+                else if (activeCat === 'Reducer Eccentric') catMatch = type.includes('eccentric reducer') || cat.includes('eccentric');
+                else if (activeCat !== 'Pipe') catMatch = true;
+
+                /* Search */
+                const matchSearch = !q ||
+                    (row.item_code || '').toLowerCase().includes(q) ||
+                    (row.fitting_type || '').toLowerCase().includes(q) ||
+                    (row.material_cs || '').toLowerCase().includes(q) ||
+                    (row.schedule_class || '').toLowerCase().includes(q) ||
+                    (row.nps_main || '').toLowerCase().includes(q);
+                return catMatch && matchSearch;
+            })
+            .sort((a, b) =>
+                (npsValue(a.nps_main) - npsValue(b.nps_main)) ||
+                (scheduleRank(a.schedule_class) - scheduleRank(b.schedule_class)) ||
+                naturalCompare(a.item_code, b.item_code)
+            );
+    }, [fittingStandards, fittingSearch, fittingCategory]);
+
+    const paginatedFittings = useMemo(() => {
+        const start = (fittingPage - 1) * PAGE_SIZE;
+        return filteredFittings.slice(start, start + PAGE_SIZE);
+    }, [filteredFittings, fittingPage]);
+
+    const handleDeleteFitting = async (id) => {
+        if (!(await confirmDelete('Yakin ingin menghapus fitting ini dari master data?'))) return;
+        try {
+            await api.delete(`/fitting-standards/${id}`);
+            if (onToast) onToast('Master fitting berhasil dihapus.');
+            loadFittingData();
+        } catch (err) {
+            alert(err.message || 'Gagal menghapus fitting.');
+        }
+    };
 
     /* Selaraskan view & tab aktif setiap kali menu sidebar berganti.
        Diletakkan setelah deklarasi state agar tidak kena temporal dead zone. */
@@ -742,7 +800,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                     {/* Table Material Standards */}
                     <div className="pcm-card" style={{ minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
                         <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
-                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1141px', width: '100%' }}>
+                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1180px', width: '100%' }}>
                                 <colgroup>
                                     <col style={{ width: '150px' }} />
                                     <col style={{ width: '168px' }} />
@@ -751,7 +809,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                     <col style={{ width: '115px' }} />
                                     <col style={{ width: '120px' }} />
                                     <col style={{ width: '118px' }} />
-                                    {canEdit && <col style={{ width: '120px' }} />}
+                                    {canEdit && <col style={{ width: '140px' }} />}
                                 </colgroup>
                                 <thead>
                                     <tr>
@@ -863,19 +921,20 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                         )}
                                                     </td>
                                                     {canEdit && (
-                                                        <td className="text-center pe-3 text-nowrap">
-                                                            <div className="d-inline-flex align-items-center justify-content-center gap-1.5">
+                                                        <td className="text-center pe-2 text-nowrap">
+                                                            <div className="d-inline-flex align-items-center justify-content-center gap-1">
                                                                 <button
                                                                     type="button"
-                                                                    className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
-                                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
+                                                                    className="btn btn-primary btn-sm px-2 py-0.5 fw-bold"
+                                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.75rem' }}
                                                                     onClick={() => handleOpenModal(s)}
                                                                 >
                                                                     Edit
                                                                 </button>
                                                                 <button
                                                                     type="button"
-                                                                    className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
+                                                                    className="btn btn-danger btn-sm px-2 py-0.5 fw-bold"
+                                                                    style={{ fontSize: '0.75rem' }}
                                                                     onClick={() => handleDelete(s.id)}
                                                                 >
                                                                     Hapus
@@ -939,43 +998,157 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                     )}
                     {fittingCategory !== 'Pipe' && (
                         <div className="pcm-card mb-4">
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle pcm-table mb-0">
+                            {/* Toolbar Fitting: Search kiri, Tambah kanan */}
+                            <div className="d-flex align-items-center gap-3 p-3 border-bottom bg-light">
+                                <div className="flex-grow-1">
+                                    <input
+                                        type="text"
+                                        className="form-control form-control-sm pcm-filter-input w-100"
+                                        placeholder="Cari item_code, fitting_type, material_cs, schedule..."
+                                        value={fittingSearch}
+                                        onChange={(e) => setFittingSearch(e.target.value)}
+                                    />
+                                </div>
+                                <span className="pcm-cell-sub text-nowrap small">
+                                    {filteredFittings.length} fitting · page {fittingPage}/{Math.ceil(filteredFittings.length / PAGE_SIZE) || 1}
+                                </span>
+                            </div>
+                            <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
+                                <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1060px', width: '100%' }}>
+                                    <colgroup>
+                                        <col style={{ width: '120px' }} />
+                                        <col style={{ width: '135px' }} />
+                                        <col style={{ width: '110px' }} />
+                                        <col style={{ width: '130px' }} />
+                                        <col style={{ width: '95px' }} />
+                                        <col style={{ width: '135px' }} />
+                                        <col style={{ width: '130px' }} />
+                                        <col style={{ width: '85px' }} />
+                                        {canEdit && <col style={{ width: '120px' }} />}
+                                    </colgroup>
                                     <thead>
                                         <tr>
-                                            <th className="text-center">Ukuran Nominal</th>
-                                            <th className="text-center">Tipe / Komponen</th>
-                                            <th className="text-center">Spesifikasi Material</th>
-                                            <th className="text-center">Schedule / Wall Thickness</th>
-                                            <th className="text-center">Pressure Class</th>
-                                            <th className="text-center">Dimensi / End-to-End</th>
-                                            <th className="text-center">Berat (kg/pcs)</th>
+                                            <th className="text-center"><span className="pcm-th-title">Item Code</span></th>
+                                            <th className="text-center"><span className="pcm-th-title">Kategori / Tipe</span></th>
+                                            <th className="text-center"><span className="pcm-th-title">Standar ASME</span></th>
+                                            <th className="text-center"><span className="pcm-th-title">Koneksi</span></th>
+                                            <th className="text-center">
+                                                <span className="pcm-th-title">Ukuran Nominal</span>
+                                                <span className="pcm-th-unit">NPS</span>
+                                            </th>
+                                            <th className="text-center">
+                                                <span className="pcm-th-title text-wrap" style={{ lineHeight: '1.2' }}>Schedule /<br />Pressure Class</span>
+                                            </th>
+                                            <th className="text-center"><span className="pcm-th-title">Material CS</span></th>
+                                            <th className="text-center"><span className="pcm-th-title">Berat (kg)</span></th>
+                                            {canEdit && (
+                                                <th className="text-center pe-3"><span className="pcm-th-title">Aksi</span></th>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {fittingStandards.filter((row) => {
-                                            const type = (row.fitting_type || '').toLowerCase();
-                                            if (fittingCategory === 'Elbow Long Radius') return type.includes('long radius') || type.includes('return bend');
-                                            if (fittingCategory === 'Elbow Short Radius') return type.includes('short radius');
-                                            if (fittingCategory === 'Tee') return type.includes('equal tee') || type === 'tee';
-                                            if (fittingCategory === 'Tee Reducer') return type.includes('reducing tee');
-                                            if (fittingCategory === 'Reducer Concentric') return type.includes('concentric reducer') || type === 'reducer';
-                                            if (fittingCategory === 'Reducer Eccentric') return type.includes('eccentric reducer');
-                                            return type.includes(fittingCategory.toLowerCase());
-                                        }).slice(0, 100).map((row) => (
-                                            <tr key={row.id}>
-                                                <td className="text-center">{row.nps_main || '—'}{row.nps_secondary ? ` × ${row.nps_secondary}` : ''}</td>
-                                                <td>{row.fitting_type}</td>
-                                                <td>{row.material_cs || '—'}</td>
-                                                <td className="text-center">{row.schedule_class || '—'}</td>
-                                                <td className="text-center">{row.schedule_class || '—'}</td>
-                                                <td className="text-center">{row.dimension_primary_mm ? `${row.dimension_primary_mm} mm` : '—'}</td>
-                                                <td className="text-center">{row.weight_cs_kg || '—'}</td>
+                                        {filteredFittings.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
+                                                    {fittingSearch ? 'Tidak ada fitting yang cocok dengan pencarian.' : 'Belum ada fitting yang terdaftar.'}
+                                                </td>
                                             </tr>
-                                        ))}
+                                        ) : (
+                                            paginatedFittings.map((row) => {
+                                                const pressureClassDisplay = row.schedule_class && (row.item_code || '').startsWith('FG-')
+                                                    ? row.schedule_class
+                                                    : null;
+                                                return (
+                                                    <tr key={row.id}>
+                                                        <td className="ps-3 text-start fw-bold pcm-code" style={{ color: '#0f172a', verticalAlign: 'middle', padding: '0.45rem 0.65rem' }}>
+                                                            <div className="pcm-table-cell-2line text-start" style={{ fontSize: '0.8125rem' }} title={row.item_code}>
+                                                                {row.item_code}
+                                                            </div>
+                                                        </td>
+                                                        <td className="text-center">
+                                                            <span
+                                                                className="pcm-chip"
+                                                                style={{
+                                                                    ...getCategoryBadgeStyle(row.category || 'Fitting'),
+                                                                    fontSize: '0.72rem',
+                                                                    padding: '0.2rem 0.5rem',
+                                                                    display: 'inline-block',
+                                                                    maxWidth: '140px',
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                    whiteSpace: 'nowrap',
+                                                                }}
+                                                                title={row.category}
+                                                            >
+                                                                {row.category}
+                                                            </span>
+                                                        </td>
+                                                        <td className="text-center pcm-code font-monospace" style={{ fontSize: '0.8125rem' }}>
+                                                            {row.asme_standard || '—'}
+                                                        </td>
+                                                        <td className="text-center pcm-cell-sub" style={{ fontSize: '0.8125rem' }}>
+                                                            {row.connection || '—'}
+                                                        </td>
+                                                        <td className="text-center pcm-code" style={{ fontSize: '0.875rem' }}>
+                                                            {row.nps_main || '—'}
+                                                            {row.nps_secondary ? ` × ${row.nps_secondary}` : ''}
+                                                        </td>
+                                                        <td className="text-center" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                                            {renderDynamicSchedule(row.schedule_class)}
+                                                        </td>
+                                                        <td className="text-center pcm-cell-sub" style={{ fontSize: '0.8125rem' }}>
+                                                            {row.material_cs || '—'}
+                                                        </td>
+                                                        <td className="text-center pcm-code fw-semibold" style={{ fontSize: '0.875rem' }}>
+                                                            {row.weight_cs_kg != null && row.weight_cs_kg !== '' ? row.weight_cs_kg : '—'}
+                                                        </td>
+                                                        {canEdit && (
+                                                            <td className="text-center pe-2 text-nowrap">
+                                                                <div className="d-inline-flex align-items-center justify-content-center gap-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-primary btn-sm px-2 py-0.5 fw-bold"
+                                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.75rem' }}
+                                                                    >
+                                                                        Edit
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-danger btn-sm px-2 py-0.5 fw-bold"
+                                                                        style={{ fontSize: '0.75rem' }}
+                                                                        onClick={() => handleDeleteFitting(row.id)}
+                                                                    >
+                                                                        Hapus
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                        {/* Empty rows spacer */}
+                                        {!loading && paginatedFittings.length > 0 && paginatedFittings.length < PAGE_SIZE && (
+                                            Array.from({ length: PAGE_SIZE - paginatedFittings.length }).map((_, idx) => (
+                                                <tr key={`empty-fit-${idx}`} style={{ height: '39px' }} aria-hidden="true">
+                                                    <td colSpan={canEdit ? 9 : 8} style={{ borderBottom: '1px solid #f1f5f9', background: 'transparent' }}>&nbsp;</td>
+                                                </tr>
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Pagination Bar Fitting */}
+                            {filteredFittings.length > 0 && (
+                                <ModernPagination
+                                    currentPage={fittingPage}
+                                    totalPages={Math.ceil(filteredFittings.length / PAGE_SIZE)}
+                                    totalItems={filteredFittings.length}
+                                    itemName="fitting"
+                                    onPageChange={(p) => setFittingPage(p)}
+                                />
+                            )}
                         </div>
                     )}
                     {fittingCategory === 'Pipe' && (

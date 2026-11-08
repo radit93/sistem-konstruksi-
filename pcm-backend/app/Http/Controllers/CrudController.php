@@ -641,6 +641,7 @@ class CrudController extends Controller
 
         if ($res === 'bill-of-materials') {
             $data = PipeSchedule::enrichBom($data);
+            $data = FittingStandard::enrichBom($data);
         }
 
         $obj = $model::create($data);
@@ -781,6 +782,7 @@ class CrudController extends Controller
 
         if ($res === 'bill-of-materials') {
             $data = PipeSchedule::enrichBom($data);
+            $data = FittingStandard::enrichBom($data);
         }
 
         $obj->update($data);
@@ -981,6 +983,33 @@ class CrudController extends Controller
                 ->groupBy('description', 'spec')->havingRaw('bal < 1')->get(),
             'test_ready' => (clone $testPackages)->selectRaw('status, COUNT(*) c')->groupBy('status')->pluck('c', 'status'),
             'hse_open' => (clone $hse)->where('status', 'open')->count(),
+        ]);
+    }
+
+    public function lookupFitting(Request $request)
+    {
+        $type = $request->query('component_type') ?? $request->query('fitting_type');
+        $size = $request->query('size');
+        $sch = $request->query('rating_sch') ?? $request->query('schedule');
+        $secSize = $request->query('secondary_size');
+        $spec = $request->query('material_spec');
+
+        $fitting = FittingStandard::lookup($type, $size, $sch, $secSize);
+
+        if (! $fitting) {
+            return response()->json(['found' => false, 'data' => null]);
+        }
+
+        $isSs = FittingStandard::isStainless($spec, $request->query('description'));
+        $unitWeight = $isSs ? ($fitting->weight_ss_kg ?: $fitting->weight_cs_kg) : ($fitting->weight_cs_kg ?: $fitting->weight_ss_kg);
+
+        return response()->json([
+            'found' => true,
+            'data' => $fitting,
+            'od_mm' => (float) $fitting->od_main_mm,
+            'wall_mm' => (float) $fitting->wall_mm,
+            'unit_weight_kg' => (float) $unitWeight,
+            'is_stainless' => $isSs,
         ]);
     }
 }

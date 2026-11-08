@@ -19,6 +19,7 @@ use App\Models\MaterialStandard;
 use App\Models\MaterialStockMovement;
 use App\Models\MaterialStoring;
 use App\Models\PipeSchedule;
+use App\Models\FittingStandard;
 use App\Models\PipingClassTemplate;
 use App\Models\Project;
 use App\Models\ProjectMilestone;
@@ -1084,6 +1085,91 @@ class PcmContractTest extends TestCase
                 $schedule->delete();
             }
         }
+    }
+
+    public function test_auto_bom_fitting_rows_use_fitting_standard_master(): void
+    {
+        $eng = $this->token('engineer');
+
+        $drawing = Drawing::create([
+            'drawing_no' => 'TEST-ISO-FIT-01',
+            'line_no' => '15-MPP-AB',
+            'area' => 'MPP',
+            'rev' => '0',
+            'status' => 'IFC',
+            'size_range' => '4"-8"',
+            'total_dia_inch' => 10.00,
+            'total_joints' => 5,
+        ]);
+
+        try {
+            $this->postJson("/api/drawings/{$drawing->id}/generate-bom", [], [
+                'Authorization' => "Bearer {$eng}",
+            ])->assertOk();
+
+            $elbow = BillOfMaterial::query()
+                ->where('drawing_id', $drawing->id)
+                ->where('component_type', 'Elbow 90 LR')
+                ->first();
+
+            $this->assertNotNull($elbow);
+            $this->assertEquals(114.30, (float) $elbow->od_mm);
+            $this->assertEquals(6.02, (float) $elbow->wall_mm);
+            // Default qty = 5 * 1.0 ratio = 5 buah * 3.84 kg (CS) = 19.2 kg
+            $this->assertGreaterThan(0, (float) $elbow->weight_kg);
+
+            // Uji BOM Stainless Steel fitting: harus menggunakan weight_ss_kg
+            $ssElbowRes = $this->postJson('/api/bill-of-materials', [
+                'drawing_id' => $drawing->id,
+                'component_type' => 'Elbow 90 LR',
+                'size' => '4"',
+                'rating_sch' => 'Sch 40',
+                'material_spec' => 'ASTM A403 WP316L',
+                'qty' => 2,
+                'unit' => 'buah',
+            ], [
+                'Authorization' => "Bearer {$eng}",
+            ])->assertStatus(201);
+
+            $ssData = $ssElbowRes->json();
+            $this->assertEquals(114.30, (float) $ssData['od_mm']);
+            $this->assertEquals(6.02, (float) $ssData['wall_mm']);
+            // 2 * 3.898 kg (SS) = 7.80 kg
+            $this->assertEquals(7.80, (float) $ssData['weight_kg']);
+        } finally {
+            BillOfMaterial::where('drawing_id', $drawing->id)->delete();
+            $drawing->delete();
+        }
+    }
+
+    public function test_fitting_standards_lookup_endpoint(): void
+    {
+        $eng = $this->token('engineer');
+
+        // 1. Lookup Elbow LR
+        $res = $this->getJson('/api/fitting-standards/lookup?component_type=Elbow 90 LR&size=4"&rating_sch=Sch 40&material_spec=ASTM A234 WPB', [
+            'Authorization' => "Bearer {$eng}",
+        ])->assertOk();
+
+        $res->assertJson([
+            'found' => true,
+            'od_mm' => 114.3,
+            'wall_mm' => 6.02,
+            'unit_weight_kg' => 3.84,
+            'is_stainless' => false,
+        ]);
+
+        // 2. Lookup Reducer Con
+        $redRes = $this->getJson('/api/fitting-standards/lookup?component_type=Concentric Reducer&size=6"x3"&rating_sch=Sch 40&material_spec=ASTM A403 WP304', [
+            'Authorization' => "Bearer {$eng}",
+        ])->assertOk();
+
+        $redRes->assertJson([
+            'found' => true,
+            'od_mm' => 168.3,
+            'is_stainless' => true,
+        ]);
+        $this->assertGreaterThan(0, $redRes->json('unit_weight_kg'));
     }
 
     public function test_piping_class_template_crud_uses_engineering_permission(): void

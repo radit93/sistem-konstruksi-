@@ -24,6 +24,9 @@ class BillOfMaterial extends Model
         'od_mm',
         'wall_mm',
         'weight_kg',
+        'unit',
+        'unit_price',
+        'total_price',
         'tag_number',
         'department_id',
         'source',
@@ -35,6 +38,8 @@ class BillOfMaterial extends Model
             'od_mm' => 'decimal:2',
             'wall_mm' => 'decimal:2',
             'weight_kg' => 'decimal:2',
+            'unit_price' => 'decimal:2',
+            'total_price' => 'decimal:2',
         ];
     }
 
@@ -47,6 +52,12 @@ class BillOfMaterial extends Model
             }
             if (empty($bom->description)) {
                 $bom->description = trim(($bom->component_type ?? 'Component').' '.($bom->size ?? '').' '.($bom->rating_sch ?? ''));
+            }
+        });
+
+        static::saving(function (BillOfMaterial $bom) {
+            if ($bom->unit_price > 0 && empty($bom->total_price)) {
+                $bom->total_price = round(((float) $bom->qty) * ((float) $bom->unit_price), 2);
             }
         });
     }

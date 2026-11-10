@@ -28,4 +28,20 @@ class PipeStandard extends Model
         'weight_kg_stick' => 'float',
         'is_interim' => 'boolean',
     ];
+
+    protected $appends = [
+        'welding_cost',
+    ];
+
+    /**
+     * Estimasi biaya pengelasan dari elektroda per joint (ketebalan x diameter x 1.2).
+     */
+    public function getWeldingCostAttribute(): ?float
+    {
+        if ($this->wall_thickness_mm && $this->outer_diameter_mm) {
+            return round($this->wall_thickness_mm * $this->outer_diameter_mm * 1.2, 2);
+        }
+
+        return null;
+    }
 }

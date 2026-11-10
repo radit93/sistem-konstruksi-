@@ -123,6 +123,16 @@ class AutoBomService
                 };
                 $qty = round(max($qty, 0.01), 2);
 
+                $unitPrice = match (true) {
+                    stripos($template->component_type, 'pipe') !== false => 320000,
+                    stripos($template->component_type, 'elbow') !== false => 185000,
+                    stripos($template->component_type, 'flange') !== false => 295000,
+                    stripos($template->component_type, 'gasket') !== false => 75000,
+                    stripos($template->component_type, 'bolt') !== false => 45000,
+                    default => 100000,
+                };
+                $totalPrice = round($qty * $unitPrice, 2);
+
                 $row = [
                     'project_id' => $drawing->project_id,
                     'drawing_id' => $drawing->id,
@@ -137,6 +147,8 @@ class AutoBomService
                     'material_spec' => $template->material_spec,
                     'qty' => $qty,
                     'unit' => $template->unit,
+                    'unit_price' => $unitPrice,
+                    'total_price' => $totalPrice,
                     'tag_number' => $this->tagNumber($template->component_type, $itemNo),
                     'department_id' => $drawing->department_id,
                     'source' => 'GENERATED',

@@ -241,14 +241,14 @@ class EngineeringSeeder extends Seeder
 
         if (BillOfMaterial::count() === 0) {
             $bomItems = [
-                ['spool_no' => 'SP-01', 'item_no' => '1', 'component_type' => 'Pipe', 'description' => 'Pipe Seamless BE ASTM A106 Gr. B', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B', 'material_standard_code' => 'CS-PIPE-A106B', 'qty' => 6.20, 'unit' => 'meter', 'tag_number' => 'P-01'],
-                ['spool_no' => 'SP-01', 'item_no' => '2', 'component_type' => 'Elbow 90 LR', 'description' => 'Elbow 90 Deg Long Radius BW ASTM A234 WPB', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A234 WPB', 'material_standard_code' => 'CS-FIT-A234WPB', 'qty' => 2, 'unit' => 'buah', 'tag_number' => 'EL-01'],
-                ['spool_no' => 'SP-01', 'item_no' => '3', 'component_type' => 'Flange WN', 'description' => 'Flange Weld Neck RF Class 150# ASTM A105', 'size' => '4"', 'rating_sch' => '150# Sch 40', 'material_spec' => 'ASTM A105', 'material_standard_code' => 'CS-FLG-A105', 'qty' => 1, 'unit' => 'buah', 'tag_number' => 'FL-01'],
-                ['spool_no' => 'SP-02', 'item_no' => '4', 'component_type' => 'Pipe', 'description' => 'Pipe Seamless BE ASTM A106 Gr. B', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B', 'material_standard_code' => 'CS-PIPE-A106B', 'qty' => 8.40, 'unit' => 'meter', 'tag_number' => 'P-02'],
-                ['spool_no' => 'SP-02', 'item_no' => '5', 'component_type' => 'Tee Straight', 'description' => 'Tee Straight Equal BW ASTM A234 WPB', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A234 WPB', 'material_standard_code' => 'CS-FIT-A234WPB', 'qty' => 1, 'unit' => 'buah', 'tag_number' => 'T-01'],
-                ['spool_no' => 'SP-03', 'item_no' => '6', 'component_type' => 'Gate Valve', 'description' => 'Gate Valve 150# Flanged RF Cast Steel WCB Trim 8', 'size' => '4"', 'rating_sch' => '150#', 'material_spec' => 'ASTM A216 WCB', 'material_standard_code' => 'VLV-GATE-WCB', 'qty' => 1, 'unit' => 'buah', 'tag_number' => 'V-101'],
-                ['spool_no' => 'SP-03', 'item_no' => '7', 'component_type' => 'Gasket', 'description' => 'Spiral Wound Gasket SS316L/Graphite CS Outer 150#', 'size' => '4"', 'rating_sch' => '150#', 'material_spec' => 'SS316L / Graphite', 'material_standard_code' => 'GSK-SW-SS316', 'qty' => 2, 'unit' => 'buah', 'tag_number' => 'G-01'],
-                ['spool_no' => 'SP-03', 'item_no' => '8', 'component_type' => 'Stud Bolt', 'description' => 'Stud Bolt with 2 Heavy Hex Nuts 5/8" x 90mm', 'size' => '5/8"', 'rating_sch' => 'L=90mm', 'material_spec' => 'ASTM A193 B7 / A194 2H', 'material_standard_code' => 'FST-A193-B7', 'qty' => 16, 'unit' => 'set', 'tag_number' => 'B-01'],
+                ['spool_no' => 'SP-01', 'item_no' => '1', 'component_type' => 'Pipe', 'description' => 'Pipe Seamless BE ASTM A106 Gr. B', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B', 'material_standard_code' => 'CS-PIPE-A106B', 'qty' => 6.20, 'unit' => 'meter', 'unit_price' => 320000, 'total_price' => 1984000, 'tag_number' => 'P-01'],
+                ['spool_no' => 'SP-01', 'item_no' => '2', 'component_type' => 'Elbow 90 LR', 'description' => 'Elbow 90 Deg Long Radius BW ASTM A234 WPB', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A234 WPB', 'material_standard_code' => 'CS-FIT-A234WPB', 'qty' => 2, 'unit' => 'buah', 'unit_price' => 185000, 'total_price' => 370000, 'tag_number' => 'EL-01'],
+                ['spool_no' => 'SP-01', 'item_no' => '3', 'component_type' => 'Flange WN', 'description' => 'Flange Weld Neck RF Class 150# ASTM A105', 'size' => '4"', 'rating_sch' => '150# Sch 40', 'material_spec' => 'ASTM A105', 'material_standard_code' => 'CS-FLG-A105', 'qty' => 1, 'unit' => 'buah', 'unit_price' => 295000, 'total_price' => 295000, 'tag_number' => 'FL-01'],
+                ['spool_no' => 'SP-02', 'item_no' => '4', 'component_type' => 'Pipe', 'description' => 'Pipe Seamless BE ASTM A106 Gr. B', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B', 'material_standard_code' => 'CS-PIPE-A106B', 'qty' => 8.40, 'unit' => 'meter', 'unit_price' => 320000, 'total_price' => 2688000, 'tag_number' => 'P-02'],
+                ['spool_no' => 'SP-02', 'item_no' => '5', 'component_type' => 'Tee Straight', 'description' => 'Tee Straight Equal BW ASTM A234 WPB', 'size' => '4"', 'rating_sch' => 'Sch 40', 'material_spec' => 'ASTM A234 WPB', 'material_standard_code' => 'CS-FIT-A234WPB', 'qty' => 1, 'unit' => 'buah', 'unit_price' => 240000, 'total_price' => 240000, 'tag_number' => 'T-01'],
+                ['spool_no' => 'SP-03', 'item_no' => '6', 'component_type' => 'Gate Valve', 'description' => 'Gate Valve 150# Flanged RF Cast Steel WCB Trim 8', 'size' => '4"', 'rating_sch' => '150#', 'material_spec' => 'ASTM A216 WCB', 'material_standard_code' => 'VLV-GATE-WCB', 'qty' => 1, 'unit' => 'buah', 'unit_price' => 1850000, 'total_price' => 1850000, 'tag_number' => 'V-101'],
+                ['spool_no' => 'SP-03', 'item_no' => '7', 'component_type' => 'Gasket', 'description' => 'Spiral Wound Gasket SS316L/Graphite CS Outer 150#', 'size' => '4"', 'rating_sch' => '150#', 'material_spec' => 'SS316L / Graphite', 'material_standard_code' => 'GSK-SW-SS316', 'qty' => 2, 'unit' => 'buah', 'unit_price' => 75000, 'total_price' => 150000, 'tag_number' => 'G-01'],
+                ['spool_no' => 'SP-03', 'item_no' => '8', 'component_type' => 'Stud Bolt', 'description' => 'Stud Bolt with 2 Heavy Hex Nuts 5/8" x 90mm', 'size' => '5/8"', 'rating_sch' => 'L=90mm', 'material_spec' => 'ASTM A193 B7 / A194 2H', 'material_standard_code' => 'FST-A193-B7', 'qty' => 16, 'unit' => 'set', 'unit_price' => 45000, 'total_price' => 720000, 'tag_number' => 'B-01'],
             ];
 
             foreach ($bomItems as $item) {
@@ -264,56 +264,9 @@ class EngineeringSeeder extends Seeder
             }
         }
 
-        // 5. Engineering BOQ
-        if (EngineeringBoq::count() === 0) {
-            $boqItems = [
-                [
-                    'project_id' => $projId,
-                    'drawing_id' => $drawingId,
-                    'line_no' => '15-MPP-AB',
-                    'item_code' => 'BOQ-ENG-FAB-01',
-                    'work_scope' => 'Workshop Spool Fabrication Carbon Steel',
-                    'material_group' => 'Carbon Steel',
-                    'dia_inch_total' => 96.00,
-                    'joints_count' => 24,
-                    'spools_count' => 4,
-                    'weight_kg' => 850.00,
-                    'status' => 'APPROVED',
-                    'department_id' => $deptId,
-                ],
-                [
-                    'project_id' => $projId,
-                    'drawing_id' => $drawingId,
-                    'line_no' => '15-MPP-AB',
-                    'item_code' => 'BOQ-ENG-ERE-01',
-                    'work_scope' => 'Field Installation & Erection Carbon Steel',
-                    'material_group' => 'Carbon Steel',
-                    'dia_inch_total' => 16.00,
-                    'joints_count' => 4,
-                    'spools_count' => 4,
-                    'weight_kg' => 850.00,
-                    'status' => 'APPROVED',
-                    'department_id' => $deptId,
-                ],
-                [
-                    'project_id' => $projId,
-                    'drawing_id' => $drawingId,
-                    'line_no' => '15-MPP-AB',
-                    'item_code' => 'BOQ-ENG-SPT-01',
-                    'work_scope' => 'Pipe Support Fabrication & Installation',
-                    'material_group' => 'Structural Steel',
-                    'dia_inch_total' => 0.00,
-                    'joints_count' => 8,
-                    'spools_count' => 0,
-                    'weight_kg' => 240.00,
-                    'status' => 'ESTIMATED',
-                    'department_id' => $deptId,
-                ],
-            ];
-
-            foreach ($boqItems as $b) {
-                EngineeringBoq::create($b);
-            }
+        // 5. Engineering BOQ (Disinkronkan otomatis dari Welding Map aktual & data master)
+        if ($projId) {
+            app(\App\Services\BoqSyncService::class)->sync($projId, $drawingId, $deptId);
         }
 
         // 6. Document Control

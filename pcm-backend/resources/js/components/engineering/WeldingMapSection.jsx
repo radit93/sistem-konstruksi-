@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
+import { formatRupiah } from '../../currency';
 import { SearchSelect, PcmSelect } from '../SearchSelect';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
 import {
@@ -288,6 +289,24 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         return (perMeter * length) / 1000;
     }, [readMaterial]);
 
+    /**
+     * Estimasi biaya pengelasan dari elektroda per joint (ketebalan x diameter x 1.2).
+     */
+    const jointWeldingCost = useCallback((map) => {
+        const materialA = readMaterial(map, 'a');
+        let thk = parseFloat(materialA.thickness) || 0;
+        let od = parseFloat(materialA.od) || 0;
+        if (!thk || !od) {
+            const materialB = readMaterial(map, 'b');
+            if (!thk) thk = parseFloat(materialB.thickness) || 0;
+            if (!od) od = parseFloat(materialB.od) || 0;
+        }
+        if (thk > 0 && od > 0) {
+            return thk * od * 1.2;
+        }
+        return null;
+    }, [readMaterial]);
+
     /* ------------------------------------------------------------ derived */
 
     const scopedMaps = useMemo(
@@ -307,8 +326,12 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         const fieldCount = scopedMaps.filter((m) => m.location === 'Field').length;
         const spools = new Set(scopedMaps.map((m) => m.spool_no).filter(Boolean)).size;
         const isoCount = new Set(scopedMaps.map((m) => m.iso_drawing_no).filter(Boolean)).size;
-        return { total, totalDia, shopCount, fieldCount, spools, isoCount };
-    }, [scopedMaps]);
+        const totalWeldingCost = scopedMaps.reduce((acc, m) => {
+            const cost = jointWeldingCost(m);
+            return cost ? acc + cost : acc;
+        }, 0);
+        return { total, totalDia, shopCount, fieldCount, spools, isoCount, totalWeldingCost };
+    }, [scopedMaps, jointWeldingCost]);
 
     const filteredMaps = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -333,6 +356,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         filteredMaps.forEach((m) => {
             const isoKey = m.iso_drawing_no || 'Tanpa ISO';
             const spoolKey = m.spool_no || 'Tanpa Spool';
+            const cost = jointWeldingCost(m) || 0;
 
             if (!isoMap.has(isoKey)) {
                 isoMap.set(isoKey, {
@@ -341,20 +365,23 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                     spools: new Map(),
                     count: 0,
                     di: 0,
+                    weldingCost: 0,
                 });
             }
             const iso = isoMap.get(isoKey);
             iso.count += 1;
             iso.di += parseFloat(m.dia_inch) || 0;
+            iso.weldingCost += cost;
             if (!iso.line && m.line_no) iso.line = m.line_no;
 
             if (!iso.spools.has(spoolKey)) {
-                iso.spools.set(spoolKey, { spool: spoolKey, joints: [], count: 0, di: 0 });
+                iso.spools.set(spoolKey, { spool: spoolKey, joints: [], count: 0, di: 0, weldingCost: 0 });
             }
             const spool = iso.spools.get(spoolKey);
             spool.joints.push(m);
             spool.count += 1;
             spool.di += parseFloat(m.dia_inch) || 0;
+            spool.weldingCost += cost;
         });
 
         return Array.from(isoMap.values())
@@ -368,7 +395,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                         joints: spool.joints.sort((a, b) => naturalCompare(a.joint_no, b.joint_no)),
                     })),
             }));
-    }, [filteredMaps]);
+    }, [filteredMaps, jointWeldingCost]);
 
     const filteredSpools = useMemo(
         () => new Set(filteredMaps.map((m) => m.spool_no).filter(Boolean)).size,
@@ -381,6 +408,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
             return weight ? acc + weight : acc;
         }, 0),
         [filteredMaps, jointWeight]
+    );
+
+    const filteredWeldingCost = useMemo(
+        () => filteredMaps.reduce((acc, m) => {
+            const cost = jointWeldingCost(m);
+            return cost ? acc + cost : acc;
+        }, 0),
+        [filteredMaps, jointWeldingCost]
     );
 
     const allGroupKeys = useMemo(
@@ -663,7 +698,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
 
     /* -------------------------------------------------------------- render */
 
-    const colSpan = canEdit ? 7 : 6;
+    const colSpan = canEdit ? 8 : 7;
     const selectedDrawing = drawings.find(
         (d) => String(d.id) === String(form.drawing_id) || d.drawing_no === form.iso_drawing_no
     );
@@ -793,7 +828,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                         </div>
                     </div>
 
-                    {/* 4 Box Metrik Kompak Simetris */}
+                    {/* 5 Box Metrik Kompak Simetris */}
                     <div className="d-flex align-items-center gap-2">
                         <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
                             <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Total Joint</span>
@@ -810,6 +845,10 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                         <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '95px' }}>
                             <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Shop / Field</span>
                             <strong className="h5 fw-bolder text-dark mb-0">{stats.shopCount} / {stats.fieldCount}</strong>
+                        </div>
+                        <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '115px' }}>
+                            <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Biaya Elektroda</span>
+                            <strong className="h5 fw-bolder text-success mb-0 pcm-code">{formatRupiah(stats.totalWeldingCost)}</strong>
                         </div>
                     </div>
                 </div>
@@ -887,6 +926,9 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         </th>
                                         <th className="text-center" style={{ width: '86px' }}>
                                             <span className="pcm-th-title">DI</span>
+                                        </th>
+                                        <th className="text-center" style={{ width: '135px' }}>
+                                            <span className="pcm-th-title">Biaya Elektroda</span>
                                         </th>
                                         <th className="text-center" style={{ width: '120px' }}>
                                             <span className="pcm-th-title">Status</span>
@@ -976,6 +1018,11 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                 <span className="pcm-chip pcm-chip--neutral pcm-code fw-bold text-dark" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}>
                                                                     {iso.di.toFixed(1)} DI
                                                                 </span>
+                                                                {iso.weldingCost > 0 && (
+                                                                    <span className="pcm-chip pcm-chip--neutral pcm-code fw-bold text-success" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #bbf7d0' }}>
+                                                                        {formatRupiah(iso.weldingCost)}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </button>
                                                     </td>
@@ -1006,6 +1053,11 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                             <span className="pcm-chip pcm-chip--neutral pcm-code fw-bold text-dark" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}>
                                                                                 {spool.di.toFixed(1)} DI
                                                                             </span>
+                                                                            {spool.weldingCost > 0 && (
+                                                                                <span className="pcm-chip pcm-chip--neutral pcm-code fw-bold text-success" style={{ fontSize: '0.6875rem', padding: '0.1rem 0.45rem', backgroundColor: '#ffffff', border: '1px solid #bbf7d0' }}>
+                                                                                    {formatRupiah(spool.weldingCost)}
+                                                                                </span>
+                                                                            )}
                                                                         </div>
                                                                     </button>
                                                                 </td>
@@ -1052,6 +1104,11 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                             </td>
                                                                             <td className="text-center">
                                                                                 <span className="pcm-code wm-di">{fmt(m.dia_inch, 1)}</span>
+                                                                            </td>
+                                                                            <td className="text-center">
+                                                                                <span className="pcm-code fw-semibold text-success">
+                                                                                    {jointWeldingCost(m) != null ? formatRupiah(jointWeldingCost(m)) : '—'}
+                                                                                </span>
                                                                             </td>
                                                                             <td className="text-center">
                                                                                 <span className={`pcm-chip ${statusChip(m.status)}`}>{m.status || 'PLANNED'}</span>
@@ -1126,6 +1183,12 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                                                 </strong>
                                                                                             </div>
                                                                                             <div className="wm-calc__row">
+                                                                                                <span>Biaya Elektroda</span>
+                                                                                                <strong className="wm-calc__value text-success">
+                                                                                                    {jointWeldingCost(m) != null ? formatRupiah(jointWeldingCost(m)) : '—'}
+                                                                                                </strong>
+                                                                                            </div>
+                                                                                            <div className="wm-calc__row">
                                                                                                 <span>Sheet</span>
                                                                                                 <span>{m.sheet || '—'}</span>
                                                                                             </div>
@@ -1162,6 +1225,9 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                             </span>
                             <span>
                                 Total berat Material A: <strong>{filteredWeight > 0 ? `${fmt(filteredWeight, 2)} kg` : '—'}</strong>
+                            </span>
+                            <span>
+                                Total Biaya Elektroda: <strong className="text-success">{filteredWeldingCost > 0 ? formatRupiah(filteredWeldingCost) : '—'}</strong>
                             </span>
                         </div>
                     </>
@@ -1468,7 +1534,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         </div>
                                         <div className="wm-form-meta">
                                             {modalStandard
-                                                ? `Master: ${fmt(modalStandard.wall_thickness_mm)} mm · ${fmt(modalStandard.weight_kg_m)} kg/m${stickWeightA != null ? ` · ${fmt(stickWeightA)} kg/batang (${fmt(stickLengthA, 0)} m)` : ''}${modalStandard.dn ? ` · ${modalStandard.dn}` : ''}`
+                                                ? `Master: ${fmt(modalStandard.wall_thickness_mm)} mm · ${fmt(modalStandard.weight_kg_m)} kg/m${stickWeightA != null ? ` · ${fmt(stickWeightA)} kg/batang (${fmt(stickLengthA, 0)} m)` : ''}${modalStandard.dn ? ` · ${modalStandard.dn}` : ''}${modalStandard.wall_thickness_mm && modalStandard.outer_diameter_mm ? ` · Biaya Elektroda: ${formatRupiah(modalStandard.wall_thickness_mm * modalStandard.outer_diameter_mm * 1.2)}` : ''}`
                                                 : 'Kombinasi size & schedule ini belum ada di master pipa.'}
                                         </div>
                                     </div>
@@ -1530,7 +1596,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         </div>
                                         <div className="wm-form-meta">
                                             {modalStandardB
-                                                ? `Master: ${fmt(modalStandardB.wall_thickness_mm)} mm · ${fmt(modalStandardB.weight_kg_m)} kg/m${stickWeightB != null ? ` · ${fmt(stickWeightB)} kg/batang (${fmt(stickLengthB, 0)} m)` : ''}`
+                                                ? `Master: ${fmt(modalStandardB.wall_thickness_mm)} mm · ${fmt(modalStandardB.weight_kg_m)} kg/m${stickWeightB != null ? ` · ${fmt(stickWeightB)} kg/batang (${fmt(stickLengthB, 0)} m)` : ''}${modalStandardB.wall_thickness_mm && modalStandardB.outer_diameter_mm ? ` · Biaya Elektroda: ${formatRupiah(modalStandardB.wall_thickness_mm * modalStandardB.outer_diameter_mm * 1.2)}` : ''}`
                                                 : 'Kombinasi size & schedule ini belum ada di master pipa.'}
                                         </div>
                                     </div>

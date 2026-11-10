@@ -60,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Priority C: Auto-generate BOM/MTO dari isometrik drawing & piping class.
     Route::post('/drawings/{drawing}/generate-bom', [BomGenerationController::class, 'store']);
+    Route::post('/engineering-boqs/sync-from-welding-map', [\App\Http\Controllers\BoqGenerationController::class, 'sync']);
 
     Route::post('/material-receivings/{id}/request-inspection', [CrudController::class, 'requestMaterialInspection']);
     Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);

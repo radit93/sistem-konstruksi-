@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
+import { formatRupiah } from '../../currency';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
 import { PcmSelect } from '../SearchSelect';
 
@@ -49,6 +50,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
         material_standard_id: '',
         qty: 6.0,
         unit: 'meter',
+        unit_price: 0,
+        total_price: 0,
         tag_number: '',
         drawing_id: '',
         project_id: ''
@@ -169,8 +172,44 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
         const totalValves = scopedBom
             .filter(b => (b.component_type || '').toLowerCase().includes('valve'))
             .reduce((acc, b) => acc + (parseFloat(b.qty) || 0), 0);
-        return { totalItems, totalPipe, totalFittings, totalValves };
+        const totalAmount = scopedBom.reduce((acc, b) => acc + (parseFloat(b.total_price) || 0), 0);
+        return { totalItems, totalPipe, totalFittings, totalValves, totalAmount };
     }, [scopedBom]);
+
+    const exportCsvMto = () => {
+        if (scopedBom.length === 0) {
+            alert('Tidak ada data BOM untuk diekspor.');
+            return;
+        }
+
+        const headers = ['No', 'Spool', 'Tipe', 'Deskripsi Komponen', 'Size', 'Sch/Rating', 'Material Spec', 'Kode Std', 'Qty', 'Unit', 'Berat (kg)', 'Harga Satuan (Rp)', 'Total Biaya (Rp)', 'Tag No'];
+        const rows = scopedBom.map((b) => [
+            b.item_no || '',
+            b.spool_no || '',
+            b.component_type || '',
+            `"${(b.description || '').replace(/"/g, '""')}"`,
+            `"${b.size || ''}"`,
+            b.rating_sch || '',
+            `"${b.material_spec || ''}"`,
+            b.material_standard?.code || '',
+            b.qty || 0,
+            b.unit || '',
+            b.weight_kg != null ? b.weight_kg : '',
+            b.unit_price || 0,
+            b.total_price || 0,
+            b.tag_number || ''
+        ]);
+
+        const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `MTO_BOM_${activeProjectId || 'ALL'}_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const filteredBom = useMemo(() => {
         const q = search.toLowerCase();
@@ -203,6 +242,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                 material_standard_id: item.material_standard_id || '',
                 qty: item.qty || 1,
                 unit: item.unit || 'meter',
+                unit_price: item.unit_price || 0,
+                total_price: item.total_price || 0,
                 tag_number: item.tag_number || '',
                 drawing_id: item.drawing_id || '',
                 project_id: item.project_id || ''
@@ -220,6 +261,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                 material_standard_id: '',
                 qty: 6.0,
                 unit: 'meter',
+                unit_price: 0,
+                total_price: 0,
                 tag_number: '',
                 drawing_id: scopedDrawings[0]?.id || '',
                 project_id: defaultProjectId(activeProjectId, filterProject, projects)
@@ -384,6 +427,20 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                         </button>
                         <button
                             type="button"
+                            className="btn btn-outline-secondary btn-sm fw-bold px-3 py-2 d-inline-flex align-items-center gap-1.5"
+                            style={{ borderRadius: '6px' }}
+                            onClick={exportCsvMto}
+                            title="Export daftar kebutuhan material ke file CSV untuk tim Purchasing"
+                        >
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            Export MTO (CSV)
+                        </button>
+                        <button
+                            type="button"
                             className="btn btn-outline-success btn-sm fw-bold px-3 py-2"
                             style={{ borderRadius: '6px' }}
                             onClick={() => {
@@ -409,34 +466,41 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                 <div role="alert" className="alert alert-danger py-2 small mb-3">{deleteError}</div>
             )}
 
-            {/* Metric Summary Cards */}
+            {/* Metric Summary Cards - 5 Tiles Simetris */}
             <div className="row g-3 mb-4">
-                <div className="col-6 col-md-3">
+                <div className="col-6 col-md-2" style={{ flex: '1 1 20%' }}>
                     <div className="pcm-tile">
                         <span className="pcm-tile__label">Total Part BOM</span>
                         <strong className="pcm-tile__value pcm-tile__value--primary">{stats.totalItems}</strong>
                         <span className="pcm-tile__unit">item terdaftar</span>
                     </div>
                 </div>
-                <div className="col-6 col-md-3">
+                <div className="col-6 col-md-2" style={{ flex: '1 1 20%' }}>
                     <div className="pcm-tile">
                         <span className="pcm-tile__label">Total Panjang Pipa</span>
                         <strong className="pcm-tile__value text-success">{stats.totalPipe.toFixed(1)}</strong>
                         <span className="pcm-tile__unit">meter</span>
                     </div>
                 </div>
-                <div className="col-6 col-md-3">
+                <div className="col-6 col-md-2" style={{ flex: '1 1 20%' }}>
                     <div className="pcm-tile">
                         <span className="pcm-tile__label">Fitting &amp; Flange</span>
                         <strong className="pcm-tile__value">{stats.totalFittings}</strong>
                         <span className="pcm-tile__unit">buah</span>
                     </div>
                 </div>
-                <div className="col-6 col-md-3">
+                <div className="col-6 col-md-2" style={{ flex: '1 1 20%' }}>
                     <div className="pcm-tile">
                         <span className="pcm-tile__label">Valve &amp; Aksesoris</span>
                         <strong className="pcm-tile__value text-dark">{stats.totalValves}</strong>
                         <span className="pcm-tile__unit">unit</span>
+                    </div>
+                </div>
+                <div className="col-12 col-md-3" style={{ flex: '1 1 20%' }}>
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Total Nilai Material</span>
+                        <strong className="pcm-tile__value text-primary">{formatRupiah(stats.totalAmount)}</strong>
+                        <span className="pcm-tile__unit">estimasi MTO</span>
                     </div>
                 </div>
             </div>
@@ -503,6 +567,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                 <th className="py-3">Kode Std</th>
                                 <th className="py-3">Qty</th>
                                 <th className="py-3">Berat</th>
+                                <th className="py-3">Harga Satuan</th>
+                                <th className="py-3">Total Biaya</th>
                                 <th className="py-3">Tag No</th>
                                 {canEdit && <th className="text-end pe-3 py-3">Aksi</th>}
                             </tr>
@@ -510,13 +576,13 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 14 : 13} className="text-center py-4 text-muted">
                                         Memuat data Bill of Material...
                                     </td>
                                 </tr>
                             ) : filteredBom.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 14 : 13} className="text-center py-4 text-muted">
                                         Tidak ada item BOM yang sesuai.
                                     </td>
                                 </tr>
@@ -563,6 +629,12 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             ) : (
                                                 <span className="text-muted small">—</span>
                                             )}
+                                        </td>
+                                        <td className="pcm-code text-muted text-nowrap">
+                                            {b.unit_price ? formatRupiah(b.unit_price) : '—'}
+                                        </td>
+                                        <td className="pcm-code fw-bold text-primary text-nowrap">
+                                            {b.total_price ? formatRupiah(b.total_price) : (b.unit_price ? formatRupiah(parseFloat(b.qty || 1) * parseFloat(b.unit_price)) : '—')}
                                         </td>
                                         <td className="pcm-code small">{b.tag_number || '—'}</td>
                                         {canEdit && (
@@ -1032,6 +1104,46 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                 onChange={(e) => setForm({ ...form, tag_number: e.target.value })}
                                             />
                                         </div>
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label small fw-bold">Harga Satuan Material (Rp)</label>
+                                            <input
+                                                type="number"
+                                                step="1000"
+                                                className="form-control pcm-code"
+                                                placeholder="0"
+                                                value={form.unit_price}
+                                                onChange={(e) => {
+                                                    const p = parseFloat(e.target.value) || 0;
+                                                    setForm((prev) => ({
+                                                        ...prev,
+                                                        unit_price: p,
+                                                        total_price: Math.round((prev.qty || 0) * p)
+                                                    }));
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="col-12 col-md-6">
+                                            <label className="form-label small fw-bold">Total Biaya Material (Rp)</label>
+                                            <input
+                                                type="number"
+                                                step="100"
+                                                className="form-control pcm-code fw-bold text-primary"
+                                                value={form.total_price || Math.round((form.qty || 0) * (form.unit_price || 0))}
+                                                onChange={(e) => setForm({ ...form, total_price: parseFloat(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        {Number(form.unit_price) > 0 && (
+                                            <div className="col-12">
+                                                <div className="p-2.5 rounded d-flex align-items-center justify-content-between" style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                                                    <div className="small text-muted">
+                                                        Kalkulasi: <span className="font-monospace fw-semibold">{form.qty || 0} {form.unit} × {formatRupiah(form.unit_price || 0)}</span>
+                                                    </div>
+                                                    <span className="fw-bolder pcm-code text-success" style={{ fontSize: '0.95rem' }}>
+                                                        = {formatRupiah(form.total_price || ((form.qty || 0) * (form.unit_price || 0)))}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="modal-footer">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
+import { formatRupiah } from '../../currency';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
 import { PcmSelect } from '../SearchSelect';
 
@@ -15,15 +16,19 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
     const [deleteError, setDeleteError] = useState('');
+    const [syncing, setSyncing] = useState(false);
 
     const [form, setForm] = useState({
         item_code: 'BOQ-ENG-FAB-01',
-        work_scope: 'Workshop Spool Fabrication Carbon Steel',
+        work_scope: 'Workshop Spool Fabrication (Carbon Steel)',
         material_group: 'Carbon Steel',
-        dia_inch_total: 96.0,
-        joints_count: 24,
-        spools_count: 4,
-        weight_kg: 850.0,
+        dia_inch_total: 0,
+        rate_per_di: 55000,
+        joints_count: 0,
+        spools_count: 0,
+        weight_kg: 0,
+        welding_cost_total: 0,
+        total_amount: 0,
         status: 'APPROVED',
         line_no: '15-MPP-AB',
         drawing_id: '',
@@ -63,8 +68,31 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
         const totalJoints = scopedBoq.reduce((acc, b) => acc + (parseInt(b.joints_count, 10) || 0), 0);
         const totalWeight = scopedBoq.reduce((acc, b) => acc + (parseFloat(b.weight_kg) || 0), 0);
         const totalSpools = scopedBoq.reduce((acc, b) => acc + (parseInt(b.spools_count, 10) || 0), 0);
-        return { totalDI, totalJoints, totalWeight, totalSpools };
+        const totalWeldingCost = scopedBoq.reduce((acc, b) => acc + (parseFloat(b.welding_cost_total) || 0), 0);
+        const totalAmount = scopedBoq.reduce((acc, b) => acc + (parseFloat(b.total_amount) || 0), 0);
+        return { totalDI, totalJoints, totalWeight, totalSpools, totalWeldingCost, totalAmount };
     }, [scopedBoq]);
+
+    const handleSyncFromWeldingMap = async () => {
+        const targetProjId = defaultProjectId(activeProjectId, filterProject, projects);
+        if (!targetProjId) {
+            alert('Pilih proyek terlebih dahulu untuk melakukan sinkronisasi BOQ.');
+            return;
+        }
+
+        setSyncing(true);
+        try {
+            const res = await api.post('/engineering-boqs/sync-from-welding-map', {
+                project_id: targetProjId,
+            });
+            if (onToast) onToast(res.message || 'BOQ berhasil disinkronkan dari Welding Map.');
+            loadData();
+        } catch (err) {
+            alert(err.message || 'Gagal menyinkronkan BOQ dari data pengelasan.');
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     const filteredBoq = useMemo(() => {
         const q = search.toLowerCase();
@@ -87,9 +115,12 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                 work_scope: item.work_scope || '',
                 material_group: item.material_group || 'Carbon Steel',
                 dia_inch_total: item.dia_inch_total || 0,
+                rate_per_di: item.rate_per_di || 0,
                 joints_count: item.joints_count || 0,
                 spools_count: item.spools_count || 0,
                 weight_kg: item.weight_kg || 0,
+                welding_cost_total: item.welding_cost_total || 0,
+                total_amount: item.total_amount || 0,
                 status: item.status || 'ESTIMATED',
                 line_no: item.line_no || '15-MPP-AB',
                 drawing_id: item.drawing_id || '',
@@ -99,13 +130,16 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
             setEditingItem(null);
             setForm({
                 item_code: `BOQ-ENG-${String(boqList.length + 1).padStart(2, '0')}`,
-                work_scope: 'Shop Spool Fabrication Carbon Steel',
+                work_scope: 'Workshop Spool Fabrication (Carbon Steel)',
                 material_group: 'Carbon Steel',
-                dia_inch_total: 96.0,
-                joints_count: 24,
-                spools_count: 4,
-                weight_kg: 850.0,
-                status: 'ESTIMATED',
+                dia_inch_total: 0,
+                rate_per_di: 55000,
+                joints_count: 0,
+                spools_count: 0,
+                weight_kg: 0,
+                welding_cost_total: 0,
+                total_amount: 0,
+                status: 'APPROVED',
                 line_no: '15-MPP-AB',
                 drawing_id: scopedDrawings[0]?.id || '',
                 project_id: defaultProjectId(activeProjectId, filterProject, projects)
@@ -159,17 +193,33 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                 <div>
                     <h2 className="h4 fw-bold text-dark mb-1">Bill of Quantity (BOQ) Engineering</h2>
                     <p className="pcm-cell-sub mb-0">
-                        Perhitungan kuantitas teknis per lingkup pekerjaan: volume diameter-inch (DI), bobot tonase, serta estimasi sambungan las.
+                        Perhitungan kuantitas teknis per lingkup pekerjaan: volume diameter-inch (DI), bobot tonase, serta estimasi biaya konstruksi &amp; elektroda las.
                     </p>
                 </div>
                 {canEdit && (
-                    <button
-                        type="button"
-                        className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                        onClick={() => handleOpenModal()}
-                    >
-                        + Tambah Item BOQ
-                    </button>
+                    <div className="d-flex align-items-center gap-2">
+                        <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm fw-bold px-3 py-2 d-inline-flex align-items-center gap-1.5"
+                            onClick={handleSyncFromWeldingMap}
+                            disabled={syncing}
+                            title="Hitung ulang otomatis volume DI, joint, bobot, dan biaya las dari titik pengelasan ISO aktif"
+                        >
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="23 4 23 10 17 10" />
+                                <polyline points="1 20 1 14 7 14" />
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                            </svg>
+                            {syncing ? 'Menyinkronkan...' : 'Sinkronkan dari Welding Map'}
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-primary btn-sm fw-bold px-3 py-2"
+                            onClick={() => handleOpenModal()}
+                        >
+                            + Tambah Item BOQ
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -177,34 +227,48 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                 <div role="alert" className="alert alert-danger py-2 small mb-3">{deleteError}</div>
             )}
 
-            {/* Summary Metrics */}
+            {/* Summary Metrics - 6 Tiles Simetris */}
             <div className="row g-3 mb-4">
-                <div className="col-6 col-md-3">
+                <div className="col-6 col-md-2">
                     <div className="pcm-tile">
                         <span className="pcm-tile__label">Total Volume DI</span>
                         <strong className="pcm-tile__value pcm-tile__value--primary">{stats.totalDI.toFixed(1)}</strong>
                         <span className="pcm-tile__unit">Dia-Inch</span>
                     </div>
                 </div>
-                <div className="col-6 col-md-3">
+                <div className="col-6 col-md-2">
                     <div className="pcm-tile">
                         <span className="pcm-tile__label">Total Sambungan</span>
                         <strong className="pcm-tile__value text-success">{stats.totalJoints}</strong>
                         <span className="pcm-tile__unit">joints</span>
                     </div>
                 </div>
-                <div className="col-6 col-md-3">
+                <div className="col-6 col-md-2">
                     <div className="pcm-tile">
                         <span className="pcm-tile__label">Total Spool</span>
                         <strong className="pcm-tile__value">{stats.totalSpools}</strong>
                         <span className="pcm-tile__unit">spools</span>
                     </div>
                 </div>
-                <div className="col-6 col-md-3">
+                <div className="col-6 col-md-2">
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Bobot Material</span>
+                        <span className="pcm-tile__label">Total Bobot</span>
                         <strong className="pcm-tile__value text-dark">{stats.totalWeight.toFixed(0)}</strong>
                         <span className="pcm-tile__unit">kg</span>
+                    </div>
+                </div>
+                <div className="col-6 col-md-2">
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Biaya Elektroda</span>
+                        <strong className="pcm-tile__value text-success">{formatRupiah(stats.totalWeldingCost)}</strong>
+                        <span className="pcm-tile__unit">consumables</span>
+                    </div>
+                </div>
+                <div className="col-6 col-md-2">
+                    <div className="pcm-tile">
+                        <span className="pcm-tile__label">Total Nilai BOQ</span>
+                        <strong className="pcm-tile__value text-primary">{formatRupiah(stats.totalAmount)}</strong>
+                        <span className="pcm-tile__unit">jasa + elektroda</span>
                     </div>
                 </div>
             </div>
@@ -246,10 +310,13 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                 <th className="ps-3">Item Code</th>
                                 <th>Lingkup Pekerjaan</th>
                                 <th>Material Group</th>
-                                <th>Total Dia-Inch</th>
+                                <th>Volume (DI)</th>
+                                <th>Tarif / DI</th>
                                 <th>Joints</th>
                                 <th>Spools</th>
                                 <th>Weight (Kg)</th>
+                                <th>Biaya Elektroda</th>
+                                <th>Total Nilai (Rp)</th>
                                 <th>Status</th>
                                 {canEdit && <th className="text-end pe-3">Aksi</th>}
                             </tr>
@@ -257,14 +324,14 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
+                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 pcm-cell-sub">
                                         Memuat data BOQ Engineering...
                                     </td>
                                 </tr>
                             ) : filteredBoq.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
-                                        Tidak ada item BOQ yang sesuai.
+                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 pcm-cell-sub">
+                                        Tidak ada item BOQ yang sesuai. Klik "Sinkronkan dari Welding Map" untuk menghitung otomatis dari titik pengelasan ISO aktif.
                                     </td>
                                 </tr>
                             ) : (
@@ -274,9 +341,18 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                         <td className="pcm-cell-strong">{b.work_scope}</td>
                                         <td><span className="pcm-chip pcm-chip--neutral">{b.material_group}</span></td>
                                         <td className="fw-bold pcm-code">{parseFloat(b.dia_inch_total).toFixed(1)} DI</td>
+                                        <td className="pcm-code text-muted">
+                                            {b.rate_per_di ? formatRupiah(b.rate_per_di) : '—'}
+                                        </td>
                                         <td>{b.joints_count} joints</td>
                                         <td>{b.spools_count} spools</td>
                                         <td className="pcm-code">{parseFloat(b.weight_kg).toFixed(1)} kg</td>
+                                        <td className="pcm-code text-success fw-semibold">
+                                            {b.welding_cost_total ? formatRupiah(b.welding_cost_total) : '—'}
+                                        </td>
+                                        <td className="pcm-code text-primary fw-bold" style={{ fontSize: '0.9rem' }}>
+                                            {b.total_amount ? formatRupiah(b.total_amount) : '—'}
+                                        </td>
                                         <td>
                                             <span className={`pcm-chip ${b.status === 'APPROVED' ? 'pcm-chip--success' : 'pcm-chip--warning'}`}>
                                                 {b.status}
@@ -387,7 +463,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                                 onChange={(e) => setForm({ ...form, spools_count: parseInt(e.target.value, 10) || 0 })}
                                             />
                                         </div>
-                                        <div className="col-6 col-md-2">
+                                        <div className="col-6 col-md-3">
                                             <label className="form-label small fw-bold">Weight (Kg)</label>
                                             <input
                                                 type="number"
@@ -396,6 +472,62 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                                 value={form.weight_kg}
                                                 onChange={(e) => setForm({ ...form, weight_kg: parseFloat(e.target.value) || 0 })}
                                             />
+                                        </div>
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label small fw-bold">Tarif Jasa per DI (Rp)</label>
+                                            <input
+                                                type="number"
+                                                step="1000"
+                                                className="form-control pcm-code"
+                                                placeholder="55000"
+                                                value={form.rate_per_di}
+                                                onChange={(e) => {
+                                                    const r = parseFloat(e.target.value) || 0;
+                                                    setForm((prev) => ({
+                                                        ...prev,
+                                                        rate_per_di: r,
+                                                        total_amount: Math.round(((prev.dia_inch_total || 0) * r) + (prev.welding_cost_total || 0))
+                                                    }));
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label small fw-bold">Biaya Elektroda (Rp)</label>
+                                            <input
+                                                type="number"
+                                                step="100"
+                                                className="form-control pcm-code"
+                                                placeholder="0"
+                                                value={form.welding_cost_total}
+                                                onChange={(e) => {
+                                                    const wc = parseFloat(e.target.value) || 0;
+                                                    setForm((prev) => ({
+                                                        ...prev,
+                                                        welding_cost_total: wc,
+                                                        total_amount: Math.round(((prev.dia_inch_total || 0) * (prev.rate_per_di || 0)) + wc)
+                                                    }));
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="col-12 col-md-4">
+                                            <label className="form-label small fw-bold">Total Nilai Pekerjaan (Rp)</label>
+                                            <input
+                                                type="number"
+                                                step="100"
+                                                className="form-control pcm-code fw-bold text-primary"
+                                                value={form.total_amount || Math.round(((form.dia_inch_total || 0) * (form.rate_per_di || 0)) + (form.welding_cost_total || 0))}
+                                                onChange={(e) => setForm({ ...form, total_amount: parseFloat(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div className="col-12">
+                                            <div className="p-2.5 rounded d-flex align-items-center justify-content-between" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                                                <div className="small text-muted">
+                                                    Kalkulasi: <span className="font-monospace fw-semibold">{form.dia_inch_total || 0} DI × {formatRupiah(form.rate_per_di || 0)}</span> + Biaya Elektroda <span className="font-monospace fw-semibold">{formatRupiah(form.welding_cost_total || 0)}</span>
+                                                </div>
+                                                <span className="fw-bolder pcm-code text-primary" style={{ fontSize: '0.95rem' }}>
+                                                    = {formatRupiah(form.total_amount || (((form.dia_inch_total || 0) * (form.rate_per_di || 0)) + (form.welding_cost_total || 0)))}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-bold">Status Estimasi</label>

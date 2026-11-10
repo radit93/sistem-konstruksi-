@@ -1218,4 +1218,45 @@ class PcmContractTest extends TestCase
             PipingClassTemplate::where('piping_class', 'TST1')->delete();
         }
     }
+
+    public function test_engineer_syncs_boq_and_bom_pricing(): void
+    {
+        $eng = $this->token('engineer');
+        $proj = \App\Models\Project::first();
+
+        // 1. Uji endpoint sync BOQ dari Welding Map
+        $res = $this->postJson('/api/engineering-boqs/sync-from-welding-map', [
+            'project_id' => $proj->id,
+        ], ['Authorization' => "Bearer {$eng}"])->assertOk()->json();
+
+        $this->assertArrayHasKey('count', $res);
+        $this->assertGreaterThanOrEqual(1, $res['count']);
+        $this->assertArrayHasKey('items', $res);
+
+        $firstBoq = $res['items'][0];
+        $this->assertArrayHasKey('rate_per_di', $firstBoq);
+        $this->assertArrayHasKey('welding_cost_total', $firstBoq);
+        $this->assertArrayHasKey('total_amount', $firstBoq);
+
+        // 2. Uji BOM pricing save & auto calculation
+        $drawing = \App\Models\Drawing::where('project_id', $proj->id)->first();
+        $bom = $this->postJson('/api/bill-of-materials', [
+            'project_id' => $proj->id,
+            'drawing_id' => $drawing->id,
+            'spool_no' => 'SP-TEST-PRICING',
+            'component_type' => 'Pipe',
+            'description' => 'Pipe Carbon Steel Test Pricing',
+            'size' => '4"',
+            'rating_sch' => 'Sch 40',
+            'material_spec' => 'ASTM A106 Gr. B',
+            'qty' => 10,
+            'unit' => 'meter',
+            'unit_price' => 320000,
+        ], ['Authorization' => "Bearer {$eng}"])->assertCreated()->json();
+
+        $this->assertEquals(320000, $bom['unit_price']);
+        $this->assertEquals(3200000, $bom['total_price']);
+
+        \App\Models\BillOfMaterial::where('spool_no', 'SP-TEST-PRICING')->delete();
+    }
 }

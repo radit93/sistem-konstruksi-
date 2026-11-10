@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
+import { formatRupiah } from '../../currency';
 import { PcmSelect } from '../SearchSelect';
 
 const naturalCompare = (a, b) => String(a).localeCompare(String(b), undefined, {
@@ -48,6 +49,19 @@ const computedStickWeight = (perMeter, length) => {
     const l = Number(length);
     if (!Number.isFinite(w) || !Number.isFinite(l) || w <= 0 || l <= 0) return '';
     return (w * l).toFixed(2);
+};
+
+const weldingCostOf = (row) => {
+    if (!row) return null;
+    if (row.welding_cost != null && Number.isFinite(Number(row.welding_cost))) {
+        return Number(row.welding_cost);
+    }
+    const thk = Number(row.wall_thickness_mm);
+    const od = Number(row.outer_diameter_mm);
+    if (Number.isFinite(thk) && thk > 0 && Number.isFinite(od) && od > 0) {
+        return thk * od * 1.2;
+    }
+    return null;
 };
 
 /* Warna solid prima ber-kontras tinggi, tidak neon & berbeda jelas (R-01, R-29) */
@@ -1179,17 +1193,18 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
 
                     <div className="pcm-card" style={{ minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
                         <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
-                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1080px', width: '100%' }}>
+                            <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1220px', width: '100%' }}>
                                 <colgroup>
-                                    <col style={{ width: '110px' }} />
-                                    <col style={{ width: '90px' }} />
-                                    <col style={{ width: '100px' }} />
-                                    <col style={{ width: '125px' }} />
-                                    <col style={{ width: '130px' }} />
-                                    <col style={{ width: '130px' }} />
                                     <col style={{ width: '105px' }} />
+                                    <col style={{ width: '85px' }} />
+                                    <col style={{ width: '95px' }} />
+                                    <col style={{ width: '120px' }} />
+                                    <col style={{ width: '125px' }} />
+                                    <col style={{ width: '120px' }} />
+                                    <col style={{ width: '100px' }} />
+                                    <col style={{ width: '135px' }} />
                                     <col style={{ width: '145px' }} />
-                                    {canEdit && <col style={{ width: '145px' }} />}
+                                    {canEdit && <col style={{ width: '140px' }} />}
                                 </colgroup>
                                 <thead>
                                      <tr>
@@ -1225,6 +1240,10 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                              <span className="pcm-th-title">Pipe Weight</span>
                                              <span className="pcm-th-unit">kg</span>
                                          </th>
+                                         <th className="text-center">
+                                             <span className="pcm-th-title">Biaya Elektroda</span>
+                                             <span className="pcm-th-unit">Est. Rp/Joint</span>
+                                         </th>
                                          {canEdit && (
                                              <th className="text-center pe-3">
                                                 <span className="pcm-th-title">Action</span>
@@ -1235,13 +1254,13 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                 <tbody>
                                     {pipeLoading ? (
                                         <tr>
-                                            <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
+                                            <td colSpan={canEdit ? 10 : 9} className="text-center py-4 pcm-cell-sub">
                                                 Loading pipe master data...
                                             </td>
                                         </tr>
                                     ) : filteredPipes.length === 0 ? (
                                         <tr>
-                                            <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
+                                            <td colSpan={canEdit ? 10 : 9} className="text-center py-4 pcm-cell-sub">
                                                 No pipe master data registered yet. Add a new pipe size to begin.
                                             </td>
                                         </tr>
@@ -1260,6 +1279,9 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                 <td className="text-center pcm-code">{p.weight_kg_m ? `${parseFloat(p.weight_kg_m).toFixed(2)} kg/m` : '—'}</td>
                                                 <td className="text-center pcm-code">{p.standard_length_m ? `${parseFloat(p.standard_length_m).toFixed(2)} m` : '6.00 m'}</td>
                                                 <td className="text-center pcm-code fw-semibold">{stickWeightOf(p) != null ? `${stickWeightOf(p).toFixed(2)} kg` : '—'}</td>
+                                                <td className="text-center pcm-code fw-bold text-success">
+                                                    {weldingCostOf(p) != null ? formatRupiah(weldingCostOf(p)) : '—'}
+                                                </td>
                                                 {canEdit && (
                                                     <td className="text-center pe-2 text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                                         <div className="d-inline-flex align-items-center justify-content-center gap-1.5">
@@ -1289,7 +1311,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                     {!pipeLoading && paginatedPipes.length > 0 && paginatedPipes.length < PAGE_SIZE && (
                                         Array.from({ length: PAGE_SIZE - paginatedPipes.length }).map((_, idx) => (
                                             <tr key={`empty-pipe-${idx}`} style={{ height: '39px' }} aria-hidden="true">
-                                                <td colSpan={canEdit ? 9 : 8} style={{ borderBottom: '1px solid #f1f5f9', background: 'transparent' }}>&nbsp;</td>
+                                                <td colSpan={canEdit ? 10 : 9} style={{ borderBottom: '1px solid #f1f5f9', background: 'transparent' }}>&nbsp;</td>
                                             </tr>
                                         ))
                                     )}
@@ -1557,9 +1579,24 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                 onChange={(e) => setPipeForm({ ...pipeForm, weight_kg_stick: e.target.value })}
                                             />
                                         </div>
+                                        {Number(pipeForm.wall_thickness_mm) > 0 && Number(pipeForm.outer_diameter_mm) > 0 && (
+                                            <div className="col-12 mt-2">
+                                                <div className="p-2.5 rounded d-flex align-items-center justify-content-between" style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                                                    <div className="small">
+                                                        <span className="fw-bold text-success">Estimasi Biaya Las Elektroda:</span>{' '}
+                                                        <span className="text-muted font-monospace">
+                                                            {Number(pipeForm.wall_thickness_mm).toFixed(2)} mm × {Number(pipeForm.outer_diameter_mm).toFixed(2)} mm × 1.2
+                                                        </span>
+                                                    </div>
+                                                    <span className="fw-bolder pcm-code text-success" style={{ fontSize: '0.95rem' }}>
+                                                        {formatRupiah(Number(pipeForm.wall_thickness_mm) * Number(pipeForm.outer_diameter_mm) * 1.2)} / joint
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     <p className="pcm-cell-sub small mt-3 mb-0">
-                                        Weight per piece is calculated automatically from kg/m × length per piece.
+                                        Weight per piece is calculated automatically from kg/m × length per piece. Biaya las elektroda dihitung otomatis per joint (t × OD × 1.2).
                                         Adjust it manually when company standard data differs.
                                     </p>
                                 </div>

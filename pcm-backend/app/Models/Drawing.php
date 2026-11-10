@@ -20,6 +20,8 @@ class Drawing extends Model
         'rev',
         'total_dia_inch',
         'total_joints',
+        'total_spools',
+        'spool_data',
         'scan_path',
         'distributed_to',
         'distribution_date',
@@ -29,6 +31,7 @@ class Drawing extends Model
 
     protected $casts = [
         'fitup_specs' => 'array',
+        'spool_data' => 'array',
     ];
 
     public function project()

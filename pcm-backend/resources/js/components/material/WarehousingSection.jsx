@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { MaterialReportModal } from './MaterialReportModal';
+import { PcmSelect } from '../SearchSelect';
 
 export function WarehousingSection({ user, onToast }) {
     const [storings, setStorings] = useState([]);
@@ -183,8 +184,8 @@ export function WarehousingSection({ user, onToast }) {
                             />
                         </div>
                         <div className="col-6 col-md-4">
-                            <select
-                                className="form-select"
+                            <PcmSelect
+                                
                                 value={filterCategory}
                                 onChange={(e) => setFilterCategory(e.target.value)}
                             >
@@ -194,7 +195,7 @@ export function WarehousingSection({ user, onToast }) {
                                 <option value="VALVE">VALVE</option>
                                 <option value="FASTENER">FASTENER</option>
                                 <option value="GASKET">GASKET</option>
-                            </select>
+                            </PcmSelect>
                         </div>
                         <div className="col-6 col-md-2 text-md-end text-muted small">
                             {filtered.length} dari {storings.length} item

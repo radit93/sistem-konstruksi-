@@ -2,27 +2,23 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
-import { SearchSelect } from '../SearchSelect';
+import { SearchSelect, PcmSelect } from '../SearchSelect';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
+import {
+    buildAttributeLabels,
+    buildMaterialIndex,
+    buildMaterialOptions,
+    naturalCompare,
+    normSize,
+    normSchedule,
+    parseInch,
+    resolveAttributeLabel,
+    sizeWithinRange
+} from './materialCascade';
 
 /* --------------------------------------------------------------------------
  * Helper: parsing & format
  * ----------------------------------------------------------------------- */
-
-const parseInch = (val) => {
-    if (!val) return 0;
-    const clean = String(val).replace(/["']/g, '').trim().replace(/-/g, ' ');
-    if (clean.includes('/')) {
-        const parts = clean.split(' ');
-        if (parts.length === 2) {
-            const [num, den] = parts[1].split('/');
-            return parseFloat(parts[0]) + ((parseFloat(num) / parseFloat(den)) || 0);
-        }
-        const [num, den] = clean.split('/');
-        return (parseFloat(num) / parseFloat(den)) || 0;
-    }
-    return parseFloat(clean) || 0;
-};
 
 const autoCalculateDI = (sizeA, sizeB) => {
     const inchA = parseInch(sizeA);
@@ -31,18 +27,6 @@ const autoCalculateDI = (sizeA, sizeB) => {
     if (inchA && inchB) return Math.max(inchA, inchB);
     return inchA || inchB;
 };
-
-const normSize = (val) => String(val || '')
-    .replace(/["']/g, '')
-    .replace(/\s+/g, '')
-    .replace(/-/g, '')
-    .toLowerCase();
-
-const normSchedule = (val) => String(val || '')
-    .toLowerCase()
-    .replace(/schedule/g, '')
-    .replace(/sch/g, '')
-    .replace(/[\s.]/g, '');
 
 const parseThicknessText = (val) => {
     const match = String(val || '').match(/([\d.]+)\s*mm/i);
@@ -54,11 +38,6 @@ const fmt = (val, digits = 2) => {
     const n = Number(val);
     return Number.isFinite(n) ? n.toFixed(digits) : '—';
 };
-
-const naturalCompare = (a, b) => String(a).localeCompare(String(b), undefined, {
-    numeric: true,
-    sensitivity: 'base',
-});
 
 /* Jumlah sheet mengikuti data ISO, mis. "Sheet 1 of 4" -> 4. */
 const sheetTotalOf = (drawing) => {
@@ -138,7 +117,7 @@ const STATUS_OPTIONS = ['PLANNED', 'FITUP_OK', 'WELDED', 'INSPECTED', 'COMPLETED
  * Detail material (accordion)
  * ----------------------------------------------------------------------- */
 
-function MaterialCard({ label, info }) {
+function MaterialCard({ label, info, attributeLabel = 'Class / Sch' }) {
     return (
         <div className="wm-mat">
             <div className="wm-mat__head">
@@ -148,10 +127,11 @@ function MaterialCard({ label, info }) {
                     : <span className="pcm-chip pcm-chip--neutral">Manual</span>}
             </div>
             <dl className="wm-spec">
-                <dt>Item</dt><dd>{info.item || '—'}</dd>
+                <dt>Group</dt><dd>{info.group || '—'}</dd>
+                <dt>Kategori</dt><dd>{info.category || '—'}</dd>
                 <dt>Spec</dt><dd>{info.spec || '—'}</dd>
                 <dt>Size</dt><dd>{info.size || '—'}</dd>
-                <dt>Schedule</dt><dd>{info.sch || '—'}</dd>
+                <dt>{attributeLabel}</dt><dd>{info.sch || '—'}</dd>
                 <dt>Thickness</dt><dd>{info.thickness ? `${fmt(info.thickness)} mm` : '—'}</dd>
                 <dt>OD</dt><dd>{info.od ? `${fmt(info.od)} mm` : '—'}</dd>
                 <dt>DN</dt><dd>{info.dn || '—'}</dd>
@@ -175,6 +155,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
     const [maps, setMaps] = useState([]);
     const [pipeStandards, setPipeStandards] = useState([]);
     const [materialStandards, setMaterialStandards] = useState([]);
+    const [systemParameters, setSystemParameters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterProject, setFilterProject] = useProjectFilter(activeProjectId);
@@ -200,10 +181,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         length_mm: '',
         location: 'Shop',
         mat_a_item: '',
+        mat_a_group: '',
+        mat_a_category: '',
         mat_a_spec: '',
         mat_a_size: '',
         mat_a_sch: '',
         mat_b_item: '',
+        mat_b_group: '',
+        mat_b_category: '',
         mat_b_spec: '',
         mat_b_size: '',
         mat_b_sch: '',
@@ -225,7 +210,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [mapData, pipeData, materialData] = await Promise.all([
+            const [mapData, pipeData, materialData, paramData] = await Promise.all([
                 api.get('/welding-maps'),
                 api.get('/pipe-standards').catch((err) => {
                     console.error('Failed to load pipe standards:', err);
@@ -235,10 +220,15 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                     console.error('Failed to load material standards:', err);
                     return [];
                 }),
+                api.get('/system-parameters').catch((err) => {
+                    console.error('Failed to load system parameters:', err);
+                    return [];
+                }),
             ]);
             setMaps(Array.isArray(mapData) ? mapData : []);
             setPipeStandards(Array.isArray(pipeData) ? pipeData : []);
             setMaterialStandards(Array.isArray(materialData) ? materialData : []);
+            setSystemParameters(Array.isArray(paramData) ? paramData : []);
         } catch (err) {
             console.error('Failed to load welding maps:', err);
         } finally {
@@ -275,6 +265,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
             : (weightPerM != null ? parseFloat(weightPerM) * stickLength : null);
         return {
             item: map[`mat_${key}_item`] || '',
+            group: map[`mat_${key}_group`] || '',
+            category: map[`mat_${key}_category`] || '',
             spec: map[`mat_${key}_spec`] || '',
             size,
             sch,
@@ -416,65 +408,53 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
 
     /* ------------------------------------------------------------- modal */
 
-    const sizeOptions = useMemo(() => {
-        const seen = new Map();
-        pipeStandards.forEach((row) => {
-            if (!row.nps || seen.has(row.nps)) return;
-            const hint = [row.dn, row.outer_diameter_mm ? `OD ${fmt(row.outer_diameter_mm)}` : '']
-                .filter(Boolean)
-                .join(' · ');
-            seen.set(row.nps, { value: row.nps, label: row.nps, hint });
-        });
-        return Array.from(seen.values()).sort((a, b) => (
-            (parseInch(a.value) - parseInch(b.value)) || naturalCompare(a.value, b.value)
-        ));
-    }, [pipeStandards]);
+    /* --- Cascade Material A/B ------------------------------------------
+       Urutan produksi: Material Group -> Kategori -> Size -> Sch -> Spesifikasi.
+       Logika murni ada di materialCascade.js supaya bisa diuji terpisah. */
 
-    const scheduleOptionsFor = useCallback((size) => {
-        const nps = normSize(size);
-        const rows = nps
-            ? pipeStandards.filter((row) => normSize(row.nps) === nps)
-            : pipeStandards;
-        const seen = new Map();
-        rows.forEach((row) => {
-            if (!row.schedule || seen.has(row.schedule)) return;
-            seen.set(row.schedule, {
-                value: row.schedule,
-                label: row.schedule,
-                hint: row.wall_thickness_mm ? `${fmt(row.wall_thickness_mm)} mm` : '',
-                thickness: parseFloat(row.wall_thickness_mm) || 0,
-            });
-        });
-        return Array.from(seen.values()).sort((a, b) => (
-            (a.thickness - b.thickness) || naturalCompare(a.value, b.value)
-        ));
-    }, [pipeStandards]);
+    const materialIndex = useMemo(() => buildMaterialIndex(materialStandards), [materialStandards]);
 
-    const scheduleOptionsA = useMemo(
-        () => scheduleOptionsFor(form.mat_a_size),
-        [scheduleOptionsFor, form.mat_a_size]
-    );
-    const scheduleOptionsB = useMemo(
-        () => scheduleOptionsFor(form.mat_b_size),
-        [scheduleOptionsFor, form.mat_b_size]
+    const attributeLabels = useMemo(() => buildAttributeLabels(systemParameters), [systemParameters]);
+
+    const attributeLabelFor = useCallback(
+        (category) => resolveAttributeLabel(attributeLabels, category),
+        [attributeLabels]
     );
 
-    const materialSpecOptions = useMemo(() => {
-        const seen = new Map();
-        materialStandards.forEach((std) => {
-            const spec = std.specification || std.code || '';
-            if (!spec || seen.has(spec)) return;
-            seen.set(spec, { value: spec, label: spec });
-        });
-        return Array.from(seen.values()).sort((a, b) => naturalCompare(a.label, b.label));
-    }, [materialStandards]);
+    const optionsA = useMemo(
+        () => buildMaterialOptions({
+            materialIndex,
+            pipeStandards,
+            group: form.mat_a_group,
+            category: form.mat_a_category,
+            size: form.mat_a_size,
+            sch: form.mat_a_sch
+        }),
+        [materialIndex, pipeStandards, form.mat_a_group, form.mat_a_category, form.mat_a_size, form.mat_a_sch]
+    );
+    const optionsB = useMemo(
+        () => buildMaterialOptions({
+            materialIndex,
+            pipeStandards,
+            group: form.mat_b_group,
+            category: form.mat_b_category,
+            size: form.mat_b_size,
+            sch: form.mat_b_sch
+        }),
+        [materialIndex, pipeStandards, form.mat_b_group, form.mat_b_category, form.mat_b_size, form.mat_b_sch]
+    );
+
+    const attributeLabelA = attributeLabelFor(form.mat_a_category);
+    const attributeLabelB = attributeLabelFor(form.mat_b_category);
+
+    /* Length hanya relevan bila Material A adalah pipa. Untuk data lama yang
+       belum punya kategori, field tetap tampil selama sudah ada nilainya
+       supaya angka lama masih bisa diperbaiki. */
+    const showLengthA = form.mat_a_category === 'Pipe'
+        || (!form.mat_a_category && form.length_mm !== '' && form.length_mm != null);
 
     const modalStandard = findStandard(form.mat_a_size, form.mat_a_sch);
     const modalStandardB = findStandard(form.mat_b_size, form.mat_b_sch);
-    const modalLength = parseFloat(form.length_mm) || 0;
-    const modalWeight = modalStandard?.weight_kg_m && modalLength
-        ? (parseFloat(modalStandard.weight_kg_m) * modalLength) / 1000
-        : null;
 
     const stickLengthA = parseFloat(modalStandard?.standard_length_m) || 6;
     const stickWeightA = modalStandard?.weight_kg_stick != null
@@ -485,15 +465,53 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         ? parseFloat(modalStandardB.weight_kg_stick)
         : (modalStandardB?.weight_kg_m ? parseFloat(modalStandardB.weight_kg_m) * stickLengthB : null);
 
-    const applyMaterialField = (which, field, value) => {
+    /* Penerapan pilihan Material A/B.
+       Reset berantai: memilih tingkat N mengosongkan tingkat di bawahnya,
+       sehingga tidak pernah ada kombinasi usang. Back-fill: memilih
+       Spesifikasi langsung mengisi Group & Kategori dari master. */
+    const applyMaterial = (which, field, value) => {
         setForm((prev) => {
-            const next = { ...prev, [`mat_${which}_${field}`]: value };
+            const key = (f) => `mat_${which}_${f}`;
+            const next = { ...prev, [key(field)]: value };
 
-            if (field === 'size') {
-                const available = scheduleOptionsFor(value).map((opt) => opt.value);
-                const currentSch = next[`mat_${which}_sch`];
-                if (currentSch && available.length > 0 && !available.includes(currentSch)) {
-                    next[`mat_${which}_sch`] = '';
+            if (field === 'group') {
+                next[key('category')] = '';
+                next[key('size')] = '';
+                next[key('sch')] = '';
+                next[key('spec')] = '';
+                next[key('item')] = '';
+                if (which === 'a') next.length_mm = '';
+            } else if (field === 'category') {
+                next[key('size')] = '';
+                next[key('sch')] = '';
+                next[key('spec')] = '';
+                next[key('item')] = value;
+                /* Length hanya relevan saat Material A adalah pipa. */
+                if (which === 'a' && value !== 'Pipe') next.length_mm = '';
+            } else if (field === 'size') {
+                next[key('sch')] = '';
+                next[key('spec')] = '';
+            } else if (field === 'sch') {
+                next[key('spec')] = '';
+            } else if (field === 'spec') {
+                const row = materialIndex.find((r) => r.spec === value);
+                if (row) {
+                    next[key('group')] = row.group;
+                    next[key('category')] = row.category;
+                    next[key('item')] = row.category;
+                    if (which === 'a' && row.category !== 'Pipe') next.length_mm = '';
+
+                    /* Pertahankan Size/Sch hanya bila masih valid untuk baris ini. */
+                    const currentSize = next[key('size')];
+                    const currentSch = next[key('sch')];
+                    const sizeOk = !currentSize
+                        || sizeWithinRange(parseInch(currentSize), row);
+                    if (!sizeOk) {
+                        next[key('size')] = '';
+                        next[key('sch')] = '';
+                    } else if (currentSch && !row.schedules.includes(currentSch)) {
+                        next[key('sch')] = '';
+                    }
                 }
             }
 
@@ -514,12 +532,23 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
 
     const applyFitup = (which, spec) => {
         setForm((prev) => {
+            const specValue = spec.material_spec || prev[`mat_${which}_spec`];
             const next = {
                 ...prev,
-                [`mat_${which}_spec`]: spec.material_spec || prev[`mat_${which}_spec`],
+                [`mat_${which}_spec`]: specValue,
                 [`mat_${which}_size`]: spec.size || prev[`mat_${which}_size`],
                 [`mat_${which}_sch`]: spec.schedule || prev[`mat_${which}_sch`],
             };
+
+            /* Fit-up spec hanya membawa spesifikasi; Group & Kategori
+               diturunkan dari master agar form tetap konsisten. */
+            const row = materialIndex.find((r) => r.spec === specValue);
+            if (row) {
+                next[`mat_${which}_group`] = row.group;
+                next[`mat_${which}_category`] = row.category;
+                next[`mat_${which}_item`] = row.category;
+            }
+
             if (which === 'a') {
                 const std = findStandard(next.mat_a_size, next.mat_a_sch);
                 if (std?.wall_thickness_mm) {
@@ -553,10 +582,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                 length_mm: item.length_mm ?? '',
                 location: item.location || 'Shop',
                 mat_a_item: item.mat_a_item || '',
+                mat_a_group: item.mat_a_group || '',
+                mat_a_category: item.mat_a_category || '',
                 mat_a_spec: item.mat_a_spec || '',
                 mat_a_size: item.mat_a_size || item.size || '',
                 mat_a_sch: item.mat_a_sch || '',
                 mat_b_item: item.mat_b_item || '',
+                mat_b_group: item.mat_b_group || '',
+                mat_b_category: item.mat_b_category || '',
                 mat_b_spec: item.mat_b_spec || '',
                 mat_b_size: item.mat_b_size || item.size || '',
                 mat_b_sch: item.mat_b_sch || '',
@@ -678,7 +711,31 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         return options;
     }, [selectedDrawing, form.sheet]);
 
+    const availableDrawingOptions = useMemo(() => {
+        return (availableDrawings || []).map((d) => {
+            const sheetInfo = d.sheet ? `(${d.sheet})` : '';
+            return {
+                value: String(d.id),
+                label: `${d.drawing_no} ${sheetInfo} ${d.line_no ? `· Line: ${d.line_no}` : ''}`
+            };
+        });
+    }, [availableDrawings]);
+
     const drawingSpoolOptions = useMemo(() => {
+        // Prioritas 1: Ambil langsung dari spool_data drawing terpilih jika sudah diinput di drawing
+        if (selectedDrawing) {
+            let raw = selectedDrawing.spool_data;
+            if (typeof raw === 'string') {
+                try { raw = JSON.parse(raw); } catch (e) { raw = []; }
+            }
+            if (Array.isArray(raw) && raw.length > 0) {
+                const spoolsFromDrawing = raw.map(s => (s.spool_no || '').trim()).filter(Boolean);
+                if (spoolsFromDrawing.length > 0) {
+                    return Array.from(new Set(spoolsFromDrawing)).sort(naturalCompare);
+                }
+            }
+        }
+
         const source = selectedDrawing
             ? scopedMaps.filter((m) => String(m.drawing_id) === String(selectedDrawing.id)
                 || (m.iso_drawing_no && m.iso_drawing_no === selectedDrawing.drawing_no))
@@ -686,6 +743,19 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         return Array.from(new Set(source.map((m) => (m.spool_no || '').trim()).filter(Boolean)))
             .sort(naturalCompare);
     }, [scopedMaps, selectedDrawing]);
+
+    // Data spool detail lengkap (termasuk kapasitas joints_count) dari drawing terpilih
+    const selectedDrawingSpools = useMemo(() => {
+        if (!selectedDrawing) return [];
+        let raw = selectedDrawing.spool_data;
+        if (typeof raw === 'string') {
+            try { raw = JSON.parse(raw); } catch (e) { raw = []; }
+        }
+        if (Array.isArray(raw) && raw.length > 0) {
+            return raw;
+        }
+        return [];
+    }, [selectedDrawing]);
 
     const spoolSequenceOptions = useMemo(() => Array.from(new Set(
         drawingSpoolOptions
@@ -746,7 +816,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
             </div>
 
             {/* Toolbar Sejajar: Search, Tambah, Spool, Lokasi, dan Tombol Arrow Buka/Tutup */}
-            <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
+            <div className="wm-toolbar d-flex flex-wrap align-items-center gap-2 mb-4">
                 {/* 1. Search */}
                 <div className="flex-grow-1 min-w-0" style={{ minWidth: '220px' }}>
                     <div className="pcm-search w-100" style={{ maxWidth: '100%' }}>
@@ -776,19 +846,17 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                 )}
 
                 {/* 3. Dropdown Spool */}
-                <select
-                    className="form-select form-select-sm pcm-select-theme"
+                <PcmSelect
                     value={filterSpool}
                     onChange={(e) => setFilterSpool(e.target.value)}
                     aria-label="Filter Spool"
                 >
-                    <option value="ALL">Semua Spool ({spoolOptions.length})</option>
+                    <option value="ALL">Semua Spool</option>
                     {spoolOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                </PcmSelect>
 
                 {/* 4. Dropdown Lokasi */}
-                <select
-                    className="form-select form-select-sm pcm-select-theme"
+                <PcmSelect
                     value={filterLocation}
                     onChange={(e) => setFilterLocation(e.target.value)}
                     aria-label="Filter Lokasi"
@@ -796,7 +864,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                     <option value="ALL">Semua Lokasi</option>
                     <option value="Shop">Shop (Workshop)</option>
                     <option value="Field">Field (Lapangan)</option>
-                </select>
+                </PcmSelect>
             </div>
 
             {/* Accordion grid: ISO > Spool > Joint */}
@@ -1039,8 +1107,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                             <tr className="wm-detail" id={`wm-detail-${m.id}`}>
                                                                                 <td colSpan={colSpan}>
                                                                                     <div className="wm-detail__inner">
-                                                                                        <MaterialCard label="Material A" info={materialA} />
-                                                                                        <MaterialCard label="Material B" info={materialB} />
+                                                                                        <MaterialCard label="Material A" info={materialA} attributeLabel={attributeLabelFor(m.mat_a_category)} />
+                                                                                        <MaterialCard label="Material B" info={materialB} attributeLabel={attributeLabelFor(m.mat_b_category)} />
                                                                                         <div className="wm-calc">
                                                                                             <div className="wm-calc__head">Perhitungan</div>
                                                                                             <div className="wm-calc__row">
@@ -1067,8 +1135,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                                             </div>
                                                                                             {weight == null && (
                                                                                                 <p className="wm-calc__note">
-                                                                                                    Isi Length (mm) lewat tombol Edit dan pastikan master pipa
-                                                                                                    tersedia agar berat dihitung otomatis.
+                                                                                                    Isi Length (mm) di bagian Material A (muncul bila Kategori = Pipe)
+                                                                                                    dan pastikan master pipa tersedia agar berat dihitung otomatis.
                                                                                                 </p>
                                                                                             )}
                                                                                         </div>
@@ -1123,12 +1191,23 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         <div className="wm-form-grid">
                                             <div className="wm-form-grid__full">
                                                 <label className="form-label small fw-bold">Isometric Drawing *</label>
-                                                <select
-                                                    className="form-select"
-                                                    value={form.drawing_id || ''}
-                                                    onChange={(e) => {
-                                                        const dId = e.target.value;
+                                                <SearchSelect
+                                                    value={form.drawing_id ? String(form.drawing_id) : ''}
+                                                    onChange={(val) => {
+                                                        const dId = val;
                                                         const dwg = drawings.find((d) => String(d.id) === String(dId));
+                                                        let nextSpoolNo = form.spool_no;
+                                                        let nextJointNo = '';
+                                                        if (dwg) {
+                                                            let sps = dwg.spool_data;
+                                                            if (typeof sps === 'string') {
+                                                                try { sps = JSON.parse(sps); } catch (err) { sps = []; }
+                                                            }
+                                                            if (Array.isArray(sps) && sps.length > 0 && sps[0].spool_no) {
+                                                                nextSpoolNo = sps[0].spool_no;
+                                                                nextJointNo = 'J-01';
+                                                            }
+                                                        }
                                                         setForm({
                                                             ...form,
                                                             drawing_id: dId,
@@ -1136,41 +1215,58 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                             line_no: dwg ? dwg.line_no : form.line_no,
                                                             project_id: dwg?.project_id ? String(dwg.project_id) : form.project_id,
                                                             sheet: dwg ? getDrawingSheet(dwg) : '',
+                                                            spool_no: nextSpoolNo,
+                                                            joint_no: nextJointNo
                                                         });
                                                     }}
-                                                    required
-                                                >
-                                                    <option value="">-- Pilih Isometric Drawing --</option>
-                                                    {availableDrawings.map((d) => (
-                                                        <option key={d.id} value={d.id}>
-                                                            {d.drawing_no} {d.line_no ? `(${d.line_no})` : ''}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    options={availableDrawingOptions}
+                                                    placeholder="Cari & pilih nomor drawing / sheet..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Pilih Isometric Drawing"
+                                                />
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Spool No *</label>
-                                                <div className="input-group wm-prefix-group">
-                                                    <span className="input-group-text">SP-</span>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control pcm-code"
-                                                        list="wm-spool-options"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9]*"
-                                                        placeholder="01"
-                                                        value={stripSequence(form.spool_no, 'SP')}
+                                                {selectedDrawingSpools.length > 0 ? (
+                                                    <PcmSelect
+                                                        className="pcm-code fw-bold text-dark"
+                                                        value={form.spool_no || ''}
                                                         onChange={(e) => {
-                                                            const next = withSequencePrefix(e.target.value, 'SP');
-                                                            setForm((prev) => ({ ...prev, spool_no: next }));
-                                                        }}
-                                                        onBlur={(e) => {
-                                                            const next = formatSequence(e.target.value, 'SP');
-                                                            setForm((prev) => ({ ...prev, spool_no: next }));
+                                                            const newSpool = e.target.value;
+                                                            setForm({ ...form, spool_no: newSpool, joint_no: 'J-01' });
                                                         }}
                                                         required
-                                                    />
-                                                </div>
+                                                    >
+                                                        <option value="">-- Pilih Spool --</option>
+                                                        {selectedDrawingSpools.map((sp, idx) => (
+                                                            <option key={idx} value={sp.spool_no}>
+                                                                {sp.spool_no}
+                                                            </option>
+                                                        ))}
+                                                    </PcmSelect>
+                                                ) : (
+                                                    <div className="input-group wm-prefix-group">
+                                                        <span className="input-group-text">SP-</span>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control pcm-code"
+                                                            list="wm-spool-options"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9]*"
+                                                            placeholder="01"
+                                                            value={stripSequence(form.spool_no, 'SP')}
+                                                            onChange={(e) => {
+                                                                const next = withSequencePrefix(e.target.value, 'SP');
+                                                                setForm((prev) => ({ ...prev, spool_no: next }));
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                const next = formatSequence(e.target.value, 'SP');
+                                                                setForm((prev) => ({ ...prev, spool_no: next }));
+                                                            }}
+                                                            required
+                                                        />
+                                                    </div>
+                                                )}
                                                 <datalist id="wm-spool-options">
                                                     {spoolSequenceOptions.map((sequence) => (
                                                         <option key={sequence} value={sequence} />
@@ -1179,31 +1275,63 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Joint No *</label>
-                                                <div className="input-group wm-prefix-group">
-                                                    <span className="input-group-text">J-</span>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control pcm-code"
-                                                        inputMode="numeric"
-                                                        pattern="[0-9]*"
-                                                        placeholder="01"
-                                                        value={stripSequence(form.joint_no, 'J')}
-                                                        onChange={(e) => {
-                                                            const next = withSequencePrefix(e.target.value, 'J');
-                                                            setForm((prev) => ({ ...prev, joint_no: next }));
-                                                        }}
-                                                        onBlur={(e) => {
-                                                            const next = formatSequence(e.target.value, 'J');
-                                                            setForm((prev) => ({ ...prev, joint_no: next }));
-                                                        }}
-                                                        required
-                                                    />
-                                                </div>
+                                                {(() => {
+                                                    const currentSpoolObj = selectedDrawingSpools.find(s => s.spool_no === form.spool_no);
+                                                    const maxJoints = currentSpoolObj ? parseInt(currentSpoolObj.joints_count, 10) || 1 : null;
+
+                                                    // Jika drawing memiliki data spool, jadikan DROPDOWN langsung
+                                                    if (maxJoints != null) {
+                                                        const jointOptions = Array.from({ length: maxJoints }, (_, i) => {
+                                                            const num = String(i + 1).padStart(2, '0');
+                                                            return { val: `J-${num}`, label: `J-${num}` };
+                                                        });
+
+                                                        return (
+                                                            <PcmSelect
+                                                                className="pcm-code fw-bold text-dark"
+                                                                value={form.joint_no || ''}
+                                                                onChange={(e) => setForm({ ...form, joint_no: e.target.value })}
+                                                                required
+                                                            >
+                                                                <option value="">-- Pilih Joint No --</option>
+                                                                {jointOptions.map(opt => (
+                                                                    <option key={opt.val} value={opt.val}>
+                                                                        {opt.label}
+                                                                    </option>
+                                                                ))}
+                                                            </PcmSelect>
+                                                        );
+                                                    }
+
+                                                    // Fallback input teks jika manual tanpa spool_data
+                                                    return (
+                                                        <div className="input-group wm-prefix-group">
+                                                            <span className="input-group-text">J-</span>
+                                                            <input
+                                                                type="text"
+                                                                className="form-control pcm-code"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9]*"
+                                                                placeholder="01"
+                                                                value={stripSequence(form.joint_no, 'J')}
+                                                                onChange={(e) => {
+                                                                    const next = withSequencePrefix(e.target.value, 'J');
+                                                                    setForm((prev) => ({ ...prev, joint_no: next }));
+                                                                }}
+                                                                onBlur={(e) => {
+                                                                    const next = formatSequence(e.target.value, 'J');
+                                                                    setForm((prev) => ({ ...prev, joint_no: next }));
+                                                                }}
+                                                                required
+                                                            />
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Tipe Sambungan</label>
-                                                <select
-                                                    className="form-select"
+                                                <PcmSelect
+                                                    
                                                     value={form.joint_type}
                                                     onChange={(e) => setForm({ ...form, joint_type: e.target.value })}
                                                 >
@@ -1211,12 +1339,12 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     <option value="SW">Socket Weld (SW)</option>
                                                     <option value="FW">Fillet Weld (FW)</option>
                                                     <option value="THD">Threaded (THD)</option>
-                                                </select>
+                                                </PcmSelect>
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Sheet</label>
-                                                <select
-                                                    className="form-select"
+                                                    <PcmSelect
+                                                    
                                                     value={form.sheet}
                                                     onChange={(e) => setForm({ ...form, sheet: e.target.value })}
                                                 >
@@ -1225,7 +1353,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                             {option.label}
                                                         </option>
                                                     ))}
-                                                </select>
+                                                </PcmSelect>
                                             </div>
                                         </div>
                                         <div className="wm-form-meta">
@@ -1271,50 +1399,72 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                     {/* Material A */}
                                     <div className="pcm-form-section">
                                         <span className="pcm-form-section__title">Material A</span>
-                                        <div className="wm-form-grid">
+                                        <div className="wm-form-grid wm-form-grid--5">
                                             <div>
-                                                <label className="form-label small fw-bold">Item</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    placeholder=""
-                                                    value={form.mat_a_item}
-                                                    onChange={(e) => setForm({ ...form, mat_a_item: e.target.value })}
+                                                <label className="form-label small fw-bold">Material Group</label>
+                                                <SearchSelect
+                                                    value={form.mat_a_group}
+                                                    onChange={(value) => applyMaterial('a', 'group', value)}
+                                                    options={optionsA.groupOpts}
+                                                    placeholder="Pilih group..."
+                                                    ariaLabel="Material Group A"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Material Spec</label>
+                                                <label className="form-label small fw-bold">Kategori</label>
                                                 <SearchSelect
-                                                    value={form.mat_a_spec}
-                                                    onChange={(value) => setForm({ ...form, mat_a_spec: value })}
-                                                    options={materialSpecOptions}
-                                                    placeholder="Cari spesifikasi ASTM..."
-                                                    allowCustom
-                                                    ariaLabel="Spesifikasi Material A"
+                                                    value={form.mat_a_category}
+                                                    onChange={(value) => applyMaterial('a', 'category', value)}
+                                                    options={optionsA.categoryOpts}
+                                                    placeholder="Pilih kategori..."
+                                                    ariaLabel="Kategori Material A"
                                                 />
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Size (NPS)</label>
                                                 <SearchSelect
                                                     value={form.mat_a_size}
-                                                    onChange={(value) => applyMaterialField('a', 'size', value)}
-                                                    options={sizeOptions}
-                                                    placeholder="Cari NPS..."
-                                                    allowCustom
+                                                    onChange={(value) => applyMaterial('a', 'size', value)}
+                                                    options={optionsA.sizeOpts}
+                                                    placeholder="Pilih size..."
                                                     ariaLabel="Size Material A"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Schedule</label>
+                                                <label className="form-label small fw-bold">{attributeLabelA}</label>
                                                 <SearchSelect
                                                     value={form.mat_a_sch}
-                                                    onChange={(value) => applyMaterialField('a', 'sch', value)}
-                                                    options={scheduleOptionsA}
-                                                    placeholder="Cari schedule..."
-                                                    allowCustom
-                                                    ariaLabel="Schedule Material A"
+                                                    onChange={(value) => applyMaterial('a', 'sch', value)}
+                                                    options={optionsA.schOpts}
+                                                    placeholder={`Pilih ${attributeLabelA}...`}
+                                                    ariaLabel={`${attributeLabelA} Material A`}
                                                 />
                                             </div>
+                                            <div>
+                                                <label className="form-label small fw-bold">Spesifikasi Material</label>
+                                                <SearchSelect
+                                                    value={form.mat_a_spec}
+                                                    onChange={(value) => applyMaterial('a', 'spec', value)}
+                                                    options={optionsA.specOpts}
+                                                    placeholder="Pilih spesifikasi..."
+                                                    ariaLabel="Spesifikasi Material A"
+                                                />
+                                            </div>
+                                            {showLengthA && (
+                                                <div>
+                                                    <label className="form-label small fw-bold" htmlFor="wm-len-a">Length (mm)</label>
+                                                    <input
+                                                        id="wm-len-a"
+                                                        type="number"
+                                                        min="0"
+                                                        step="1"
+                                                        className="form-control pcm-code"
+                                                        placeholder="1200"
+                                                        value={form.length_mm}
+                                                        onChange={(e) => setForm({ ...form, length_mm: e.target.value })}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="wm-form-meta">
                                             {modalStandard
@@ -1326,48 +1476,55 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                     {/* Material B */}
                                     <div className="pcm-form-section">
                                         <span className="pcm-form-section__title">Material B</span>
-                                        <div className="wm-form-grid">
+                                        <div className="wm-form-grid wm-form-grid--5">
                                             <div>
-                                                <label className="form-label small fw-bold">Item</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    placeholder=""
-                                                    value={form.mat_b_item}
-                                                    onChange={(e) => setForm({ ...form, mat_b_item: e.target.value })}
+                                                <label className="form-label small fw-bold">Material Group</label>
+                                                <SearchSelect
+                                                    value={form.mat_b_group}
+                                                    onChange={(value) => applyMaterial('b', 'group', value)}
+                                                    options={optionsB.groupOpts}
+                                                    placeholder="Pilih group..."
+                                                    ariaLabel="Material Group B"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Material Spec</label>
+                                                <label className="form-label small fw-bold">Kategori</label>
                                                 <SearchSelect
-                                                    value={form.mat_b_spec}
-                                                    onChange={(value) => setForm({ ...form, mat_b_spec: value })}
-                                                    options={materialSpecOptions}
-                                                    placeholder="Cari spesifikasi ASTM..."
-                                                    allowCustom
-                                                    ariaLabel="Spesifikasi Material B"
+                                                    value={form.mat_b_category}
+                                                    onChange={(value) => applyMaterial('b', 'category', value)}
+                                                    options={optionsB.categoryOpts}
+                                                    placeholder="Pilih kategori..."
+                                                    ariaLabel="Kategori Material B"
                                                 />
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Size (NPS)</label>
                                                 <SearchSelect
                                                     value={form.mat_b_size}
-                                                    onChange={(value) => applyMaterialField('b', 'size', value)}
-                                                    options={sizeOptions}
-                                                    placeholder="Cari NPS..."
-                                                    allowCustom
+                                                    onChange={(value) => applyMaterial('b', 'size', value)}
+                                                    options={optionsB.sizeOpts}
+                                                    placeholder="Pilih size..."
                                                     ariaLabel="Size Material B"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Schedule</label>
+                                                <label className="form-label small fw-bold">{attributeLabelB}</label>
                                                 <SearchSelect
                                                     value={form.mat_b_sch}
-                                                    onChange={(value) => applyMaterialField('b', 'sch', value)}
-                                                    options={scheduleOptionsB}
-                                                    placeholder="Cari schedule..."
-                                                    allowCustom
-                                                    ariaLabel="Schedule Material B"
+                                                    onChange={(value) => applyMaterial('b', 'sch', value)}
+                                                    options={optionsB.schOpts}
+                                                    placeholder={`Pilih ${attributeLabelB}...`}
+                                                    ariaLabel={`${attributeLabelB} Material B`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="form-label small fw-bold">Spesifikasi Material</label>
+                                                <SearchSelect
+                                                    value={form.mat_b_spec}
+                                                    onChange={(value) => applyMaterial('b', 'spec', value)}
+                                                    options={optionsB.specOpts}
+                                                    placeholder="Pilih spesifikasi..."
+                                                    ariaLabel="Spesifikasi Material B"
                                                 />
                                             </div>
                                         </div>
@@ -1378,87 +1535,32 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         </div>
                                     </div>
 
-                                    {/* Dimensi & Perhitungan */}
-                                    <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">Dimensi &amp; Perhitungan</span>
-                                        <div className="wm-form-grid">
-                                            <div>
-                                                <label className="form-label small fw-bold">Length (mm)</label>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    step="1"
-                                                    className="form-control pcm-code"
-                                                    placeholder="1200"
-                                                    value={form.length_mm}
-                                                    onChange={(e) => setForm({ ...form, length_mm: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="form-label small fw-bold">Thickness (auto)</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control pcm-code"
-                                                    placeholder="Sch 40 (6.02 mm)"
-                                                    value={form.thickness}
-                                                    onChange={(e) => setForm({ ...form, thickness: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="form-label small fw-bold">Diameter-Inch (auto)</label>
-                                                <div className="form-control bg-light pcm-code fw-bold d-flex align-items-center">
-                                                    {fmt(form.dia_inch, 1)} DI
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="form-label small fw-bold">Berat (auto)</label>
-                                                <div className="form-control bg-light pcm-code fw-bold d-flex align-items-center">
-                                                    {modalWeight != null ? `${fmt(modalWeight, 3)} kg` : '—'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="wm-form-meta">
-                                            {(() => {
-                                                const iA = parseInch(form.mat_a_size);
-                                                const iB = parseInch(form.mat_b_size);
-                                                if (iA > 0 && iB > 0 && iA !== iB) {
-                                                    return `Reducer ${form.mat_a_size} × ${form.mat_b_size} — DI memakai ukuran terbesar (${fmt(form.dia_inch, 1)} DI).`;
-                                                }
-                                                if (iA > 0 || iB > 0) {
-                                                    return `Sambungan seukuran ${form.mat_a_size || form.mat_b_size} — ${fmt(form.dia_inch, 1)} DI.`;
-                                                }
-                                                return 'Pilih Size Material A & B untuk menghitung DI otomatis.';
-                                            })()}
-                                            {modalWeight != null && ' Berat = berat/m master × panjang ÷ 1000.'}
-                                        </div>
-                                    </div>
-
                                     {/* Fabrikasi & Status */}
                                     <div className="pcm-form-section">
                                         <span className="pcm-form-section__title">Fabrikasi &amp; Status</span>
                                         <div className="wm-form-grid">
                                             <div>
                                                 <label className="form-label small fw-bold">Lokasi Las</label>
-                                                <select
-                                                    className="form-select"
+                                                <PcmSelect
+                                                    
                                                     value={form.location}
                                                     onChange={(e) => setForm({ ...form, location: e.target.value })}
                                                 >
                                                     <option value="Shop">Shop (Workshop)</option>
                                                     <option value="Field">Field (Lapangan)</option>
-                                                </select>
+                                                </PcmSelect>
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Status</label>
-                                                <select
-                                                    className="form-select"
+                                                    <PcmSelect
+                                                    
                                                     value={form.status}
                                                     onChange={(e) => setForm({ ...form, status: e.target.value })}
                                                 >
                                                     {STATUS_OPTIONS.map((status) => (
                                                         <option key={status} value={status}>{status}</option>
                                                     ))}
-                                                </select>
+                                                </PcmSelect>
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Line Number</label>

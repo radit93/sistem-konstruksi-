@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { PcmSelect } from '../SearchSelect';
 
 export function DailyLogSection({ scopes = [], project, user, onReload }) {
     const [logs, setLogs] = useState([]);
@@ -230,8 +231,8 @@ export function DailyLogSection({ scopes = [], project, user, onReload }) {
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label small fw-bold">Pilih Scope Kontrak *</label>
-                                        <select
-                                            className="form-select"
+                                            <PcmSelect
+                                            
                                             value={form.scope_id}
                                             onChange={(e) => setForm({ ...form, scope_id: e.target.value })}
                                             required
@@ -241,7 +242,7 @@ export function DailyLogSection({ scopes = [], project, user, onReload }) {
                                                     {s.scope} ({s.unit}) - Kontrak: {s.contract_qty}
                                                 </option>
                                             ))}
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                     <div className="row g-3">
                                         <div className="col-6">
@@ -258,15 +259,15 @@ export function DailyLogSection({ scopes = [], project, user, onReload }) {
                                         </div>
                                         <div className="col-6">
                                             <label className="form-label small fw-bold">Tim Pelaksana</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.team}
                                                 onChange={(e) => setForm({ ...form, team: e.target.value })}
                                             >
                                                 <option value="project_manager">Project Manager (PMO)</option>
                                                 <option value="construction">Construction Team</option>
                                                 <option value="workshop">Workshop Spool Fab</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                     </div>
                                 </div>

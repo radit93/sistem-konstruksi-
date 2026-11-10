@@ -10,6 +10,7 @@ use App\Models\DocumentControl;
 use App\Models\Drawing;
 use App\Models\EngineeringBoq;
 use App\Models\FittingCatalog;
+use App\Models\FittingStandard;
 use App\Models\HseLog;
 use App\Models\Inspection;
 use App\Models\Joint;
@@ -20,11 +21,13 @@ use App\Models\MaterialReceiving;
 use App\Models\MaterialStandard;
 use App\Models\MaterialStoring;
 use App\Models\PipeSchedule;
+use App\Models\PipeStandard;
 use App\Models\PipingClassTemplate;
 use App\Models\Project;
 use App\Models\ProjectMilestone;
 use App\Models\Scope;
 use App\Models\StockMove;
+use App\Models\SystemParameter;
 use App\Models\TestPackage;
 use App\Models\WeldingMap;
 use App\Services\MaterialFlowService;
@@ -33,6 +36,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -113,15 +117,29 @@ class CrudController extends Controller
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
+<<<<<<< HEAD
         'fitting-catalogs' => [FittingCatalog::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
         'pipe-standards' => [\App\Models\PipeStandard::class, [
+=======
+        'fitting-standards' => [FittingStandard::class, [
+>>>>>>> origin/neil
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
+        ]],
+        'pipe-standards' => [PipeStandard::class, [
+            'create' => 'drawing.write',
+            'update' => 'drawing.write',
+            'delete' => 'drawing.write',
+        ]],
+        'system-parameters' => [SystemParameter::class, [
+            'create' => 'project.create',
+            'update' => 'project.update',
+            'delete' => 'project.delete',
         ]],
         'piping-class-templates' => [PipingClassTemplate::class, [
             'create' => 'drawing.write',
@@ -206,6 +224,8 @@ class CrudController extends Controller
     private array $companyWide = [
         'material-standards',
         'pipe-standards',
+        'line-services',
+        'system-parameters',
     ];
 
     /**
@@ -334,6 +354,18 @@ class CrudController extends Controller
         [$model] = $this->resolve($res);
         $q = $this->scope($request, $model::query(), $res);
 
+        if ($res === 'fitting-standards') {
+            // Master fitting dipisah ke tabel dedicated (fitting_standards);
+            // select ringan hanya memuat kolom yang ditampilkan di UI.
+            // Kolom panjang (source_reference, material_ss, secondary)
+            // tetap di exclude agar payload tetap ringan (~1 MB untuk 2.303 baris).
+            $q->select([
+                'id', 'item_code', 'category', 'fitting_type', 'asme_standard',
+                'connection', 'nps_main', 'nps_secondary', 'schedule_class',
+                'material_cs', 'dimension_primary_mm', 'weight_cs_kg',
+            ]);
+        }
+
         if ($res === 'joints') {
             $q->with('inspections');
             if ($request->filled('search')) {
@@ -456,8 +488,8 @@ class CrudController extends Controller
             $q->where($col, 'like', "%{$s}%");
         }
 
-        if ($request->filled('project_id') && \Illuminate\Support\Facades\Schema::hasColumn($q->getModel()->getTable(), 'project_id')) {
-            $q->where($q->getModel()->getTable() . '.project_id', $request->project_id);
+        if ($request->filled('project_id') && Schema::hasColumn($q->getModel()->getTable(), 'project_id')) {
+            $q->where($q->getModel()->getTable().'.project_id', $request->project_id);
         }
 
         // app.jsx memanggil api.get('/x') lalu memakai hasilnya sebagai array langsung.
@@ -494,6 +526,9 @@ class CrudController extends Controller
         }
         if ($res === 'drawings' && isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
             $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
+        }
+        if ($res === 'drawings' && isset($data['spool_data']) && is_string($data['spool_data'])) {
+            $data['spool_data'] = json_decode($data['spool_data'], true);
         }
 
         if ($res === 'piping-class-templates') {
@@ -645,6 +680,7 @@ class CrudController extends Controller
 
         if ($res === 'bill-of-materials') {
             $data = PipeSchedule::enrichBom($data);
+            $data = FittingStandard::enrichBom($data);
         }
 
         $obj = $model::create($data);
@@ -672,6 +708,9 @@ class CrudController extends Controller
         }
         if ($res === 'drawings' && isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
             $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
+        }
+        if ($res === 'drawings' && isset($data['spool_data']) && is_string($data['spool_data'])) {
+            $data['spool_data'] = json_decode($data['spool_data'], true);
         }
         if (! $request->user()->isSuperAdmin()) {
             unset($data['department_id']);
@@ -782,6 +821,7 @@ class CrudController extends Controller
 
         if ($res === 'bill-of-materials') {
             $data = PipeSchedule::enrichBom($data);
+            $data = FittingStandard::enrichBom($data);
         }
 
         $obj->update($data);
@@ -804,7 +844,7 @@ class CrudController extends Controller
             if (preg_match('/(\d+)/', (string) $obj->joint_no, $m)) {
                 $jointSeq = (int) $m[1];
             }
-            \App\Models\Joint::where('drawing_no', $obj->iso_drawing_no)
+            Joint::where('drawing_no', $obj->iso_drawing_no)
                 ->where('spool_no', $obj->spool_no)
                 ->where('seq', $jointSeq)
                 ->delete();
@@ -855,7 +895,7 @@ class CrudController extends Controller
         return response()->json(['message' => 'OK']);
     }
 
-    private function syncWeldingMapToJoint(\App\Models\WeldingMap $map): void
+    private function syncWeldingMapToJoint(WeldingMap $map): void
     {
         $jointSeq = null;
         if (preg_match('/(\d+)/', (string) $map->joint_no, $m)) {
@@ -864,7 +904,7 @@ class CrudController extends Controller
 
         $consDeptId = Department::where('code', 'CONS')->value('id') ?? $map->department_id;
 
-        \App\Models\Joint::updateOrCreate(
+        Joint::updateOrCreate(
             [
                 'drawing_no' => $map->iso_drawing_no,
                 'spool_no' => $map->spool_no,
@@ -886,6 +926,7 @@ class CrudController extends Controller
             ]
         );
     }
+
     public function requestMaterialInspection(Request $request, int $id): JsonResponse
     {
         $this->checkWrite($request, 'material-receivings', 'update');
@@ -981,6 +1022,33 @@ class CrudController extends Controller
                 ->groupBy('description', 'spec')->havingRaw('bal < 1')->get(),
             'test_ready' => (clone $testPackages)->selectRaw('status, COUNT(*) c')->groupBy('status')->pluck('c', 'status'),
             'hse_open' => (clone $hse)->where('status', 'open')->count(),
+        ]);
+    }
+
+    public function lookupFitting(Request $request)
+    {
+        $type = $request->query('component_type') ?? $request->query('fitting_type');
+        $size = $request->query('size');
+        $sch = $request->query('rating_sch') ?? $request->query('schedule');
+        $secSize = $request->query('secondary_size');
+        $spec = $request->query('material_spec');
+
+        $fitting = FittingStandard::lookup($type, $size, $sch, $secSize);
+
+        if (! $fitting) {
+            return response()->json(['found' => false, 'data' => null]);
+        }
+
+        $isSs = FittingStandard::isStainless($spec, $request->query('description'));
+        $unitWeight = $isSs ? ($fitting->weight_ss_kg ?: $fitting->weight_cs_kg) : ($fitting->weight_cs_kg ?: $fitting->weight_ss_kg);
+
+        return response()->json([
+            'found' => true,
+            'data' => $fitting,
+            'od_mm' => (float) $fitting->od_main_mm,
+            'wall_mm' => (float) $fitting->wall_mm,
+            'unit_weight_kg' => (float) $unitWeight,
+            'is_stainless' => $isSs,
         ]);
     }
 }

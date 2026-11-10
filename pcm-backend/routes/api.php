@@ -42,7 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/roles/{role}/permissions', [PermissionController::class, 'sync'])->middleware('permission:access.update');
     });
 
-    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|pipe-standards|piping-class-templates|pipe-schedules|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|budget-items|material-receivings|material-inspections|material-storings|material-issuings';
+    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|fitting-standards|pipe-standards|system-parameters|piping-class-templates|pipe-schedules|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|budget-items|material-receivings|material-inspections|material-storings|material-issuings';
     Route::get('/overview', [CrudController::class, 'overview']);
     Route::get('/material-requirements', [CrudController::class, 'materialRequirements']);
 
@@ -63,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/material-receivings/{id}/request-inspection', [CrudController::class, 'requestMaterialInspection']);
     Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);
+    Route::get('/fitting-standards/lookup', [CrudController::class, 'lookupFitting']);
     Route::get('/{res}', [CrudController::class, 'index'])->where('res', $resRegex);
     Route::get('/{res}/{id}', [CrudController::class, 'show'])->where('res', $resRegex);
     Route::post('/{res}', [CrudController::class, 'store'])->where('res', $resRegex);

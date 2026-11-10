@@ -4,6 +4,7 @@ import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { MaterialDocumentsModal } from './MaterialDocumentsModal';
 import { MaterialReportModal } from './MaterialReportModal';
+import { PcmSelect } from '../SearchSelect';
 
 export function MaterialIssuingSection({ user, onToast }) {
     const [issuings, setIssuings] = useState([]);
@@ -594,8 +595,8 @@ export function MaterialIssuingSection({ user, onToast }) {
 
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Drawing Isometrik (Master)</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.drawing_id}
                                                 onChange={(e) => handleSelectDrawing(e.target.value)}
                                             >
@@ -605,12 +606,12 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                         {drawing.drawing_no} — {drawing.line_no || drawing.title || 'Tanpa line'}
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Baris BOM / MTO</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.bom_id}
                                                 onChange={(e) => handleSelectBom(e.target.value)}
                                             >
@@ -622,7 +623,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                         {` (butuh ${parseFloat(bom.qty || 0).toLocaleString('id-ID')} ${bom.unit})`}
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                             <div className="form-text">
                                                 Pilih baris BOM agar issuing ini dihitung pada dashboard Kebutuhan Material.
                                             </div>
@@ -661,8 +662,8 @@ export function MaterialIssuingSection({ user, onToast }) {
 
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Pilih dari Master Stok</label>
-                                            <select
-                                                className={`form-select ${form.material_storing_id ? 'border-success bg-success bg-opacity-10' : ''}`}
+                                            <PcmSelect
+                                                className={form.material_storing_id ? 'pcm-select-ok' : ''}
                                                 value={form.material_storing_id || ''}
                                                 disabled={Boolean(editingItem)}
                                                 onChange={(e) => handleSelectStock(e.target.value)}
@@ -675,7 +676,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                         {s.heat_no ? ` | Heat ${s.heat_no}` : ''}
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                             {form.bom_id && form.material_storing_id && (
                                                 <div className="text-success small mt-1">
                                                     <i className="bi bi-check-circle-fill me-1"></i>
@@ -702,8 +703,8 @@ export function MaterialIssuingSection({ user, onToast }) {
 
                                         <div className="col-12">
                                             <label className="form-label small fw-semibold text-secondary">Kode Standar Material</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.material_standard_id}
                                                 onChange={(e) => setForm({ ...form, material_standard_id: e.target.value })}
                                                 disabled={Boolean(selectedStock?.material_standard_id || editingItem?.material_standard_id)}
@@ -714,7 +715,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                         {standard.code} — {standard.specification} ({standard.category})
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                             <div className="form-text">
                                                 Otomatis mengikuti lot stok/BOM. Kode ini yang dipakai untuk rekonsiliasi kebutuhan.
                                             </div>
@@ -795,8 +796,8 @@ export function MaterialIssuingSection({ user, onToast }) {
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Satuan</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.unit}
                                                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
                                             >
@@ -804,7 +805,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                 <option value="pcs">pcs</option>
                                                 <option value="set">set</option>
                                                 <option value="kg">kg</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Petugas Gudang (Issued By)</label>

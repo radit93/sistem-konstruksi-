@@ -3,6 +3,7 @@ import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
+import { PcmSelect } from '../SearchSelect';
 
 export function BomSection({ user, projects = [], drawings = [], activeProjectId = '', onToast }) {
     const [bomList, setBomList] = useState([]);
@@ -35,6 +36,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
     const [deleteError, setDeleteError] = useState('');
+    const [fittingPreview, setFittingPreview] = useState(null);
 
     const [form, setForm] = useState({
         spool_no: 'SP-01',
@@ -88,6 +90,49 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
             active = false;
         };
     }, []);
+
+    useEffect(() => {
+        if (!showModal) {
+            setFittingPreview(null);
+            return;
+        }
+
+        const comp = (form.component_type || '').toLowerCase();
+        if (!comp || comp.includes('pipe') || comp.includes('valve') || comp.includes('gasket') || comp.includes('bolt')) {
+            setFittingPreview(null);
+            return;
+        }
+
+        if (!form.size) {
+            setFittingPreview(null);
+            return;
+        }
+
+        let active = true;
+        const params = new URLSearchParams({
+            component_type: form.component_type,
+            size: form.size,
+            rating_sch: form.rating_sch || '',
+            material_spec: form.material_spec || '',
+            description: form.description || ''
+        });
+
+        api.get(`/fitting-standards/lookup?${params.toString()}`)
+            .then((res) => {
+                if (active && res && res.found) {
+                    setFittingPreview(res);
+                } else if (active) {
+                    setFittingPreview(null);
+                }
+            })
+            .catch(() => {
+                if (active) setFittingPreview(null);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [showModal, form.component_type, form.size, form.rating_sch, form.material_spec, form.description]);
 
     const scopedBom = useMemo(
         () => scopeRows(bomList, activeProjectId, filterProject),
@@ -408,8 +453,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                     />
                 </div>
                 {!isProjectLocked(activeProjectId) && (
-                    <select
-                        className="form-select form-select-sm"
+                    <PcmSelect
+                        
                         value={filterProject}
                         onChange={(e) => setFilterProject(e.target.value)}
                         style={{ width: 'auto' }}
@@ -420,26 +465,26 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                 {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
                             </option>
                         ))}
-                    </select>
+                    </PcmSelect>
                 )}
-                <select
-                    className="form-select form-select-sm"
+                <PcmSelect
+                    
                     value={filterSpool}
                     onChange={(e) => setFilterSpool(e.target.value)}
                     style={{ width: 'auto' }}
                 >
                     <option value="ALL">Semua Spool ({spoolOptions.length})</option>
                     {spoolOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select
-                    className="form-select form-select-sm"
+                </PcmSelect>
+                <PcmSelect
+                    
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
                     style={{ width: 'auto' }}
                 >
                     <option value="ALL">Semua Jenis Komponen ({typeOptions.length})</option>
                     {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                </PcmSelect>
             </div>
 
             {/* Table */}
@@ -622,8 +667,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                     </div>
                                     <div className="col-12 col-md-3">
                                         <label className="form-label small fw-bold mb-1">Kode Standar Material</label>
-                                        <select
-                                            className="form-select form-select-sm"
+                                        <PcmSelect
+                                            
                                             value={templateForm.material_standard_id}
                                             onChange={(e) => setTemplateForm({ ...templateForm, material_standard_id: e.target.value })}
                                         >
@@ -633,12 +678,12 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                     {standard.code}
                                                 </option>
                                             ))}
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                     <div className="col-6 col-md-2">
                                         <label className="form-label small fw-bold mb-1">Satuan</label>
-                                        <select
-                                            className="form-select form-select-sm"
+                                        <PcmSelect
+                                            
                                             value={templateForm.unit}
                                             onChange={(e) => setTemplateForm({ ...templateForm, unit: e.target.value })}
                                         >
@@ -646,19 +691,19 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             <option value="buah">buah</option>
                                             <option value="set">set</option>
                                             <option value="kg">kg</option>
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                     <div className="col-6 col-md-2">
                                         <label className="form-label small fw-bold mb-1">Basis Hitung</label>
-                                        <select
-                                            className="form-select form-select-sm"
+                                        <PcmSelect
+                                            
                                             value={templateForm.basis}
                                             onChange={(e) => setTemplateForm({ ...templateForm, basis: e.target.value })}
                                         >
                                             <option value="PER_JOINT">Per Joint</option>
                                             <option value="PER_DI">Per Dia-Inch</option>
                                             <option value="FIXED">Fixed</option>
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                     <div className="col-6 col-md-2">
                                         <label className="form-label small fw-bold mb-1">Rasio</label>
@@ -757,8 +802,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                     </p>
                                     <div className="mb-3">
                                         <label className="form-label small fw-bold">Pilih Isometrik Drawing *</label>
-                                        <select
-                                            className="form-select"
+                                        <PcmSelect
+                                            
                                             value={selectedGenDrawingId}
                                             onChange={(e) => setSelectedGenDrawingId(e.target.value)}
                                             required
@@ -769,7 +814,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                     {d.drawing_no} ({d.line_no || 'Tanpa Line'} - {d.size_range || 'Size N/A'})
                                                 </option>
                                             ))}
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                 </div>
                                 <div className="modal-footer">
@@ -805,8 +850,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                     <div className="row g-3">
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-bold">Project</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.project_id}
                                                 onChange={(e) => setForm({
                                                     ...form,
@@ -818,12 +863,12 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                 {projects.map((project) => (
                                                     <option key={project.id} value={project.id}>{project.name}</option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-bold">Drawing Isometrik</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.drawing_id}
                                                 onChange={(e) => setForm({ ...form, drawing_id: e.target.value })}
                                             >
@@ -833,7 +878,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                         {drawing.drawing_no} — {drawing.line_no || drawing.title || 'Tanpa line'}
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                             <div className="form-text">
                                                 Drawing ini menjadi kunci rekonsiliasi BOM vs issuing.
                                             </div>
@@ -861,8 +906,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                         </div>
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-bold">Tipe Komponen *</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.component_type}
                                                 onChange={(e) => setForm({ ...form, component_type: e.target.value })}
                                             >
@@ -877,7 +922,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                 <option value="Check Valve">Check Valve</option>
                                                 <option value="Gasket">Gasket (Spiral Wound)</option>
                                                 <option value="Stud Bolt">Stud Bolt &amp; Nuts</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12">
                                             <label className="form-label small fw-bold">Deskripsi Komponen Lengkap *</label>
@@ -916,10 +961,29 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                 onChange={(e) => setForm({ ...form, material_spec: e.target.value })}
                                             />
                                         </div>
+                                        {fittingPreview && (
+                                            <div className="col-12">
+                                                <div className="p-2 rounded border small d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534' }}>
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <span className="badge bg-success" style={{ fontSize: '0.7rem' }}>Master Fitting B16</span>
+                                                        <strong>{fittingPreview.data?.item_code}</strong>
+                                                        <span className="font-monospace text-muted">Ø{fittingPreview.od_mm} × {fittingPreview.wall_mm} mm</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="fw-bold">{fittingPreview.unit_weight_kg} kg/{form.unit || 'buah'}</span>
+                                                        {form.qty > 0 && (
+                                                            <span className="text-muted ms-1 font-monospace">
+                                                                (Est. {(fittingPreview.unit_weight_kg * form.qty).toFixed(2)} kg)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="col-12">
                                             <label className="form-label small fw-bold">Kode Standar Material</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.material_standard_id}
                                                 onChange={(e) => handleStandardChange(e.target.value)}
                                             >
@@ -929,7 +993,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                         {standard.code} — {standard.specification}
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </PcmSelect>
                                             <div className="form-text">
                                                 Kode ini menghubungkan BOM ke receiving, stok, issuing, dan dashboard kebutuhan material.
                                             </div>
@@ -947,8 +1011,8 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                         </div>
                                         <div className="col-6 col-md-4">
                                             <label className="form-label small fw-bold">Satuan (Unit)</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.unit}
                                                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
                                             >
@@ -956,7 +1020,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                 <option value="buah">buah (pcs)</option>
                                                 <option value="set">set</option>
                                                 <option value="kg">kg</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Tag Number (Opsional)</label>

@@ -944,6 +944,73 @@ html[data-placement=horizontal] .nav-container .logo .img {
     color: #ffffff !important;
 }
 
+/* --- Professional Tab Bar (Kategori & Filter Komponen) ---
+   Satu state = satu token warna. Hover dibuat subtle agar tidak
+   tertukar dengan state aktif. Semua item punya box yang sama
+   supaya ritme jarak rata (bukan 20px vs 40px). */
+.pcm-tabbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+}
+
+.pcm-tabbar__item {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background-color: transparent;
+    color: #475569;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.pcm-tabbar__item:hover {
+    background-color: #eff6ff;
+    border-color: #dbeafe;
+    color: #1e3a8a;
+}
+
+.pcm-tabbar__item:focus {
+    outline: none;
+}
+
+.pcm-tabbar__item:focus-visible {
+    outline: 2px solid #1e40af;
+    outline-offset: 2px;
+}
+
+.pcm-tabbar__item.is-active,
+.pcm-tabbar__item.is-active:hover,
+.pcm-tabbar__item.is-active:focus {
+    background-color: #1e40af;
+    border-color: #1e40af;
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(30, 64, 175, 0.24);
+}
+
+.pcm-tabbar__item.is-active:focus-visible {
+    outline: 2px solid #1e3a8a;
+    outline-offset: 2px;
+}
+
 /* --- Top Action: Reload Button (Hanya Icon saja tanpa garis pinggir) --- */
 .page-title-container button.pcm-reload-btn,
 .pcm-reload-btn {
@@ -2029,10 +2096,15 @@ html[data-placement=horizontal] .nav-container .logo .img {
 }
 
 /* --- Welding Map joint form: kolom setara & field lebih besar --- */
+/* Modal joint dilebarkan agar 5 dropdown Material A/B muat sejajar.
+   Bootstrap modal-xl hanya 1140px; 1360px memberi ~253px per kolom. */
+.wm-joint-modal {
+    max-width: min(1360px, 95vw);
+}
+
 .wm-joint-modal .modal-body {
     padding: 1.25rem 1.5rem;
 }
-
 .wm-joint-modal .form-label {
     margin-bottom: .35rem;
     font-size: .8125rem;
@@ -2083,6 +2155,51 @@ html[data-placement=horizontal] .nav-container .logo .img {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: .75rem;
+}
+
+/* Toolbar Welding Map: samakan tinggi semua kontrol dengan field di modal
+   Tambah Joint (40px) supaya sebaris rapi. */
+.wm-toolbar .pcm-searchselect {
+    flex: 0 0 auto;
+    width: 190px;
+    max-width: 220px;
+}
+
+.wm-toolbar .pcm-searchselect__input,
+.wm-toolbar .pcm-filter-input,
+.wm-toolbar .btn {
+    height: 40px !important;
+    min-height: 40px !important;
+    box-sizing: border-box !important;
+}
+
+.wm-toolbar .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Material A/B: Material Group, Kategori, Size, Sch, Spesifikasi sejajar. */
+.wm-form-grid--5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 1399.98px) {
+    .wm-form-grid--5 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991.98px) {
+    .wm-form-grid--5 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575.98px) {
+    .wm-form-grid--5 {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .wm-form-grid__full {
@@ -2828,6 +2945,47 @@ html[data-placement=horizontal] .nav-container .logo .img {
     font-weight: 700;
 }
 
+/* Dropdown departemen memakai PcmSelect (SearchSelect) tetapi tetap gelap
+   mengikuti tema sidebar. Padding pindah ke input di dalamnya. */
+.pcm-menu-dept-select.pcm-searchselect {
+    padding: 0;
+}
+
+.pcm-menu-dept-select .pcm-searchselect__input {
+    height: auto !important;
+    min-height: 0;
+    padding: 0.9rem 2.5rem 0.9rem 1.25rem !important;
+    border: 0 !important;
+    border-radius: 0;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    color: #ffffff !important;
+    font-size: 1rem !important;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.pcm-menu-dept-select .pcm-searchselect__input::placeholder {
+    color: #cbd5e1;
+}
+
+.pcm-menu-dept-select .pcm-searchselect__caret,
+.pcm-menu-dept-select .pcm-searchselect__clear {
+    color: #ffffff;
+    right: 1.1rem;
+}
+
+.pcm-menu-dept-select .pcm-searchselect__clear:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* Penanda field sudah terisi (pengganti bg-success pada select lama) */
+.pcm-select-ok .pcm-searchselect__input {
+    border-color: #198754 !important;
+    background-color: rgba(25, 135, 84, 0.08) !important;
+}
+
 
 .pcm-btn {
     display: inline-flex;
@@ -2980,4 +3138,14 @@ html[data-placement=horizontal] .nav-container .logo .img {
     .pcm-form-grid__full {
         grid-column: auto;
     }
+}
+
+/* ==========================================================================
+   Ruang caret SearchSelect/PcmSelect
+   Diletakkan paling akhir dan memakai spesifisitas (0,2,1) agar tetap menang
+   atas aturan modal seperti `.pcm-modal input.form-control-sm` yang memaksa
+   padding input. Tanpa ini, teks akan menabrak ikon caret.
+   ========================================================================== */
+.pcm-searchselect input.pcm-searchselect__input {
+    padding-right: 1.9rem !important;
 }

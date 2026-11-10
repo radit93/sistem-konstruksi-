@@ -265,8 +265,22 @@ function App() {
                 : false;
         };
 
-        const menu = ROLE_SIDEBAR_MENUS.find((m) => m.id === activeTab);
-        if (menu && allowed(menu) && inScope(menu)) return;
+        /* Menu bisa berada di dalam sub-menu (children). Izin & cakupan
+           departemen mengikuti menu induknya, jadi id anak harus diresolusi
+           dulu — kalau tidak, tab anak akan dianggap tidak dikenal dan
+           pengguna terlempar ke Global Dashboard. */
+        const resolveMenu = (id) => {
+            const top = ROLE_SIDEBAR_MENUS.find((m) => m.id === id);
+            if (top) return { target: top, owner: top };
+            const parent = ROLE_SIDEBAR_MENUS.find(
+                (m) => Array.isArray(m.children) && m.children.some((c) => c.id === id)
+            );
+            if (!parent) return null;
+            return { target: parent.children.find((c) => c.id === id), owner: parent };
+        };
+
+        const resolved = resolveMenu(activeTab);
+        if (resolved && allowed(resolved.owner) && inScope(resolved.owner)) return;
 
         const fallback = ROLE_SIDEBAR_MENUS.find((m) => allowed(m) && inScope(m))?.id || 'overview';
         setActiveTab(fallback);
@@ -375,7 +389,7 @@ function App() {
                             }}
                         />
                     )}
-                    {['project_list', 'engineering', 'line_service', 'welding_map', 'boq', 'bom', 'material_standard', 'pipe_standard', 'document_control'].includes(activeTab) && (
+                    {['project_list', 'engineering', 'line_service', 'welding_map', 'boq', 'bom', 'material_standard', 'material_pipe', 'material_fitting', 'material_additional', 'pipe_schedule', 'pipe_table', 'fitting_table', 'document_control'].includes(activeTab) && (
                         <EngineeringTab
                             currentSection={activeTab}
                             drawings={drawings}
@@ -472,7 +486,7 @@ function App() {
                             }}
                         />
                     )}
-                    {['project', 'users', 'roles', 'access', 'departments'].includes(activeTab) && (
+                    {['project', 'users', 'roles', 'access', 'departments', 'parameters'].includes(activeTab) && (
                         <AdminTab
                             key={activeTab}
                             section={activeTab}

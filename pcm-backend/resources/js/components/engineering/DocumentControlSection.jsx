@@ -3,6 +3,7 @@ import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
+import { PcmSelect } from '../SearchSelect';
 
 export function DocumentControlSection({ user, projects = [], drawings = [], activeProjectId = '', onToast }) {
     const [docs, setDocs] = useState([]);
@@ -231,8 +232,8 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
                     />
                 </div>
                 {!isProjectLocked(activeProjectId) && (
-                    <select
-                        className="form-select form-select-sm"
+                    <PcmSelect
+                        
                         value={filterProject}
                         onChange={(e) => setFilterProject(e.target.value)}
                         style={{ width: 'auto' }}
@@ -243,10 +244,10 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
                                 {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
                             </option>
                         ))}
-                    </select>
+                    </PcmSelect>
                 )}
-                <select
-                    className="form-select form-select-sm"
+                <PcmSelect
+                    
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
                     style={{ width: 'auto' }}
@@ -256,7 +257,7 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
                     <option value="IFA">IFA (Issued for Approval)</option>
                     <option value="IFR">IFR (Issued for Review)</option>
                     <option value="AS-BUILT">AS-BUILT</option>
-                </select>
+                </PcmSelect>
             </div>
 
             {/* Table */}
@@ -391,8 +392,8 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
                                         </div>
                                         <div className="col-6 col-md-3">
                                             <label className="form-label small fw-bold">Status Dokumen</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.status_doc}
                                                 onChange={(e) => setForm({ ...form, status_doc: e.target.value })}
                                             >
@@ -400,7 +401,7 @@ export function DocumentControlSection({ user, projects = [], drawings = [], act
                                                 <option value="IFA">IFA (Issued for Approval)</option>
                                                 <option value="IFR">IFR (Issued for Review)</option>
                                                 <option value="AS-BUILT">AS-BUILT</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-6 col-md-3">
                                             <label className="form-label small fw-bold">Tanggal Diterima</label>

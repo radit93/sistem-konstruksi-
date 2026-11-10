@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
+import { PcmSelect } from '../SearchSelect';
 
 const EMPTY_SUMMARY = {
     total_lines: 0,
@@ -162,8 +163,8 @@ export function MaterialRequirementSection({ user, onToast }) {
                             />
                         </div>
                         <div className="col-6 col-md-3">
-                            <select
-                                className="form-select"
+                            <PcmSelect
+                                
                                 value={filters.project_id}
                                 onChange={(e) => setFilters((prev) => ({
                                     ...prev,
@@ -175,11 +176,11 @@ export function MaterialRequirementSection({ user, onToast }) {
                                 {projects.map((project) => (
                                     <option key={project.id} value={project.id}>{project.name}</option>
                                 ))}
-                            </select>
+                            </PcmSelect>
                         </div>
                         <div className="col-6 col-md-3">
-                            <select
-                                className="form-select"
+                            <PcmSelect
+                                
                                 value={filters.drawing_id}
                                 onChange={(e) => setFilters((prev) => ({ ...prev, drawing_id: e.target.value }))}
                             >
@@ -187,18 +188,18 @@ export function MaterialRequirementSection({ user, onToast }) {
                                 {drawingOptions.map((drawing) => (
                                     <option key={drawing.id} value={drawing.id}>{drawing.drawing_no}</option>
                                 ))}
-                            </select>
+                            </PcmSelect>
                         </div>
                         <div className="col-6 col-md-2">
-                            <select
-                                className="form-select"
+                            <PcmSelect
+                                
                                 value={filters.status}
                                 onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
                             >
                                 <option value="ALL">Semua Status</option>
                                 <option value="SHORTAGE">Belum Terpenuhi</option>
                                 <option value="FULFILLED">Terpenuhi</option>
-                            </select>
+                            </PcmSelect>
                         </div>
                         <div className="col-6 col-md-12 col-xl-2 text-md-end">
                             <button type="button" className="btn btn-sm btn-outline-secondary" onClick={resetFilters}>

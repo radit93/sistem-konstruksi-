@@ -3,6 +3,7 @@ import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
+import { PcmSelect } from '../SearchSelect';
 
 const PRESSURE_UNITS = ['bar', 'psi', 'kPa', 'MPa', 'kg/cm²'];
 const TEMPERATURE_UNITS = ['°C', '°F', 'K'];
@@ -25,8 +26,8 @@ function QtyField({ id, label, placeholder, value, unit, units, onValue, onUnit 
                     value={value}
                     onChange={(e) => onValue(e.target.value)}
                 />
-                <select
-                    className="form-select form-select-sm"
+                    <PcmSelect
+                    
                     value={unit}
                     onChange={(e) => onUnit(e.target.value)}
                     aria-label={`Satuan ${label}`}
@@ -34,7 +35,7 @@ function QtyField({ id, label, placeholder, value, unit, units, onValue, onUnit 
                     {options.map((u) => (
                         <option key={u} value={u}>{u}</option>
                     ))}
-                </select>
+                </PcmSelect>
             </div>
         </div>
     );
@@ -112,14 +113,9 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
         loadData();
     }, [loadData]);
 
-    const scopedLines = useMemo(
-        () => scopeRows(lines, activeProjectId, filterProject),
-        [lines, activeProjectId, filterProject]
-    );
-
     const filteredLines = useMemo(() => {
         const q = search.toLowerCase();
-        return scopedLines.filter(l => {
+        return lines.filter(l => {
             if (!q) return true;
             return (
                 (l.line_no || '').toLowerCase().includes(q) ||
@@ -128,7 +124,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                 (l.piping_class || '').toLowerCase().includes(q)
             );
         });
-    }, [scopedLines, search]);
+    }, [lines, search]);
 
     const handleOpenModal = (item = null) => {
         setFormError('');
@@ -312,17 +308,9 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                         <tr key={l.id}>
                                             <td className="text-center">
                                                 <span className="pcm-cell-id d-block">{l.line_no}</span>
-                                                {proj && (
-                                                    <span className="pcm-cell-sub d-block text-truncate" style={{ maxWidth: '140px', margin: '0 auto' }}>
-                                                        {proj.job_no ? `JOB: ${proj.job_no}` : proj.name}
-                                                    </span>
-                                                )}
                                             </td>
                                             <td>
                                                 <span className="pcm-cell-strong d-block">{l.service_name}</span>
-                                                {proj && (
-                                                    <span className="pcm-cell-sub">{proj.client || 'Client Umum'}</span>
-                                                )}
                                             </td>
                                             <td className="text-center">
                                                 <span className="pcm-chip pcm-chip--primary pcm-code">{l.fluid_code || '—'}</span>
@@ -391,33 +379,15 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                         <div className="alert alert-danger py-2 small mb-3">{formError}</div>
                                     )}
                                     <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">Identitas Jalur</span>
+                                        <span className="pcm-form-section__title">Identitas Jalur (Standard Line Service)</span>
                                         <div className="row g-3">
-                                            <div className="col-12">
-                                                <label className="form-label small fw-bold" htmlFor="ls-project">Proyek / Kontrak Terkait *</label>
-                                                <select
-                                                    id="ls-project"
-                                                    className="form-select form-select-sm"
-                                                    value={form.project_id}
-                                                    onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-                                                    disabled={isProjectLocked(activeProjectId)}
-                                                    required
-                                                >
-                                                    <option value="">-- Pilih Proyek Terkait --</option>
-                                                    {projects.map((p) => (
-                                                        <option key={p.id} value={p.id}>
-                                                            {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
                                             <div className="col-12 col-md-6">
                                                 <label className="form-label small fw-bold" htmlFor="ls-line-no">Line Number *</label>
                                                 <input
                                                     id="ls-line-no"
                                                     type="text"
                                                     className="form-control form-control-sm pcm-code text-uppercase"
-                                                    placeholder="Contoh: 15-MPP-AB"
+                                                    placeholder="Contoh: 15-MPP-1001"
                                                     value={form.line_no}
                                                     onChange={(e) => setForm({ ...form, line_no: e.target.value.toUpperCase() })}
                                                     required
@@ -429,7 +399,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                                     id="ls-service"
                                                     type="text"
                                                     className="form-control form-control-sm"
-                                                    placeholder="Contoh: Main Process Piping"
+                                                    placeholder="Contoh: Main Process Piping (Crude Oil)"
                                                     value={form.service_name}
                                                     onChange={(e) => setForm({ ...form, service_name: e.target.value })}
                                                     required
@@ -441,7 +411,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                                     id="ls-fluid"
                                                     type="text"
                                                     className="form-control form-control-sm pcm-code text-uppercase"
-                                                    placeholder="Contoh: MPP, FG, CW"
+                                                    placeholder="Contoh: MPP, FG, CW, IA, ST"
                                                     value={form.fluid_code}
                                                     onChange={(e) => setForm({ ...form, fluid_code: e.target.value.toUpperCase() })}
                                                 />
@@ -463,7 +433,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                                     id="ls-insulation"
                                                     type="text"
                                                     className="form-control form-control-sm"
-                                                    placeholder="None / Hot / Cold"
+                                                    placeholder="None / Thermal Hot / Cold"
                                                     value={form.insulation}
                                                     onChange={(e) => setForm({ ...form, insulation: e.target.value })}
                                                 />

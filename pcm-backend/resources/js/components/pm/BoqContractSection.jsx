@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { PcmSelect } from '../SearchSelect';
 
 export function BoqContractSection({ scopes = [], project, user, onReload }) {
     const [search, setSearch] = useState('');
@@ -162,15 +163,15 @@ export function BoqContractSection({ scopes = [], project, user, onReload }) {
                         style={{ borderRadius: '6px', padding: '0.5rem 0.75rem' }}
                     />
                 </div>
-                <select
-                    className="form-select form-select-sm"
+                <PcmSelect
+                    
                     value={filterUnit}
                     onChange={(e) => setFilterUnit(e.target.value)}
                     style={{ width: 'auto', borderRadius: '6px' }}
                 >
                     <option value="ALL">Semua Satuan ({units.length})</option>
                     {units.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                </PcmSelect>
             </div>
 
             {/* Table */}

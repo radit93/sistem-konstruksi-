@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { jointLabel } from './FabricationTab';
+import { PcmSelect } from './SearchSelect';
 
 const isField = j => (j.shop_field || '').toLowerCase() === 'field';
 const specLabel = j => [j.spec_a || j.spec_b, j.size_in ? `${j.size_in}"` : ''].filter(Boolean).join(' ');
@@ -181,8 +182,8 @@ export function FieldErectionTab({ joints, user, onReload }) {
                                     {error && <div className="alert alert-danger py-2 small">{error}</div>}
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Status Field Erection</label>
-                                        <select
-                                            className="form-select"
+                                        <PcmSelect
+                                            
                                             value={editData.status}
                                             onChange={e => setEditData({ ...editData, status: e.target.value })}
                                         >
@@ -192,7 +193,7 @@ export function FieldErectionTab({ joints, user, onReload }) {
                                             <option value="VISUAL_OK">VISUAL_OK (Visual QC Lapangan Lolos)</option>
                                             <option value="NDT_OK">NDT_OK (NDT Tie-in Lolos)</option>
                                             <option value="TESTED">TESTED (Hydrotested)</option>
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Welder Lapangan</label>

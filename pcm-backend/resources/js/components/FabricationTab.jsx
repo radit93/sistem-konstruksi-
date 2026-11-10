@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
+import { PcmSelect } from './SearchSelect';
 
 // Kolom nyata joints: drawing_no, line_no, spool_no, seq, item_a, spec_a, item_b, spec_b,
 // size_in, shop_field ('Shop'/'Field'), joint_type, method, wps, welder, fit_date, weld_date, visual, status.
@@ -224,8 +225,8 @@ export function FabricationTab({ joints, user, onReload }) {
                                     {error && <div className="alert alert-danger py-2 small">{error}</div>}
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Status Tahapan Joint</label>
-                                        <select
-                                            className="form-select"
+                                        <PcmSelect
+                                            
                                             value={editData.status}
                                             onChange={e => setEditData({ ...editData, status: e.target.value })}
                                         >
@@ -236,7 +237,7 @@ export function FabricationTab({ joints, user, onReload }) {
                                             <option value="VISUAL_OK">VISUAL_OK (Visual QC Lolos)</option>
                                             <option value="NDT_OK">NDT_OK (Radiography / PT Lolos)</option>
                                             <option value="TESTED">TESTED (Telah Hydrotest)</option>
-                                        </select>
+                                        </PcmSelect>
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Welder ID / Stencil</label>

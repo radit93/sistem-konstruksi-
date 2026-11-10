@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { formatRupiah } from '../../currency';
+import { PcmSelect } from '../SearchSelect';
 
 export function BudgetCostSection({ project, user, onToast }) {
     const [budgetList, setBudgetList] = useState([]);
@@ -200,8 +201,8 @@ export function BudgetCostSection({ project, user, onToast }) {
                         style={{ borderRadius: '6px', padding: '0.5rem 0.75rem' }}
                     />
                 </div>
-                <select
-                    className="form-select form-select-sm"
+                <PcmSelect
+                    
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
                     style={{ width: 'auto', borderRadius: '6px' }}
@@ -209,7 +210,7 @@ export function BudgetCostSection({ project, user, onToast }) {
                     <option value="ALL">Semua Kategori</option>
                     <option value="Direct Cost">Direct Cost</option>
                     <option value="Indirect Cost">Indirect Cost</option>
-                </select>
+                </PcmSelect>
             </div>
 
             {/* Table */}
@@ -313,14 +314,14 @@ export function BudgetCostSection({ project, user, onToast }) {
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Kategori</label>
-                                            <select
-                                                className="form-select"
+                                            <PcmSelect
+                                                
                                                 value={form.category}
                                                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                                             >
                                                 <option value="Direct Cost">Direct Cost</option>
                                                 <option value="Indirect Cost">Indirect Cost</option>
-                                            </select>
+                                            </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Satuan (Unit)</label>

@@ -29,6 +29,28 @@ class BillOfMaterial extends Model
         'source',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'od_mm' => 'decimal:2',
+            'wall_mm' => 'decimal:2',
+            'weight_kg' => 'decimal:2',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (BillOfMaterial $bom) {
+            if (empty($bom->item_no)) {
+                $count = BillOfMaterial::where('drawing_id', $bom->drawing_id)->count();
+                $bom->item_no = (string) ($count + 1);
+            }
+            if (empty($bom->description)) {
+                $bom->description = trim(($bom->component_type ?? 'Component').' '.($bom->size ?? '').' '.($bom->rating_sch ?? ''));
+            }
+        });
+    }
+
     public function drawing(): BelongsTo
     {
         return $this->belongsTo(Drawing::class);

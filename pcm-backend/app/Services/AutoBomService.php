@@ -7,6 +7,7 @@ use App\Models\Drawing;
 use App\Models\LineService;
 use App\Models\MaterialStandard;
 use App\Models\PipeSchedule;
+use App\Models\FittingStandard;
 use App\Models\PipingClassTemplate;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -141,7 +142,9 @@ class AutoBomService
                     'source' => 'GENERATED',
                 ];
 
-                $generated->push(BillOfMaterial::create(PipeSchedule::enrichBom($row)));
+                $row = PipeSchedule::enrichBom($row);
+                $row = FittingStandard::enrichBom($row);
+                $generated->push(BillOfMaterial::create($row));
             }
 
             return $generated;

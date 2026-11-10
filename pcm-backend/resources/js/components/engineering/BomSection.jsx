@@ -36,6 +36,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
     const [deleteError, setDeleteError] = useState('');
+    const [fittingPreview, setFittingPreview] = useState(null);
 
     const [form, setForm] = useState({
         spool_no: 'SP-01',
@@ -89,6 +90,49 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
             active = false;
         };
     }, []);
+
+    useEffect(() => {
+        if (!showModal) {
+            setFittingPreview(null);
+            return;
+        }
+
+        const comp = (form.component_type || '').toLowerCase();
+        if (!comp || comp.includes('pipe') || comp.includes('valve') || comp.includes('gasket') || comp.includes('bolt')) {
+            setFittingPreview(null);
+            return;
+        }
+
+        if (!form.size) {
+            setFittingPreview(null);
+            return;
+        }
+
+        let active = true;
+        const params = new URLSearchParams({
+            component_type: form.component_type,
+            size: form.size,
+            rating_sch: form.rating_sch || '',
+            material_spec: form.material_spec || '',
+            description: form.description || ''
+        });
+
+        api.get(`/fitting-standards/lookup?${params.toString()}`)
+            .then((res) => {
+                if (active && res && res.found) {
+                    setFittingPreview(res);
+                } else if (active) {
+                    setFittingPreview(null);
+                }
+            })
+            .catch(() => {
+                if (active) setFittingPreview(null);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [showModal, form.component_type, form.size, form.rating_sch, form.material_spec, form.description]);
 
     const scopedBom = useMemo(
         () => scopeRows(bomList, activeProjectId, filterProject),
@@ -917,6 +961,25 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                 onChange={(e) => setForm({ ...form, material_spec: e.target.value })}
                                             />
                                         </div>
+                                        {fittingPreview && (
+                                            <div className="col-12">
+                                                <div className="p-2 rounded border small d-flex flex-wrap align-items-center justify-content-between gap-2" style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534' }}>
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <span className="badge bg-success" style={{ fontSize: '0.7rem' }}>Master Fitting B16</span>
+                                                        <strong>{fittingPreview.data?.item_code}</strong>
+                                                        <span className="font-monospace text-muted">Ø{fittingPreview.od_mm} × {fittingPreview.wall_mm} mm</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="fw-bold">{fittingPreview.unit_weight_kg} kg/{form.unit || 'buah'}</span>
+                                                        {form.qty > 0 && (
+                                                            <span className="text-muted ms-1 font-monospace">
+                                                                (Est. {(fittingPreview.unit_weight_kg * form.qty).toFixed(2)} kg)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="col-12">
                                             <label className="form-label small fw-bold">Kode Standar Material</label>
                                             <PcmSelect

@@ -950,13 +950,16 @@ html[data-placement=horizontal] .nav-container .logo .img {
    supaya ritme jarak rata (bukan 20px vs 40px). */
 .pcm-tabbar {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     margin: 0;
-    padding: 0;
+    padding: 2px 0 6px 0;
     border: 0;
     background: none;
+    scrollbar-width: thin;
 }
 
 .pcm-tabbar__item {

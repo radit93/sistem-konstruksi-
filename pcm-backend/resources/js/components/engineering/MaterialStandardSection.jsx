@@ -1110,6 +1110,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                                         type="button"
                                                                         className="btn btn-primary btn-sm px-2 py-0.5 fw-bold"
                                                                         style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.72rem' }}
+                                                                        onClick={() => handleOpenModal(row)}
                                                                     >
                                                                         Edit
                                                                     </button>

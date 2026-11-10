@@ -24,6 +24,13 @@ class FittingCatalogSeeder extends Seeder
             return;
         }
 
+        $items = array_values(array_filter($items, static fn (array $row): bool =>
+            ! empty($row['item_code'])
+            && ! empty($row['fitting_type'])
+            && ! empty($row['asme_standard'])
+            && ! empty($row['nps_primary'])
+        ));
+
         $this->command?->info("Memulai seeding " . count($items) . " baris katalog fitting ASME...");
 
         $now = now();

@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\DocumentControl;
 use App\Models\Drawing;
 use App\Models\EngineeringBoq;
+use App\Models\FittingCatalog;
 use App\Models\HseLog;
 use App\Models\Inspection;
 use App\Models\Joint;
@@ -108,6 +109,11 @@ class CrudController extends Controller
             'delete' => 'drawing.write',
         ]],
         'material-standards' => [MaterialStandard::class, [
+            'create' => 'drawing.write',
+            'update' => 'drawing.write',
+            'delete' => 'drawing.write',
+        ]],
+        'fitting-catalogs' => [FittingCatalog::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',

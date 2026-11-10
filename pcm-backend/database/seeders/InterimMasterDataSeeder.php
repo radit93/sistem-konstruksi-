@@ -37,9 +37,23 @@ class InterimMasterDataSeeder extends Seeder
             );
         }
 
+        // ASME B36.19M Stainless Steel & Duplex Schedules (Sch 5S, 10S, 40S, 80S)
+        $stainlessSource = 'ASME B36.19M · STAINLESS & DUPLEX';
+        foreach ($this->stainlessPipeRows() as $row) {
+            PipeStandard::updateOrCreate(
+                ['nps' => $row['nps'], 'schedule' => $row['schedule']],
+                array_merge($row, [
+                    'source' => $stainlessSource,
+                    'is_interim' => true,
+                    'department_id' => $engId,
+                ])
+            );
+        }
+
         foreach ($this->materialRows() as $row) {
-            $rating = $row['rating'] ?? ($row['rating_class'] === 'Class 150# / 300#' ? '150# / 300#' : 'N/A');
-            $class = $row['class'] ?? ($row['rating_class'] === 'Class 150# / 300#' ? 'Class 150 / 300' : 'N/A');
+            $ratingClass = $row['rating_class'] ?? '';
+            $rating = $row['rating'] ?? ($ratingClass === 'Class 150# / 300#' ? '150# / 300#' : 'N/A');
+            $class = $row['class'] ?? ($ratingClass === 'Class 150# / 300#' ? 'Class 150 / 300' : 'N/A');
             MaterialStandard::updateOrCreate(
                 ['code' => $row['code']],
                 array_merge($row, [
@@ -93,6 +107,20 @@ class InterimMasterDataSeeder extends Seeder
         }
 
         return $rows;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function stainlessPipeRows(): array
+    {
+        $path = database_path('data/pipe_schedules_stainless_b36_19.json');
+        if (! is_file($path)) {
+            return [];
+        }
+
+        $rows = json_decode(file_get_contents($path), true);
+        return is_array($rows) ? $rows : [];
     }
 
     /**

@@ -117,16 +117,12 @@ class CrudController extends Controller
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-<<<<<<< HEAD
         'fitting-catalogs' => [FittingCatalog::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
         ]],
-        'pipe-standards' => [\App\Models\PipeStandard::class, [
-=======
         'fitting-standards' => [FittingStandard::class, [
->>>>>>> origin/neil
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',

@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { jointLabel } from './FabricationTab';
 import { PcmSelect } from './SearchSelect';
+import {
+    ConstructionChecklistSection,
+    ConstructionKpiCards,
+    downloadConstructionCsv,
+    emptyConstructionFields,
+    formatJointSpec,
+    pickConstructionFields
+} from './ConstructionChecklist';
 
 const isField = j => (j.shop_field || '').toLowerCase() === 'field';
-const specLabel = j => [j.spec_a || j.spec_b, j.size_in ? `${j.size_in}"` : ''].filter(Boolean).join(' ');
+const specLabel = formatJointSpec;
 
-export function FieldErectionTab({ joints, user, onReload }) {
+export function FieldErectionTab({ projects = [], joints, user, onReload }) {
     const [selectedJoint, setSelectedJoint] = useState(null);
     const [editData, setEditData] = useState({
         status: 'WELDED',
@@ -19,8 +27,25 @@ export function FieldErectionTab({ joints, user, onReload }) {
     const [error, setError] = useState('');
 
     const canEdit = can(user, 'joint.write');
+    const [activeProjectId, setActiveProjectId] = useState(() => (
+        localStorage.getItem('pcm_active_erection_project_id') || ''
+    ));
 
-    const fieldJoints = (joints || []).filter(isField);
+    const selectedProjectId = projects.some(project => String(project.id) === String(activeProjectId))
+        ? activeProjectId
+        : String(projects[0]?.id || '');
+    const activeProject = useMemo(
+        () => projects.find(project => String(project.id) === String(selectedProjectId)) || null,
+        [projects, selectedProjectId]
+    );
+    const projectJoints = useMemo(() => {
+        if (!selectedProjectId) return [];
+        return (joints || []).filter(joint => (
+            String(joint.project_id || '') === String(selectedProjectId)
+            || (!joint.project_id && String(projects[0]?.id) === String(selectedProjectId))
+        ));
+    }, [joints, projects, selectedProjectId]);
+    const fieldJoints = projectJoints.filter(isField);
 
     const openEdit = (j) => {
         setSelectedJoint(j);
@@ -29,6 +54,8 @@ export function FieldErectionTab({ joints, user, onReload }) {
             welder: j.welder || 'W-007',
             fit_date: j.fit_date || new Date().toISOString().split('T')[0],
             weld_date: j.weld_date || new Date().toISOString().split('T')[0],
+            ...emptyConstructionFields,
+            ...pickConstructionFields(j)
         });
     };
 
@@ -71,7 +98,32 @@ export function FieldErectionTab({ joints, user, onReload }) {
                         Monitoring Sambungan Lapangan (Field Joints), Tie-In Titik Pasang & Welder Lapangan (Job 2428)
                     </p>
                 </div>
-                <div>
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success"
+                        onClick={() => downloadConstructionCsv(fieldJoints, 'field-erection.csv', 'Data Field Erection')}
+                    >
+                        <i className="cs-document me-1"></i>Export CSV
+                    </button>
+                    <select
+                        className="form-select form-select-sm"
+                        style={{ width: '240px' }}
+                        value={selectedProjectId}
+                        onChange={(e) => {
+                            const id = e.target.value;
+                            setActiveProjectId(id);
+                            localStorage.setItem('pcm_active_erection_project_id', id);
+                        }}
+                        aria-label="Pilih project Field Erection"
+                    >
+                        <option value="">-- Pilih Project --</option>
+                        {projects.map(project => (
+                            <option key={project.id} value={project.id}>
+                                {project.name || project.job_no || `Project #${project.id}`}
+                            </option>
+                        ))}
+                    </select>
                     {!canEdit && (
                         <span className="badge bg-light text-muted border p-2">
                             Mode Baca (Akses edit: Construction / Manager)
@@ -80,34 +132,7 @@ export function FieldErectionTab({ joints, user, onReload }) {
                 </div>
             </div>
 
-            {/* Field Erection Highlight Cards */}
-            <div className="row g-3 mb-4">
-                <div className="col-md-4">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">TOTAL FIELD JOINTS</small>
-                        <h3 className="fw-bold text-primary mb-0">{fieldJoints.length}</h3>
-                        <small className="text-muted mt-1">Sambungan tie-in di lapangan</small>
-                    </div>
-                </div>
-                <div className="col-md-4">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">SELESAI FIT-UP & WELD</small>
-                        <h3 className="fw-bold text-success mb-0">
-                            {fieldJoints.filter(j => ['WELDED', 'VISUAL_OK', 'NDT_OK'].includes(j.status)).length}
-                        </h3>
-                        <small className="text-muted mt-1">Welder Lapangan W-007</small>
-                    </div>
-                </div>
-                <div className="col-md-4">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">STATUS SYSTEM</small>
-                        <h3 className="fw-bold text-info mb-0">
-                            {fieldJoints.length > 0 && fieldJoints.every(j => ['VISUAL_OK', 'NDT_OK', 'TESTED'].includes(j.status)) ? 'READY HYDROTEST' : 'IN PROGRESS'}
-                        </h3>
-                        <small className="text-muted mt-1">Kesiapan paket hydrotest</small>
-                    </div>
-                </div>
-            </div>
+            <ConstructionKpiCards items={fieldJoints} readyLabel="Kesiapan hydrotest" />
 
             {/* Table */}
             <div className="card shadow-sm border-0 bg-white">
@@ -125,6 +150,7 @@ export function FieldErectionTab({ joints, user, onReload }) {
                                 <th>Tgl Fit-up</th>
                                 <th>Tgl Weld</th>
                                 <th>Status QC</th>
+                                <th>Repair</th>
                                 <th className="text-end">Aksi</th>
                             </tr>
                         </thead>
@@ -146,6 +172,7 @@ export function FieldErectionTab({ joints, user, onReload }) {
                                     <td className="text-muted">{j.fit_date || '-'}</td>
                                     <td className="text-muted">{j.weld_date || '-'}</td>
                                     <td>{statusBadge(j.status)}</td>
+                                    <td>{j.repair_no ? <span className={`badge ${j.repair_status === 'CLOSED' ? 'bg-success' : 'bg-warning text-dark'}`}>{j.repair_no} · {j.repair_status || 'OPEN'}</span> : <span className="text-muted">-</span>}</td>
                                     <td className="text-end">
                                         {canEdit ? (
                                             <button
@@ -171,7 +198,7 @@ export function FieldErectionTab({ joints, user, onReload }) {
             {/* Modal Update */}
             {selectedJoint && (
                 <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-dialog modal-lg modal-dialog-centered">
                         <div className="modal-content border-0 shadow">
                             <form onSubmit={handleUpdate}>
                                 <div className="modal-header bg-primary text-white">
@@ -224,6 +251,8 @@ export function FieldErectionTab({ joints, user, onReload }) {
                                             />
                                         </div>
                                     </div>
+
+                                    <ConstructionChecklistSection editData={editData} setEditData={setEditData} />
                                 </div>
                                 <div className="modal-footer bg-light">
                                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelectedJoint(null)}>Batal</button>

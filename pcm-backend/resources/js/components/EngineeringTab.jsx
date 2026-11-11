@@ -1635,9 +1635,9 @@ export function EngineeringTab({
 
                                     {/* Picker Master Data */}
                                     <div className="p-3 border rounded bg-light mb-3">
-                                        <div className="row g-2 align-items-end">
-                                            <div className="col-12 col-md-3">
-                                                <label className="form-label small fw-bold mb-1">Jenis Komponen (Master)</label>
+                                        <div className="row g-2 align-items-end flex-nowrap" style={{ minWidth: '780px' }}>
+                                            <div style={{ flex: '1 1 24%', minWidth: '170px' }}>
+                                                <label className="form-label small fw-bold mb-1 text-nowrap">Jenis Komponen (Master)</label>
                                                 <SearchSelect
                                                     value={quickCompType}
                                                     onChange={(val) => {
@@ -1652,8 +1652,8 @@ export function EngineeringTab({
                                                     ariaLabel="Jenis Komponen"
                                                 />
                                             </div>
-                                            <div className="col-12 col-md-3">
-                                                <label className="form-label small fw-bold mb-1">Spesifikasi Material</label>
+                                            <div style={{ flex: '1 1 26%', minWidth: '180px' }}>
+                                                <label className="form-label small fw-bold mb-1 text-nowrap">Spesifikasi Material</label>
                                                 <SearchSelect
                                                     value={quickMatSpec}
                                                     onChange={(val) => {
@@ -1667,8 +1667,8 @@ export function EngineeringTab({
                                                     ariaLabel="Spesifikasi Material"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-2">
-                                                <label className="form-label small fw-bold mb-1">Size (NPS)</label>
+                                            <div style={{ flex: '1 1 18%', minWidth: '130px' }}>
+                                                <label className="form-label small fw-bold mb-1 text-nowrap">Size (NPS)</label>
                                                 <SearchSelect
                                                     value={quickNps}
                                                     onChange={(val) => {
@@ -1681,8 +1681,8 @@ export function EngineeringTab({
                                                     ariaLabel="Nominal Size NPS"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-2">
-                                                <label className="form-label small fw-bold mb-1">Schedule / Rating</label>
+                                            <div style={{ flex: '1 1 20%', minWidth: '140px' }}>
+                                                <label className="form-label small fw-bold mb-1 text-nowrap">Schedule / Rating</label>
                                                 <SearchSelect
                                                     value={quickSchedule}
                                                     onChange={(val) => setQuickSchedule(val)}
@@ -1692,10 +1692,10 @@ export function EngineeringTab({
                                                     ariaLabel="Schedule Pipa"
                                                 />
                                             </div>
-                                            <div className="col-12 col-md-2">
+                                            <div style={{ flex: '0 0 auto', width: '105px' }}>
                                                 <button
                                                     type="button"
-                                                    className="btn btn-primary btn-sm fw-bold w-100"
+                                                    className="btn btn-primary btn-sm fw-bold w-100 text-nowrap"
                                                     style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                                                     onClick={handleAddQuickSpec}
                                                     disabled={!quickNps && !quickMatSpec}
@@ -1878,9 +1878,9 @@ export function EngineeringTab({
                                         + Tambah Spesifikasi Komponen (Master Data)
                                     </h6>
                                     <form onSubmit={handleAddFitupRow}>
-                                        <div className="row g-2 align-items-end">
-                                            <div className="col-12 col-md-3">
-                                                <label className="form-label small fw-bold">Jenis Komponen *</label>
+                                        <div className="row g-2 align-items-end flex-nowrap" style={{ overflowX: 'auto' }}>
+                                            <div style={{ flex: '1 1 24%', minWidth: '150px' }}>
+                                                <label className="form-label small fw-bold text-nowrap">Jenis Komponen *</label>
                                                 <SearchSelect
                                                     value={fitupForm.component_type}
                                                     onChange={(val) => {
@@ -1898,8 +1898,8 @@ export function EngineeringTab({
                                                     ariaLabel="Jenis Komponen"
                                                 />
                                             </div>
-                                            <div className="col-12 col-md-3">
-                                                <label className="form-label small fw-bold">Spesifikasi Material *</label>
+                                            <div style={{ flex: '1 1 28%', minWidth: '170px' }}>
+                                                <label className="form-label small fw-bold text-nowrap">Spesifikasi Material *</label>
                                                 <SearchSelect
                                                     value={fitupForm.material_spec}
                                                     onChange={(val) => {
@@ -1919,8 +1919,8 @@ export function EngineeringTab({
                                                     ariaLabel="Spesifikasi Material"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-2">
-                                                <label className="form-label small fw-bold">Size (NPS) *</label>
+                                            <div style={{ flex: '1 1 16%', minWidth: '115px' }}>
+                                                <label className="form-label small fw-bold text-nowrap">Size (NPS) *</label>
                                                 <SearchSelect
                                                     value={fitupForm.size}
                                                     onChange={(val) => setFitupForm({ ...fitupForm, size: val, schedule: '' })}
@@ -1930,8 +1930,8 @@ export function EngineeringTab({
                                                     ariaLabel="Size NPS"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-2">
-                                                <label className="form-label small fw-bold">Schedule / Rating *</label>
+                                            <div style={{ flex: '1 1 20%', minWidth: '135px' }}>
+                                                <label className="form-label small fw-bold text-nowrap">Schedule / Rating *</label>
                                                 <SearchSelect
                                                     value={fitupForm.schedule}
                                                     onChange={(val) => setFitupForm({ ...fitupForm, schedule: val })}
@@ -1941,10 +1941,10 @@ export function EngineeringTab({
                                                     ariaLabel="Schedule Pipa"
                                                 />
                                             </div>
-                                            <div className="col-12 col-md-2">
+                                            <div style={{ flex: '0 0 auto', width: '95px' }}>
                                                 <button
                                                     type="submit"
-                                                    className="btn btn-primary btn-sm fw-bold w-100"
+                                                    className="btn btn-primary btn-sm fw-bold w-100 text-nowrap"
                                                     style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                                                 >
                                                     + Tambah

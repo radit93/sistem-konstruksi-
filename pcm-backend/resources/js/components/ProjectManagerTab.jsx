@@ -97,6 +97,8 @@ const emptyFolderForm = () => ({ client: '', name: '', job_no: '' });
 export function ProjectManagerTab({
     currentSection = 'schedule',
     projects = [],
+    activeProjectId = '',
+    onSetActiveProject,
     drawings = [],
     scopes = [],
     joints = [],
@@ -106,10 +108,13 @@ export function ProjectManagerTab({
     onReload
 }) {
     // Navigasi: null = direktori folder proyek (Parents level), number = id folder proyek aktif
-    const [selectedProjectId, setSelectedProjectId] = useState(() => {
-        const saved = localStorage.getItem('pcm_active_pm_project_id');
+    const [localProjectId, setLocalProjectId] = useState(() => {
+        const saved = localStorage.getItem('pcm_active_project_id') || localStorage.getItem('pcm_active_pm_project_id');
         return saved ? Number(saved) : null;
     });
+    const selectedProjectId = onSetActiveProject
+        ? (activeProjectId ? Number(activeProjectId) : null)
+        : localProjectId;
 
     const [searchFolder, setSearchFolder] = useState('');
     const [clientFilter, setClientFilter] = useState('ALL');
@@ -168,14 +173,16 @@ export function ProjectManagerTab({
         };
     }, [selectedProjectId]);
 
-    // Sinkronisasi penyimpanan proyek aktif ke local storage
+    // Sinkronisasi penyimpanan proyek aktif ke global App & localStorage
     const handleSelectProject = (projId) => {
         if (projId) {
             localStorage.setItem('pcm_active_pm_project_id', String(projId));
-            setSelectedProjectId(Number(projId));
+            if (onSetActiveProject) onSetActiveProject(String(projId));
+            else setLocalProjectId(Number(projId));
         } else {
             localStorage.removeItem('pcm_active_pm_project_id');
-            setSelectedProjectId(null);
+            if (onSetActiveProject) onSetActiveProject('');
+            else setLocalProjectId(null);
         }
     };
 
@@ -295,7 +302,7 @@ export function ProjectManagerTab({
     };
 
     return (
-        <div className="container-fluid px-4 py-4">
+        <div className="py-1">
             {/* ============================================================
                 VIEW A: DIREKTORI FOLDER PROYEK CLIENT (PARENTS LEVEL)
                 ============================================================ */}
@@ -443,7 +450,7 @@ export function ProjectManagerTab({
                                         <span className="pcm-folder-card__metric">
                                             <span>Realisasi Target DI</span>
                                             <strong className="pcm-code">
-                                                {p.total_actual_di.toLocaleString()} / {p.total_contract_di.toLocaleString()} DI
+                                                {p.total_actual_di.toLocaleString('id-ID')} / {p.total_contract_di.toLocaleString('id-ID')} DI
                                             </strong>
                                         </span>
                                         <span className="pcm-folder-card__metric">
@@ -469,34 +476,34 @@ export function ProjectManagerTab({
             {activeProject && (
                 <div>
                     {/* BREADCRUMB & PROJECT CONTEXT BAR */}
-                    <div className="pcm-crumbs mb-4 d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 bg-white shadow-sm border rounded">
+                    <div
+                        className="pcm-crumbs mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 bg-white border"
+                        style={{ borderRadius: 'var(--pcm-radius-card)', boxShadow: 'var(--pcm-elev-1)', borderColor: 'var(--pcm-line-soft)' }}
+                    >
                         <div className="d-flex align-items-center gap-2 flex-wrap">
                             <button
                                 type="button"
-                                className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
+                                className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 fw-semibold"
                                 onClick={() => handleSelectProject(null)}
                             >
                                 <IconArrowLeft size="sm" />
-                                <span>Kembali ke Daftar Folder Proyek</span>
+                                <span>Daftar Proyek</span>
                             </button>
-                            <span className="text-muted">/</span>
-                            <span className="badge bg-light text-dark border">
-                                Client: <strong>{activeProject.client || '-'}</strong>
-                            </span>
-                            <span className="text-muted">/</span>
-                            <span className="fw-bold text-primary font-monospace">
+                            <span className="pcm-chip pcm-chip--primary pcm-code">
                                 JOB: {activeProject.job_no || '-'}
                             </span>
-                            <span className="text-muted">/</span>
                             <span className="fw-bold text-dark">{activeProject.name}</span>
+                            <span className="pcm-chip pcm-chip--neutral">
+                                <IconBuilding size="sm" />
+                                <span>{activeProject.client || 'Client Umum'}</span>
+                            </span>
                         </div>
 
                         {/* Quick Project Switcher */}
                         <div className="d-flex align-items-center gap-2">
-                            <span className="text-muted small">Pindah Proyek:</span>
-                                <PcmSelect
-                                
-                                style={{ width: 'auto' }}
+                            <span className="text-muted small fw-semibold text-nowrap">Pindah Proyek:</span>
+                            <PcmSelect
+                                style={{ width: 'auto', minWidth: '210px' }}
                                 value={activeProject.id}
                                 onChange={(e) => handleSelectProject(e.target.value)}
                             >

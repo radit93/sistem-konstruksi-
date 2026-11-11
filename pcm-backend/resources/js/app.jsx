@@ -474,6 +474,8 @@ function App() {
                         <ProjectManagerTab
                             currentSection={activeTab}
                             projects={projects}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
                             drawings={drawings}
                             scopes={scopes}
                             joints={joints}

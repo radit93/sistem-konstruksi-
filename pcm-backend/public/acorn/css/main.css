@@ -151,6 +151,28 @@ html[data-placement=vertical] .nav-container .nav-content .menu-container .menu 
     color: rgba(255, 255, 255, 0.6) !important;
 }
 
+/* Print-friendly layout untuk Laporan Eksekutif PM */
+@media print {
+    #nav,
+    .nav-container,
+    .pcm-reload-btn,
+    .pcm-crumbs,
+    footer,
+    .d-print-none {
+        display: none !important;
+    }
+    main {
+        padding-left: 0 !important;
+        padding-top: 0 !important;
+        margin: 0 !important;
+    }
+    main .container {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+    }
+}
+
 /* Superadmin & PM punya banyak menu: daftar bisa digulir mulus tanpa plugin JS. */
 html[data-placement=vertical] .nav-container {
     height: 100vh !important;

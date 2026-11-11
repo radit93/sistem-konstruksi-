@@ -127,6 +127,21 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
         }
     };
 
+    const handleDelete = async () => {
+        if (!editingScope) return;
+        if (!window.confirm(`Hapus scope "${editingScope.scope}"?`)) return;
+        setFormLoading(true);
+        try {
+            await api.delete(`/scopes/${editingScope.id}`);
+            setShowModal(false);
+            if (onReload) onReload();
+        } catch (err) {
+            setFormError(err.message || 'Gagal menghapus scope.');
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
     return (
         <div>
             {/* Header & Action Toolbar */}
@@ -134,14 +149,14 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                 <div>
                     <h2 className="h4 fw-bold text-dark mb-1">Kontrak &amp; BOQ Scope Monitoring</h2>
                     <p className="text-muted small mb-0">
-                        Baseline kontrak lingkup pekerjaan piping, target volume kontrak vs realisasi aktual kumulatif {project ? `(Job ${project.job_no || '-'} - ${project.name})` : ''}.
+                        Baseline kontrak lingkup pekerjaan piping, target volume kontrak vs realisasi aktual kumulatif {project ? `(Job ${project.job_no || '-'} — ${project.name})` : ''}.
                     </p>
                 </div>
                 {canEdit && (
                     <button
                         type="button"
                         className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                        style={{ borderRadius: '6px' }}
+                        style={{ borderRadius: 'var(--pcm-radius-control)', backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                         onClick={() => handleOpenModal()}
                     >
                         + Tambah Scope Kontrak
@@ -149,42 +164,48 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                 )}
             </div>
 
-            {/* Metric Summary Tiles */}
+            {/* Metric Summary Tiles (Design Tokens PCM) */}
             <div className="row g-3 mb-4">
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Volume Kontrak DI</span>
-                        <strong className="h3 fw-bold text-primary mb-0">{stats.totalContractDI.toLocaleString()}</strong>
-                        <span className="text-muted ms-1 small">Dia-Inch</span>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Volume Kontrak DI</span>
+                        <strong className="pcm-tile__value pcm-tile__value--primary">
+                            {stats.totalContractDI.toLocaleString('id-ID', { maximumFractionDigits: 2 })}
+                            <span className="pcm-tile__unit">DI</span>
+                        </strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">BOQ Engineering (Weld Map)</span>
-                        <strong className="h3 fw-bold text-info mb-0">{stats.engBoqDI.toLocaleString(undefined, { maximumFractionDigits: 1 })}</strong>
-                        <span className="text-muted ms-1 small">DI ({formatRupiah(stats.engBoqValue)})</span>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">BOQ Engineering (Weld Map)</span>
+                        <strong className="pcm-tile__value" style={{ color: '#0369a1' }}>
+                            {stats.engBoqDI.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
+                            <span className="pcm-tile__unit">DI ({formatRupiah(stats.engBoqValue)})</span>
+                        </strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Realisasi Aktual DI</span>
-                        <strong className="h3 fw-bold text-success mb-0">{stats.totalActualDI.toLocaleString()}</strong>
-                        <span className="text-muted ms-1 small">
-                            DI (Las Lapangan: {stats.jointWeldedDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI)
-                        </span>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Realisasi Aktual Lapangan</span>
+                        <strong className="pcm-tile__value text-success">
+                            {stats.totalActualDI.toLocaleString('id-ID', { maximumFractionDigits: 2 })}
+                            <span className="pcm-tile__unit">DI (Las: {stats.jointWeldedDI.toLocaleString('id-ID', { maximumFractionDigits: 1 })} DI)</span>
+                        </strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Rata-Rata Progres &amp; Support</span>
-                        <strong className="h3 fw-bold text-primary mb-0">{stats.avgPct}%</strong>
-                        <span className="text-muted ms-1 small">&bull; {stats.totalWeightTon.toLocaleString()} TON</span>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Rata-Rata Progres &amp; Support</span>
+                        <strong className="pcm-tile__value">
+                            {stats.avgPct}%
+                            <span className="pcm-tile__unit">&bull; {stats.totalWeightTon.toLocaleString('id-ID')} TON</span>
+                        </strong>
                     </div>
                 </div>
             </div>
 
             {/* Rekonsiliasi Engineering vs Kontrak */}
-            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '8px', borderLeft: '4px solid #0284c7' }}>
+            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 'var(--pcm-radius-card)', borderLeft: '4px solid #1e40af' }}>
                 <div className="card-body py-3 px-4">
                     <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
                         <div>
@@ -192,12 +213,12 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                                 Sinkronisasi BOQ Engineering (Welding Map) vs Kontrak Baseline
                             </div>
                             <div className="small text-muted">
-                                Shop Fabrication: <strong className="text-dark">{stats.engShopDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI</strong> &bull;{' '}
-                                Field Erection: <strong className="text-dark">{stats.engFieldDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI</strong> &bull;{' '}
-                                Total Joint Terdaftar: <strong className="text-dark">{(joints || []).length} joints ({stats.jointTotalDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI)</strong>
+                                Shop Fabrication: <strong className="text-dark">{stats.engShopDI.toLocaleString('id-ID', { maximumFractionDigits: 1 })} DI</strong> &bull;{' '}
+                                Field Erection: <strong className="text-dark">{stats.engFieldDI.toLocaleString('id-ID', { maximumFractionDigits: 1 })} DI</strong> &bull;{' '}
+                                Total Joint Terdaftar: <strong className="text-dark">{(joints || []).length} joints ({stats.jointTotalDI.toLocaleString('id-ID', { maximumFractionDigits: 1 })} DI)</strong>
                             </div>
                         </div>
-                        <span className={`badge ${stats.engBoqDI > stats.totalContractDI && stats.totalContractDI > 0 ? 'bg-danger' : 'bg-info text-dark'}`}>
+                        <span className="badge px-3 py-2 fw-bold" style={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: 'var(--pcm-radius-chip)' }}>
                             {stats.totalContractDI > 0
                                 ? `Cakupan Gambar: ${Math.round((stats.engBoqDI / stats.totalContractDI) * 100)}% dari Kontrak`
                                 : 'Menunggu Baseline Kontrak'}
@@ -215,14 +236,13 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                         placeholder="Cari deskripsi scope pekerjaan atau kode..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        style={{ borderRadius: '6px', padding: '0.5rem 0.75rem' }}
+                        style={{ borderRadius: 'var(--pcm-radius-control)', padding: '0.5rem 0.75rem' }}
                     />
                 </div>
                 <PcmSelect
-                    
                     value={filterUnit}
                     onChange={(e) => setFilterUnit(e.target.value)}
-                    style={{ width: 'auto', borderRadius: '6px' }}
+                    style={{ width: 'auto', borderRadius: 'var(--pcm-radius-control)' }}
                 >
                     <option value="ALL">Semua Satuan ({units.length})</option>
                     {units.map(u => <option key={u} value={u}>{u}</option>)}
@@ -230,7 +250,7 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
             </div>
 
             {/* Table */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
                 <div className="table-responsive">
                     <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.875rem' }}>
                         <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.75rem', letterSpacing: '0.04em' }}>
@@ -238,10 +258,10 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                                 <th className="ps-3 py-3" style={{ width: '50px' }}>No</th>
                                 <th className="py-3">Deskripsi Scope Pekerjaan</th>
                                 <th className="py-3 text-center" style={{ width: '90px' }}>Satuan</th>
-                                <th className="py-3 text-end" style={{ width: '150px' }}>Volume Kontrak</th>
-                                <th className="py-3 text-end" style={{ width: '150px' }}>Realisasi Aktual</th>
+                                <th className="py-3 text-end" style={{ width: '160px' }}>Volume Kontrak</th>
+                                <th className="py-3 text-end" style={{ width: '160px' }}>Realisasi Aktual</th>
                                 <th className="py-3 text-end pe-3" style={{ width: '180px' }}>Penyelesaian</th>
-                                {canEdit && <th className="text-end pe-3 py-3" style={{ width: '100px' }}>Aksi</th>}
+                                {canEdit && <th className="text-end pe-3 py-3" style={{ width: '90px' }}>Aksi</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -261,10 +281,12 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                                             <td className="ps-3 text-muted fw-bold">{idx + 1}</td>
                                             <td className="fw-semibold text-dark">{s.scope}</td>
                                             <td className="text-center">
-                                                <span className="badge bg-light text-dark border font-monospace">{s.unit}</span>
+                                                <span className="badge px-2.5 py-1 text-dark border font-monospace" style={{ backgroundColor: '#f1f5f9' }}>
+                                                    {s.unit}
+                                                </span>
                                             </td>
-                                            <td className="text-end fw-bold">{contract.toLocaleString()}</td>
-                                            <td className="text-end text-primary fw-bold">{cum.toLocaleString()}</td>
+                                            <td className="text-end fw-bold font-monospace">{contract.toLocaleString('id-ID', { maximumFractionDigits: 2 })}</td>
+                                            <td className="text-end text-primary fw-bold font-monospace">{cum.toLocaleString('id-ID', { maximumFractionDigits: 2 })}</td>
                                             <td className="text-end pe-3">
                                                 <div className="d-flex align-items-center justify-content-end gap-2">
                                                     <span className="small fw-bold">{pct}%</span>
@@ -280,8 +302,8 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                                                 <td className="text-end pe-3">
                                                     <button
                                                         type="button"
-                                                        className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
-                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
+                                                        className="btn btn-outline-primary btn-sm px-2.5 py-1 fw-bold"
+                                                        style={{ borderRadius: 'var(--pcm-radius-chip)' }}
                                                         onClick={() => handleOpenModal(s)}
                                                     >
                                                         Edit
@@ -299,17 +321,17 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
 
             {/* Modal Edit / Add Scope */}
             {showModal && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(15,23,42,0.6)', zIndex: 1060 }}>
                     <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content border-0 shadow">
+                        <div className="modal-content border-0 shadow" style={{ borderRadius: 'var(--pcm-radius-card)' }}>
                             <form onSubmit={handleSave}>
-                                <div className="modal-header">
-                                    <h5 className="modal-title fw-bold">
+                                <div className="modal-header border-bottom">
+                                    <h5 className="modal-title fw-bold text-dark">
                                         {editingScope ? 'Edit Scope Kontrak' : 'Tambah Scope Kontrak Baru'}
                                     </h5>
                                     <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                                 </div>
-                                <div className="modal-body">
+                                <div className="modal-body p-4">
                                     {formError && (
                                         <div className="alert alert-danger py-2 small mb-3">{formError}</div>
                                     )}
@@ -339,7 +361,7 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                                             <input
                                                 type="number"
                                                 step="0.01"
-                                                className="form-control"
+                                                className="form-control font-monospace"
                                                 value={form.contract_qty}
                                                 onChange={(e) => setForm({ ...form, contract_qty: parseFloat(e.target.value) || 0 })}
                                                 required
@@ -350,7 +372,7 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                                             <input
                                                 type="number"
                                                 step="0.01"
-                                                className="form-control"
+                                                className="form-control font-monospace"
                                                 value={form.cumulative_qty}
                                                 onChange={(e) => setForm({ ...form, cumulative_qty: parseFloat(e.target.value) || 0 })}
                                             />
@@ -360,13 +382,20 @@ export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], pro
                                         </div>
                                     </div>
                                 </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowModal(false)}>
-                                        Batal
-                                    </button>
-                                    <button type="submit" className="btn btn-primary btn-sm fw-bold" disabled={formLoading}>
-                                        {formLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
-                                    </button>
+                                <div className="modal-footer border-top bg-light d-flex justify-content-between">
+                                    {editingScope ? (
+                                        <button type="button" className="btn btn-outline-danger btn-sm fw-bold" onClick={handleDelete} disabled={formLoading}>
+                                            Hapus Scope
+                                        </button>
+                                    ) : <div />}
+                                    <div className="d-flex gap-2">
+                                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setShowModal(false)}>
+                                            Batal
+                                        </button>
+                                        <button type="submit" className="btn btn-primary btn-sm fw-bold px-3" style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }} disabled={formLoading}>
+                                            {formLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </div>

@@ -1,6 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 
 export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], project }) {
+    const [basisMode, setBasisMode] = useState('CONTRACT'); // 'CONTRACT' | 'JOINTS'
+
     const schedule = useMemo(() => {
         const totalContractDI = scopes
             .filter(s => s.unit === 'DI')
@@ -13,11 +15,12 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
         const doneStatuses = new Set(['WELDED', 'VISUAL_OK', 'NDT_OK', 'TESTED']);
         const weldedJoints = (joints || []).filter(j => doneStatuses.has((j.status || '').toUpperCase()));
         const jointActualDI = weldedJoints.reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0);
+        const jointRegisteredTotalDI = (joints || []).reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0);
 
-        // Gunakan total aktual tertinggi antara catatan scope kumulatif vs DI las aktual jika kontrak tersedia
-        const denominator = totalContractDI > 0
-            ? totalContractDI
-            : Math.max(1, (joints || []).reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0));
+        // Denominator sesuai mode yang dipilih
+        const denominator = basisMode === 'JOINTS'
+            ? Math.max(1, jointRegisteredTotalDI)
+            : (totalContractDI > 0 ? totalContractDI : Math.max(1, jointRegisteredTotalDI));
 
         // Tentukan tanggal mulai proyek & durasi minggu
         const weldDates = weldedJoints.map(j => new Date(j.weld_date).getTime()).filter(Number.isFinite);
@@ -30,7 +33,7 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
         const endMs = project?.end_date ? new Date(project.end_date).getTime() : startMs + 12 * 7 * 86400000;
         const totalWeeks = Math.max(4, Math.min(24, Math.round((endMs - startMs) / (7 * 86400000)) || 12));
 
-        // Distribusi Kurva S rencana (logistic S-shape yang dinormalisasi 0..100%)
+        // Distribusi Kurva S rencana (logistic S-shape 0..100%)
         const plannedSeries = Array.from({ length: totalWeeks }, (_, idx) => {
             if (idx === totalWeeks - 1) return 100;
             const t = (idx + 1) / totalWeeks;
@@ -65,8 +68,9 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
 
         const nowMs = Date.now();
         const currentWeekIdx = Math.max(0, Math.min(totalWeeks - 1, Math.floor((nowMs - startMs) / (7 * 86400000))));
-        const effectiveActualDI = Math.max(scopeActualDI, jointActualDI);
-        const overallActualPct = Math.min(100, Number(((effectiveActualDI / denominator) * 100).toFixed(1)));
+        const effectiveActualDI = basisMode === 'JOINTS' ? jointActualDI : Math.max(scopeActualDI, jointActualDI);
+        const rawPct = (effectiveActualDI / denominator) * 100;
+        const overallActualPct = Math.min(100, Number(rawPct >= 1 ? rawPct.toFixed(1) : rawPct.toFixed(2)));
 
         let runningDI = 0;
         const weeks = plannedSeries.map((planned, idx) => {
@@ -78,11 +82,11 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
             if (hasDatedProgress) {
                 runningDI += weeklyAddedDI[idx];
                 if (idx <= currentWeekIdx || weeklyAddedDI[idx] > 0) {
-                    const pctFromLogs = Math.min(100, Number(((runningDI / denominator) * 100).toFixed(1)));
-                    actual = idx === currentWeekIdx ? Math.max(pctFromLogs, overallActualPct) : pctFromLogs;
+                    const pctFromLogs = (runningDI / denominator) * 100;
+                    const formatted = Number(pctFromLogs >= 1 ? pctFromLogs.toFixed(1) : pctFromLogs.toFixed(2));
+                    actual = idx === currentWeekIdx ? Math.max(formatted, overallActualPct) : formatted;
                 }
             } else if (idx <= currentWeekIdx) {
-                // Jika belum ada log tanggal spesifik, distribusikan proporsional s.d. minggu berjalan
                 actual = idx === currentWeekIdx
                     ? overallActualPct
                     : Number(((overallActualPct * (idx + 1)) / (currentWeekIdx + 1)).toFixed(1));
@@ -114,18 +118,23 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
             weeks,
             totalWeeks,
             currentWeekIdx,
+            effectiveActualDI,
+            denominator,
+            totalContractDI,
+            jointRegisteredTotalDI,
+            jointActualDI,
             overallActualPct,
             shopRate: Number((shopDI / activeDays).toFixed(1)),
             fieldRate: Number((fieldDI / activeDays).toFixed(1)),
         };
-    }, [scopes, joints, dailyLogs, project]);
+    }, [scopes, joints, dailyLogs, project, basisMode]);
 
-    const { weeks, totalWeeks, shopRate, fieldRate } = schedule;
+    const { weeks, totalWeeks, shopRate, fieldRate, effectiveActualDI, denominator, overallActualPct } = schedule;
     const passedWeeks = weeks.filter(w => w.actual !== null);
     const latestActual = passedWeeks.slice(-1)[0] || { weekShort: 'W1', planned: weeks[0]?.planned || 0, actual: 0, variance: -(weeks[0]?.planned || 0) };
     const isBehind = (latestActual.variance ?? 0) < 0;
 
-    // Koordinat dinamis SVG (X: 60..960, Y: 220..20 untuk 0%..100%)
+    // Koordinat dinamis SVG
     const xPos = (idx) => (totalWeeks <= 1 ? 60 : 60 + (idx * (900 / (totalWeeks - 1))));
     const yPos = (pct) => 220 - (Math.max(0, Math.min(100, pct)) * 2);
 
@@ -145,58 +154,84 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
                         Kurva-S kumulatif rencana (Planned) vs realisasi aktual lapangan berdasarkan data Daily Progress &amp; Joint Welding nyata.
                     </p>
                 </div>
-                <div>
-                    <span className={`badge ${isBehind ? 'bg-warning text-dark' : 'bg-success'} px-3 py-2 fw-bold`} style={{ fontSize: '0.85rem' }}>
-                        Status Jadwal ({latestActual.weekShort}): {isBehind ? `Terlambat ${Math.abs(latestActual.variance)}% (Behind Schedule)` : `On Schedule (${latestActual.variance >= 0 ? '+' : ''}${latestActual.variance}%)`}
+                <div className="d-flex align-items-center gap-2">
+                    <div className="btn-group btn-group-sm" role="group">
+                        <button
+                            type="button"
+                            className={`btn fw-bold ${basisMode === 'CONTRACT' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                            onClick={() => setBasisMode('CONTRACT')}
+                            style={{ borderRadius: 'var(--pcm-radius-control) 0 0 var(--pcm-radius-control)' }}
+                        >
+                            Basis Kontrak
+                        </button>
+                        <button
+                            type="button"
+                            className={`btn fw-bold ${basisMode === 'JOINTS' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                            onClick={() => setBasisMode('JOINTS')}
+                            style={{ borderRadius: '0 var(--pcm-radius-control) var(--pcm-radius-control) 0' }}
+                        >
+                            Basis Joint Terdaftar
+                        </button>
+                    </div>
+                    <span className={`badge px-3 py-2 fw-bold ${isBehind ? 'bg-warning text-dark' : 'bg-success'}`} style={{ borderRadius: 'var(--pcm-radius-chip)' }}>
+                        {isBehind ? `Terlambat ${Math.abs(latestActual.variance)}% (Behind)` : `On Schedule (${latestActual.variance >= 0 ? '+' : ''}${latestActual.variance}%)`}
                     </span>
                 </div>
             </div>
 
-            {/* Metric Summary Tiles */}
+            {/* Metric Summary Tiles (PCM Design Tokens) */}
             <div className="row g-3 mb-4">
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Target Rencana ({latestActual.weekShort})</span>
-                        <strong className="h3 fw-bold text-primary mb-0">{latestActual.planned}%</strong>
-                        <span className="text-muted ms-1 small">kumulatif</span>
-                    </div>
-                </div>
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Realisasi Aktual ({latestActual.weekShort})</span>
-                        <strong className="h3 fw-bold text-success mb-0">{latestActual.actual ?? 0}%</strong>
-                        <span className="text-muted ms-1 small">kumulatif</span>
-                    </div>
-                </div>
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Varians Jadwal</span>
-                        <strong className={`h3 fw-bold mb-0 ${isBehind ? 'text-danger' : 'text-success'}`}>
-                            {latestActual.variance > 0 ? `+${latestActual.variance}` : latestActual.variance}%
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Target Rencana ({latestActual.weekShort})</span>
+                        <strong className="pcm-tile__value pcm-tile__value--primary">
+                            {latestActual.planned}%
+                            <span className="pcm-tile__unit">kumulatif</span>
                         </strong>
-                        <span className="text-muted ms-1 small">deviasi</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Produktivitas Las (DI/Hari)</span>
-                        <strong className="h4 fw-bold text-dark mb-0">{shopRate} / {fieldRate}</strong>
-                        <span className="text-muted ms-1 small d-block" style={{ fontSize: '0.72rem' }}>Target Excel: Shop 15 &bull; Field 10</span>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Realisasi Aktual ({latestActual.weekShort})</span>
+                        <strong className="pcm-tile__value text-success">
+                            {overallActualPct}%
+                            <span className="pcm-tile__unit">({effectiveActualDI.toLocaleString('id-ID', { maximumFractionDigits: 1 })} / {denominator.toLocaleString('id-ID', { maximumFractionDigits: 1 })} DI)</span>
+                        </strong>
+                    </div>
+                </div>
+                <div className="col-6 col-md-3">
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Varians Jadwal</span>
+                        <strong className={`pcm-tile__value ${isBehind ? 'text-danger' : 'text-success'}`}>
+                            {latestActual.variance > 0 ? `+${latestActual.variance}` : latestActual.variance}%
+                            <span className="pcm-tile__unit">deviasi</span>
+                        </strong>
+                    </div>
+                </div>
+                <div className="col-6 col-md-3">
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Produktivitas Las (DI/Hari)</span>
+                        <strong className="pcm-tile__value">
+                            {shopRate} / {fieldRate}
+                            <span className="pcm-tile__unit">Shop 15 &bull; Field 10 Target</span>
+                        </strong>
                     </div>
                 </div>
             </div>
 
             {/* S-Curve Graphic (Dynamic SVG Chart) */}
-            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
                 <div className="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <h6 className="fw-bold text-dark mb-0">Grafik Kurva S Kumulatif (% Progres — {totalWeeks} Minggu)</h6>
+                    <h6 className="fw-bold text-dark mb-0">
+                        Grafik Kurva S Kumulatif (% Progres — {totalWeeks} Minggu) &bull; Mode: {basisMode === 'CONTRACT' ? 'Kontrak Scope' : 'Joint Construction'}
+                    </h6>
                     <div className="d-flex gap-3 small">
                         <span className="d-flex align-items-center gap-1">
                             <span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#94a3b8', borderRadius: '2px' }}></span>
                             <span className="text-muted">Target Rencana (Baseline)</span>
                         </span>
                         <span className="d-flex align-items-center gap-1">
-                            <span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#1d4ed8', borderRadius: '2px' }}></span>
+                            <span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#1e40af', borderRadius: '2px' }}></span>
                             <span className="fw-bold text-primary">Realisasi Aktual</span>
                         </span>
                     </div>
@@ -228,7 +263,7 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
                                 <path
                                     d={actualPath}
                                     fill="none"
-                                    stroke="#1d4ed8"
+                                    stroke="#1e40af"
                                     strokeWidth="4"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -244,7 +279,7 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
                                             cx={pt.x}
                                             cy={pt.y}
                                             r={isLast ? 6 : 4.5}
-                                            fill={isLast ? '#15803d' : '#1d4ed8'}
+                                            fill={isLast ? '#15803d' : '#1e40af'}
                                             stroke="#ffffff"
                                             strokeWidth="2"
                                         />
@@ -269,7 +304,7 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
             </div>
 
             {/* Weekly Breakdown Table */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
                 <div className="card-header bg-white border-bottom py-3">
                     <h6 className="fw-bold text-dark mb-0">Rincian Progres Per Periode Mingguan</h6>
                 </div>
@@ -306,11 +341,13 @@ export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], projec
                                         </td>
                                         <td className="text-center">
                                             {isPassed ? (
-                                                <span className={`badge ${isDevNegative ? 'bg-warning text-dark' : 'bg-success'}`}>
+                                                <span className={`badge px-2.5 py-1 fw-bold ${isDevNegative ? 'bg-warning text-dark' : 'bg-success'}`} style={{ borderRadius: 'var(--pcm-radius-chip)' }}>
                                                     {isDevNegative ? 'Behind' : 'Achieved'}
                                                 </span>
                                             ) : (
-                                                <span className="badge bg-light text-muted border">Planned</span>
+                                                <span className="badge px-2 py-1 text-dark border" style={{ backgroundColor: '#f1f5f9', borderRadius: 'var(--pcm-radius-chip)' }}>
+                                                    Planned
+                                                </span>
                                             )}
                                         </td>
                                     </tr>

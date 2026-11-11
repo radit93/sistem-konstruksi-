@@ -144,61 +144,73 @@ export function ExecutiveReportSection({
     return (
         <div>
             {/* Header Toolbar */}
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 d-print-none">
                 <div>
                     <h2 className="h4 fw-bold text-dark mb-1">Laporan Resmi Eksekutif &amp; Export Center</h2>
                     <p className="text-muted small mb-0">
                         Rekapitulasi progres fisik, proyeksi biaya teknis (BOQ + BOM), kualitas QA/QC &amp; HSE, serta lembar pengesahan penagihan {project ? `(Job ${project.job_no || '-'} — ${project.name})` : ''}.
                     </p>
                 </div>
-                <div className="d-flex flex-wrap gap-2 d-print-none">
-                    <button type="button" className="btn btn-outline-primary btn-sm fw-bold px-3 py-2" style={{ borderRadius: '6px' }} onClick={exportScopesCsv}>
+                <div className="d-flex flex-wrap gap-2">
+                    <button type="button" className="btn btn-outline-primary btn-sm fw-bold px-3 py-2" style={{ borderRadius: 'var(--pcm-radius-control)' }} onClick={exportScopesCsv}>
                         Export BOQ (CSV)
                     </button>
-                    <button type="button" className="btn btn-outline-secondary btn-sm fw-bold px-3 py-2" style={{ borderRadius: '6px' }} onClick={exportMaterialCsv}>
+                    <button type="button" className="btn btn-outline-secondary btn-sm fw-bold px-3 py-2" style={{ borderRadius: 'var(--pcm-radius-control)' }} onClick={exportMaterialCsv}>
                         Export Material (CSV)
                     </button>
-                    <button type="button" className="btn btn-outline-dark btn-sm fw-bold px-3 py-2" style={{ borderRadius: '6px' }} onClick={exportJointsCsv}>
+                    <button type="button" className="btn btn-outline-dark btn-sm fw-bold px-3 py-2" style={{ borderRadius: 'var(--pcm-radius-control)' }} onClick={exportJointsCsv}>
                         Export Welding (CSV)
                     </button>
-                    <button type="button" className="btn btn-primary btn-sm fw-bold px-3 py-2" style={{ borderRadius: '6px' }} onClick={() => window.print()}>
+                    <button type="button" className="btn btn-primary btn-sm fw-bold px-3 py-2" style={{ borderRadius: 'var(--pcm-radius-control)', backgroundColor: '#1e40af', borderColor: '#1d4ed8' }} onClick={() => window.print()}>
                         Cetak Laporan / PDF
                     </button>
                 </div>
             </div>
 
-            {/* Executive Summary KPI Cards */}
+            {/* Print Header (Only visible on print) */}
+            <div className="d-none d-print-block mb-4 border-bottom pb-3">
+                <h1 className="h3 fw-bold text-dark mb-1">PCM Piping Suite &bull; Executive Project Report</h1>
+                <div className="text-muted small">
+                    Proyek: <strong>{project?.name || 'PCM Piping 2428'}</strong> (Job No: <strong>{project?.job_no || '2428'}</strong>) &bull; Client: <strong>{project?.client || 'Contoh'}</strong> &bull; Dicetak: {new Date().toLocaleString('id-ID')}
+                </div>
+            </div>
+
+            {/* Executive Summary KPI Cards (PCM Design Tokens) */}
             <div className="row g-3 mb-4">
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Progres Kontrak DI</span>
-                        <strong className="h4 fw-bold text-primary mb-0">{summary.contractPct}%</strong>
-                        <div className="text-muted small">{summary.totalActualDI.toLocaleString()} / {summary.totalContractDI.toLocaleString()} DI</div>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Progres Kontrak DI</span>
+                        <strong className="pcm-tile__value pcm-tile__value--primary">
+                            {summary.contractPct}%
+                            <span className="pcm-tile__unit">({summary.totalActualDI.toLocaleString('id-ID')} / {summary.totalContractDI.toLocaleString('id-ID')} DI)</span>
+                        </strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Nilai Teknis (BOQ + BOM)</span>
-                        <strong className="h5 fw-bold text-dark mb-0 d-block text-truncate" title={formatRupiah(summary.totalTechValue)}>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Nilai Teknis (BOQ + BOM)</span>
+                        <strong className="pcm-tile__value text-truncate" style={{ color: '#0369a1' }} title={formatRupiah(summary.totalTechValue)}>
                             {formatRupiah(summary.totalTechValue)}
+                            <span className="pcm-tile__unit">BOQ {formatRupiah(summary.engBoqValue)}</span>
                         </strong>
-                        <div className="text-muted small">BOQ {formatRupiah(summary.engBoqValue)}</div>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Test Package Hydrotest</span>
-                        <strong className="h4 fw-bold text-success mb-0">{summary.tpPass} / {summary.tpTotal}</strong>
-                        <div className="text-muted small">paket lulus test</div>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Test Package Hydrotest</span>
+                        <strong className="pcm-tile__value text-success">
+                            {summary.tpPass} / {summary.tpTotal}
+                            <span className="pcm-tile__unit">paket lulus uji</span>
+                        </strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">HSE Safety Log</span>
-                        <strong className={`h4 fw-bold mb-0 ${summary.hseOpen > 0 ? 'text-danger' : 'text-success'}`}>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">HSE Safety Log</span>
+                        <strong className={`pcm-tile__value ${summary.hseOpen > 0 ? 'text-danger' : 'text-success'}`}>
                             {summary.hseOpen} Open
+                            <span className="pcm-tile__unit">{summary.hseClosed} / {summary.hseTotal} closed</span>
                         </strong>
-                        <div className="text-muted small">{summary.hseClosed} / {summary.hseTotal} closed</div>
                     </div>
                 </div>
             </div>
@@ -206,7 +218,7 @@ export function ExecutiveReportSection({
             {/* Summary Report Grid */}
             <div className="row g-4 mb-4">
                 <div className="col-12 col-lg-6">
-                    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '8px' }}>
+                    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: 'var(--pcm-radius-card)' }}>
                         <div className="card-header bg-white border-bottom py-3">
                             <h6 className="fw-bold text-dark mb-0">Progres Pengelasan &amp; Kualitas (QA/QC)</h6>
                         </div>
@@ -243,7 +255,7 @@ export function ExecutiveReportSection({
                 </div>
 
                 <div className="col-12 col-lg-6">
-                    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '8px' }}>
+                    <div className="card border-0 shadow-sm h-100" style={{ borderRadius: 'var(--pcm-radius-card)' }}>
                         <div className="card-header bg-white border-bottom py-3">
                             <h6 className="fw-bold text-dark mb-0">Rasio Eksekusi Shop vs Field Erection</h6>
                         </div>
@@ -252,7 +264,7 @@ export function ExecutiveReportSection({
                                 <div className="col-6">
                                     <div className="p-3 bg-light rounded border">
                                         <span className="text-muted small fw-bold d-block text-uppercase">Shop Fabrication</span>
-                                        <strong className="h3 fw-bold text-primary mb-0">
+                                        <strong className="h3 fw-bold text-primary mb-0 font-monospace">
                                             {summary.shopWelded} / {summary.shopJointsCount}
                                         </strong>
                                         <span className="text-muted small d-block">joints selesai</span>
@@ -261,14 +273,14 @@ export function ExecutiveReportSection({
                                 <div className="col-6">
                                     <div className="p-3 bg-light rounded border">
                                         <span className="text-muted small fw-bold d-block text-uppercase">Field Erection</span>
-                                        <strong className="h3 fw-bold text-success mb-0">
+                                        <strong className="h3 fw-bold text-success mb-0 font-monospace">
                                             {summary.fieldWelded} / {summary.fieldJointsCount}
                                         </strong>
                                         <span className="text-muted small d-block">joints selesai</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="mt-3 pt-3 border-top text-muted small d-flex justify-content-between">
+                            <div className="mt-3 pt-3 border-top text-muted small d-flex justify-content-between flex-wrap gap-2">
                                 <span>NDT Reject Rate Global: <strong className="text-dark">{overview?.reject_rate ?? 0}%</strong></span>
                                 <span>BOM Material: <strong className="text-dark">{formatRupiah(summary.bomValue)}</strong></span>
                             </div>
@@ -278,10 +290,12 @@ export function ExecutiveReportSection({
             </div>
 
             {/* Official Sign-Off Sheet */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '8px' }}>
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)' }}>
                 <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
                     <h6 className="fw-bold text-dark mb-0">Lembar Pengesahan Laporan Proyek (Progress Billing Sign-Off)</h6>
-                    <span className="badge bg-light text-muted border d-print-none">Nama dapat diedit sebelum cetak</span>
+                    <span className="badge px-2.5 py-1 text-dark border d-print-none" style={{ backgroundColor: '#f1f5f9' }}>
+                        Nama dapat diedit sebelum cetak
+                    </span>
                 </div>
                 <div className="card-body p-4">
                     <div className="row g-4 text-center">

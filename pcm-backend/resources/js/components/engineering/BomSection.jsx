@@ -6,6 +6,33 @@ import { formatRupiah } from '../../currency';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
 import { PcmSelect } from '../SearchSelect';
 
+/* Palet warna solid master komponen perpipaan standar industri (R-01, R-29) */
+export const getComponentBadgeStyle = (compType) => {
+    const t = String(compType || '').toLowerCase();
+    if (t.includes('pipe')) {
+        return { backgroundColor: '#1e40af', borderColor: '#1e3a8a', color: '#ffffff' }; // Deep Navy Blue
+    }
+    if (t.includes('elbow') || t.includes('tee') || t.includes('reducer') || t.includes('fitting') || t.includes('olet') || t.includes('cap')) {
+        return { backgroundColor: '#b45309', borderColor: '#92400e', color: '#ffffff' }; // Warm Amber Gold
+    }
+    if (t.includes('flange')) {
+        return { backgroundColor: '#0f766e', borderColor: '#115e59', color: '#ffffff' }; // Deep Teal Ocean
+    }
+    if (t.includes('valve')) {
+        return { backgroundColor: '#15803d', borderColor: '#166534', color: '#ffffff' }; // Forest Green
+    }
+    if (t.includes('gasket')) {
+        return { backgroundColor: '#6b21a8', borderColor: '#581c87', color: '#ffffff' }; // Rich Purple
+    }
+    if (t.includes('bolt') || t.includes('nut') || t.includes('fastener') || t.includes('stud')) {
+        return { backgroundColor: '#475569', borderColor: '#334155', color: '#ffffff' }; // Steel Slate Gray
+    }
+    if (t.includes('instrument') || t.includes('gauge') || t.includes('meter')) {
+        return { backgroundColor: '#0369a1', borderColor: '#075985', color: '#ffffff' }; // Ocean Blue
+    }
+    return { backgroundColor: '#334155', borderColor: '#1e293b', color: '#ffffff' }; // Neutral Dark Slate
+};
+
 export function BomSection({ user, projects = [], drawings = [], activeProjectId = '', onToast }) {
     const [bomList, setBomList] = useState([]);
     const [standards, setStandards] = useState([]);
@@ -591,15 +618,26 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                 {b.description}
                                             </div>
                                             <div className="d-flex align-items-center gap-1.5 mt-0.5">
-                                                <span className="badge bg-secondary" style={{ fontSize: '0.6875rem' }}>
+                                                <span
+                                                    className="pcm-chip fw-bold border"
+                                                    style={{ ...getComponentBadgeStyle(b.component_type), fontSize: '0.6875rem', padding: '0.15rem 0.5rem' }}
+                                                >
                                                     {b.component_type}
                                                 </span>
                                                 {b.source === 'FITUP_AUTO' ? (
-                                                    <span className="badge bg-success text-white" style={{ fontSize: '0.6875rem' }} title="Otomatis sinkron dari Fit-Up Drawing">
+                                                    <span
+                                                        className="pcm-chip fw-semibold border"
+                                                        style={{ backgroundColor: '#ecfdf5', borderColor: '#6ee7b7', color: '#065f46', fontSize: '0.6875rem', padding: '0.12rem 0.45rem' }}
+                                                        title="Otomatis sinkron dari Fit-Up Drawing"
+                                                    >
                                                         Fit-Up
                                                     </span>
                                                 ) : b.source === 'GENERATED' ? (
-                                                    <span className="badge bg-info text-dark" style={{ fontSize: '0.6875rem' }} title="Dihasilkan otomatis dari piping class">
+                                                    <span
+                                                        className="pcm-chip fw-semibold border"
+                                                        style={{ backgroundColor: '#f1f5f9', borderColor: '#cbd5e1', color: '#334155', fontSize: '0.6875rem', padding: '0.12rem 0.45rem' }}
+                                                        title="Dihasilkan otomatis dari piping class"
+                                                    >
                                                         Auto
                                                     </span>
                                                 ) : null}

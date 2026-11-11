@@ -81,86 +81,69 @@ export const ROLE_SIDEBAR_MENUS = [
     },
     {
         id: 'project_list',
-        label: 'List Project',
+        label: 'Project List',
         perm: 'drawing.view',
         group: 'Engineering',
-        desc: 'Direktori Folder Proyek & Client'
+        desc: 'Project & Client Directory'
     },
     {
         id: 'engineering',
         label: 'Isometric Drawing',
         perm: 'drawing.view',
         group: 'Engineering',
-        desc: 'Register Gambar Isometrik'
+        desc: 'Isometric Drawing Register'
     },
     {
         id: 'welding_map',
         label: 'Welding Map',
         perm: 'drawing.view',
         group: 'Engineering',
-        desc: 'Pemetaan Sambungan & Spool'
+        desc: 'Joint & Spool Mapping'
     },
     {
         id: 'line_service',
         label: 'Line Service',
         perm: 'drawing.view',
         group: 'Engineering',
-        desc: 'Klasifikasi Jalur Pipa & Service'
+        desc: 'Piping Line & Service Classification'
     },
     {
         id: 'boq',
-        label: 'Bill of Quantity',
+        label: 'Bill of Quantities',
         perm: 'drawing.view',
         group: 'Engineering',
-        desc: 'Kuantitas Teknis & Total Dia-Inch'
+        desc: 'Technical Quantities & Total Dia-Inch'
     },
     {
         id: 'bom',
-        label: 'Bill of Material',
+        label: 'Bill of Materials',
         perm: 'drawing.view',
         group: 'Engineering',
-        desc: 'Material Take Off (MTO) Komponen'
+        desc: 'Material Take Off (MTO) Components'
     },
     {
         id: 'material_standard',
-        label: 'Material Standart',
+        label: 'Material Standard',
         anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',
-        desc: 'Katalog Acuan Standar ASTM',
-        children: [
-            {
-                id: 'material_pipe',
-                label: 'Standart Pipe',
-                desc: 'Standar material khusus pipa'
-            },
-            {
-                id: 'material_fitting',
-                label: 'Standart Fitting',
-                desc: 'Standar material fitting: elbow, tee, reducer, weld-o-let'
-            },
-            {
-                id: 'material_additional',
-                label: 'Standart Additional',
-                desc: 'Flange, valve, gasket, dan fastener'
-            }
-        ]
+        desc: 'ASTM Standard Catalog'
     },
     {
         id: 'master_pipe',
-        label: 'Master Diameter',
+        label: 'Diameter & Thickness',
         anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',
-        desc: 'Master data pipa (ASME B36.10M) dan fitting',
+        desc: 'Pipe & Fitting Master Data',
         children: [
             {
                 id: 'pipe_table',
-                label: 'Master Pipe',
-                desc: 'Dimensi & ketebalan pipa ASME B36.10M'
+                label: 'Pipe Master Table',
+                desc: 'ASME B36.10M Pipe Dimensions & Thickness'
             },
             {
                 id: 'fitting_table',
-                label: 'Master Fitting',
-                desc: 'Dimensi & berat fitting (elbow, tee, reducer, weld-o-let)'
+                label: 'Fitting Master Table',
+                desc: 'Fitting Dimensions & Weight'
             }
         ]
     },
@@ -169,7 +152,7 @@ export const ROLE_SIDEBAR_MENUS = [
         label: 'Document Control',
         perm: 'drawing.view',
         group: 'Engineering',
-        desc: 'Riwayat Revisi & Surat Transmittal'
+        desc: 'Revision History & Transmittal Letters'
     },
     {
         id: 'mat_requirement',

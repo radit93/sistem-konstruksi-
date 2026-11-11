@@ -127,7 +127,7 @@ export function PipeScheduleSection() {
                                 className={`btn btn-sm ${schedule === 'ALL' ? 'btn-dark fw-bold' : 'btn-outline-secondary'}`}
                                 onClick={() => setSchedule('ALL')}
                             >
-                                Semua Schedule
+                                All Schedules
                             </button>
                             {displayedSchedules.map((item) => (
                                 <button
@@ -147,7 +147,7 @@ export function PipeScheduleSection() {
                                 onClick={() => setShowAllSchedules(!showAllSchedules)}
                                 style={{ borderRadius: '6px', fontSize: '0.8rem' }}
                             >
-                                <span>{showAllSchedules ? 'Sembunyikan' : `Lainnya (${schedules.length - 5})`}</span>
+                                <span>{showAllSchedules ? 'Hide' : `More (${schedules.length - 5})`}</span>
                                 <svg
                                     viewBox="0 0 24 24"
                                     width="14"
@@ -166,14 +166,14 @@ export function PipeScheduleSection() {
                     </div>
                 ) : (
                     <div className="text-muted small">
-                        Menampilkan tabel master untuk kategori <strong className="text-dark">{CATEGORIES.find(c => c.id === category)?.label}</strong>.
+                        Displaying master table for category <strong className="text-dark">{CATEGORIES.find(c => c.id === category)?.label}</strong>.
                     </div>
                 )}
                 <div style={{ minWidth: '260px' }}>
                     <input
                         type="text"
                         className="form-control form-control-sm"
-                        placeholder="Cari ukuran, schedule, OD, wall..."
+                        placeholder="Search size, schedule, OD, wall..."
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                         style={{ borderRadius: '6px', padding: '0.5rem 0.75rem' }}
@@ -194,20 +194,20 @@ export function PipeScheduleSection() {
                                     <th className="py-3">OD (mm)</th>
                                     <th className="py-3">Schedule</th>
                                     <th className="py-3">Wall (mm)</th>
-                                    <th className="py-3">Berat (kg/m)</th>
+                                    <th className="py-3">Weight (kg/m)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
                                     <tr>
                                         <td colSpan={7} className="text-center py-4 text-muted">
-                                            Memuat master pipe schedule...
+                                            Loading master pipe schedules...
                                         </td>
                                     </tr>
                                 ) : paginatedRows.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="text-center py-4 text-muted">
-                                            Tidak ada data pipe schedule yang sesuai.
+                                            No matching pipe schedule data found.
                                         </td>
                                     </tr>
                                 ) : (
@@ -235,7 +235,7 @@ export function PipeScheduleSection() {
                     {!loading && filteredRows.length > 0 && (
                         <div className="d-flex flex-wrap justify-content-between align-items-center p-3 bg-light border-top">
                             <span className="text-muted small">
-                                Menampilkan {(page - 1) * ITEMS_PER_PAGE + 1} - {Math.min(page * ITEMS_PER_PAGE, filteredRows.length)} dari {filteredRows.length} data
+                                Showing {(page - 1) * ITEMS_PER_PAGE + 1} - {Math.min(page * ITEMS_PER_PAGE, filteredRows.length)} of {filteredRows.length} entries
                             </span>
                             <div className="d-flex align-items-center gap-2">
                                 <button
@@ -248,7 +248,7 @@ export function PipeScheduleSection() {
                                     Previous
                                 </button>
                                 <span className="small fw-semibold text-dark px-2">
-                                    Hal {page} dari {totalPages}
+                                    Page {page} of {totalPages}
                                 </span>
                                 <button
                                     type="button"
@@ -273,17 +273,17 @@ export function PipeScheduleSection() {
                             <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.75rem', letterSpacing: '0.04em' }}>
                                 <tr>
                                     <th className="py-3">Size (inch)</th>
-                                    <th className="py-3">Tipe Elbow</th>
-                                    <th className="py-3">Sudut</th>
-                                    <th className="py-3">Radius Center-to-End (mm)</th>
-                                    <th className="py-3">Ketebalan / Sch</th>
-                                    <th className="py-3">Berat (kg/pcs)</th>
+                                    <th className="py-3">Elbow Type</th>
+                                    <th className="py-3">Angle</th>
+                                    <th className="py-3">Center-to-End Radius (mm)</th>
+                                    <th className="py-3">Wall Thickness / Sch</th>
+                                    <th className="py-3">Weight (kg/pcs)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td colSpan={6} className="text-center py-4 text-muted">
-                                        Data dimensi Elbow LR & SR belum tersedia.
+                                        Elbow LR &amp; SR dimension data is not available yet.
                                     </td>
                                 </tr>
                             </tbody>
@@ -299,17 +299,17 @@ export function PipeScheduleSection() {
                         <table className="table table-hover align-middle text-center mb-0" style={{ fontSize: '0.875rem' }}>
                             <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.75rem', letterSpacing: '0.04em' }}>
                                 <tr>
-                                    <th className="py-3">Ukuran (Large x Small)</th>
-                                    <th className="py-3">Tipe Reducer</th>
-                                    <th className="py-3">Panjang / End-to-End (mm)</th>
-                                    <th className="py-3">Ketebalan</th>
-                                    <th className="py-3">Berat (kg/pcs)</th>
+                                    <th className="py-3">Size (Large x Small)</th>
+                                    <th className="py-3">Reducer Type</th>
+                                    <th className="py-3">Length / End-to-End (mm)</th>
+                                    <th className="py-3">Wall Thickness</th>
+                                    <th className="py-3">Weight (kg/pcs)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td colSpan={5} className="text-center py-4 text-muted">
-                                        Data dimensi Reducer belum tersedia.
+                                        Reducer dimension data is not available yet.
                                     </td>
                                 </tr>
                             </tbody>
@@ -325,18 +325,18 @@ export function PipeScheduleSection() {
                         <table className="table table-hover align-middle text-center mb-0" style={{ fontSize: '0.875rem' }}>
                             <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.75rem', letterSpacing: '0.04em' }}>
                                 <tr>
-                                    <th className="py-3">Ukuran (Run x Branch)</th>
-                                    <th className="py-3">Jenis Tee</th>
+                                    <th className="py-3">Size (Run x Branch)</th>
+                                    <th className="py-3">Tee Type</th>
                                     <th className="py-3">Center-to-End Run (mm)</th>
                                     <th className="py-3">Center-to-End Branch (mm)</th>
                                     <th className="py-3">Schedule / Wall</th>
-                                    <th className="py-3">Berat (kg/pcs)</th>
+                                    <th className="py-3">Weight (kg/pcs)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td colSpan={6} className="text-center py-4 text-muted">
-                                        Data dimensi Tee & Tee Reducer belum tersedia.
+                                        Tee &amp; Reducing Tee dimension data is not available yet.
                                     </td>
                                 </tr>
                             </tbody>
@@ -354,15 +354,15 @@ export function PipeScheduleSection() {
                                 <tr>
                                     <th className="py-3">Run Size Range</th>
                                     <th className="py-3">Outlet Size</th>
-                                    <th className="py-3">Tipe Olet</th>
+                                    <th className="py-3">Olet Type</th>
                                     <th className="py-3">Rating / Class</th>
-                                    <th className="py-3">Berat (kg/pcs)</th>
+                                    <th className="py-3">Weight (kg/pcs)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td colSpan={5} className="text-center py-4 text-muted">
-                                        Data dimensi Weldolet belum tersedia.
+                                        Weldolet dimension data is not available yet.
                                     </td>
                                 </tr>
                             </tbody>
@@ -372,7 +372,7 @@ export function PipeScheduleSection() {
             )}
 
             <p className="text-muted small mt-3 mb-0">
-                Sumber: Pipe Schedules ASME B36.10M Van Leeuwen.
+                Source: Pipe Schedules ASME B36.10M Van Leeuwen.
             </p>
         </div>
     );

@@ -136,7 +136,7 @@ function MaterialCard({ label, info, attributeLabel = 'Class / Sch' }) {
                 <dt>Thickness</dt><dd>{info.thickness ? `${fmt(info.thickness)} mm` : '—'}</dd>
                 <dt>OD</dt><dd>{info.od ? `${fmt(info.od)} mm` : '—'}</dd>
                 <dt>DN</dt><dd>{info.dn || '—'}</dd>
-                <dt>Berat</dt><dd>{info.weightPerM ? `${fmt(info.weightPerM)} kg/m` : '—'}</dd>
+                <dt>Weight</dt><dd>{info.weightPerM ? `${fmt(info.weightPerM)} kg/m` : '—'}</dd>
                 <dt>Per Batang</dt><dd>{info.stickWeight != null ? `${fmt(info.stickWeight)} kg` : '—'}</dd>
             </dl>
             {!info.std && (
@@ -654,7 +654,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
         e.preventDefault();
         setFormError('');
         if (!form.joint_no.trim() || !form.spool_no.trim()) {
-            setFormError('Nomor Joint dan Nomor Spool wajib diisi.');
+            setFormError('Joint Number and Spool Number are required.');
             return;
         }
 
@@ -670,29 +670,29 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
             };
             if (editingItem) {
                 await api.put(`/welding-maps/${editingItem.id}`, payload);
-                if (onToast) onToast('Welding Map Joint berhasil diperbarui.');
+                if (onToast) onToast('Welding Map Joint successfully updated.');
             } else {
                 await api.post('/welding-maps', payload);
-                if (onToast) onToast('Welding Map Joint baru berhasil ditambahkan.');
+                if (onToast) onToast('New Welding Map Joint successfully added.');
             }
             setShowModal(false);
             loadData();
         } catch (err) {
-            setFormError(err.message || 'Gagal menyimpan Welding Map.');
+            setFormError(err.message || 'Failed to save Welding Map.');
         } finally {
             setFormLoading(false);
         }
     };
 
     const handleDelete = async (id) => {
-        if (!(await confirmDelete('Yakin ingin menghapus titik joint dari Welding Map ini?'))) return;
+        if (!(await confirmDelete('Are you sure you want to delete this joint point from the Welding Map?'))) return;
         try {
             await api.delete(`/welding-maps/${id}`);
-            if (onToast) onToast('Joint berhasil dihapus dari Welding Map.');
+            if (onToast) onToast('Joint successfully deleted from Welding Map.');
             if (expandedId === id) setExpandedId(null);
             loadData();
         } catch (err) {
-            alert(err.message || 'Gagal menghapus data.');
+            alert(err.message || 'Failed to delete data.');
         }
     };
 
@@ -847,14 +847,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                             <strong className="h5 fw-bolder text-dark mb-0">{stats.shopCount} / {stats.fieldCount}</strong>
                         </div>
                         <div className="px-3 py-2 bg-light rounded border text-center" style={{ minWidth: '115px' }}>
-                            <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Biaya Elektroda</span>
+                            <span className="d-block text-muted text-uppercase fw-bold" style={{ fontSize: '0.6875rem' }}>Electrode Cost</span>
                             <strong className="h5 fw-bolder text-success mb-0 pcm-code">{formatRupiah(stats.totalWeldingCost)}</strong>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Toolbar Sejajar: Search, Tambah, Spool, Lokasi, dan Tombol Arrow Buka/Tutup */}
+            {/* Toolbar: Search, Add Joint, Spool, Location, Expand/Collapse */}
             <div className="wm-toolbar d-flex flex-wrap align-items-center gap-2 mb-4">
                 {/* 1. Search */}
                 <div className="flex-grow-1 min-w-0" style={{ minWidth: '220px' }}>
@@ -865,14 +865,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                         <input
                             type="text"
                             className="form-control form-control-sm pcm-filter-input w-100"
-                            placeholder="Cari Joint No, Spool, Drawing, Line..."
+                            placeholder="Search Joint No, Spool, Drawing, Line..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                 </div>
 
-                {/* 2. Tambah Joint Mapping */}
+                {/* 2. Add Joint Mapping */}
                 {canEdit && (
                     <button
                         type="button"
@@ -880,38 +880,38 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                         style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                         onClick={() => handleOpenModal()}
                     >
-                        <span>+ Tambah Joint</span>
+                        <span>+ Add Joint</span>
                     </button>
                 )}
 
-                {/* 3. Dropdown Spool */}
+                {/* 3. Spool Filter */}
                 <PcmSelect
                     value={filterSpool}
                     onChange={(e) => setFilterSpool(e.target.value)}
                     aria-label="Filter Spool"
                 >
-                    <option value="ALL">Semua Spool</option>
+                    <option value="ALL">All Spools</option>
                     {spoolOptions.map((s) => <option key={s} value={s}>{s}</option>)}
                 </PcmSelect>
 
-                {/* 4. Dropdown Lokasi */}
+                {/* 4. Location Filter */}
                 <PcmSelect
                     value={filterLocation}
                     onChange={(e) => setFilterLocation(e.target.value)}
-                    aria-label="Filter Lokasi"
+                    aria-label="Filter Location"
                 >
-                    <option value="ALL">Semua Lokasi</option>
+                    <option value="ALL">All Locations</option>
                     <option value="Shop">Shop (Workshop)</option>
-                    <option value="Field">Field (Lapangan)</option>
+                    <option value="Field">Field</option>
                 </PcmSelect>
             </div>
 
             {/* Accordion grid: ISO > Spool > Joint */}
             <div className="pcm-card">
                 {loading ? (
-                    <div className="wm-empty">Memuat data Welding Map...</div>
+                    <div className="wm-empty">Loading Welding Map data...</div>
                 ) : filteredMaps.length === 0 ? (
-                    <div className="wm-empty">Tidak ada data titik joint yang sesuai.</div>
+                    <div className="wm-empty">No matching welding joint points found.</div>
                 ) : (
                     <>
                         <div className="wm-scroll">
@@ -919,7 +919,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                 <thead>
                                     <tr>
                                         <th style={{ minWidth: '190px' }}>
-                                            <span className="pcm-th-title">Joint / Tipe</span>
+                                            <span className="pcm-th-title">Joint / Type</span>
                                         </th>
                                         <th className="text-center" style={{ width: '86px' }}>
                                             <span className="pcm-th-title">Size</span>
@@ -928,17 +928,17 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                             <span className="pcm-th-title">DI</span>
                                         </th>
                                         <th className="text-center" style={{ width: '135px' }}>
-                                            <span className="pcm-th-title">Biaya Elektroda</span>
+                                            <span className="pcm-th-title">Electrode Cost</span>
                                         </th>
                                         <th className="text-center" style={{ width: '120px' }}>
                                             <span className="pcm-th-title">Status</span>
                                         </th>
                                         <th className="text-center" style={{ width: '120px' }}>
-                                            <span className="pcm-th-title">Lokasi</span>
+                                            <span className="pcm-th-title">Location</span>
                                         </th>
                                         {canEdit && (
                                             <th className="text-center" style={{ width: '140px' }}>
-                                                <span className="pcm-th-title">Aksi</span>
+                                                <span className="pcm-th-title">Action</span>
                                             </th>
                                         )}
                                         <th className="text-center pe-3" style={{ width: '70px' }}>
@@ -955,8 +955,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     }}
                                                     onClick={() => { if (allCollapsed) toggleAllGroups(); }}
                                                     disabled={grouped.length === 0}
-                                                    title="Buka Semua Group (Expand All)"
-                                                    aria-label="Buka Semua Group"
+                                                    title="Expand All Groups"
+                                                    aria-label="Expand All Groups"
                                                 >
                                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                                                         <polyline points="6 9 12 15 18 9" />
@@ -974,8 +974,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     }}
                                                     onClick={() => { if (!allCollapsed) toggleAllGroups(); }}
                                                     disabled={grouped.length === 0}
-                                                    title="Tutup Semua Group (Collapse All)"
-                                                    aria-label="Tutup Semua Group"
+                                                    title="Collapse All Groups"
+                                                    aria-label="Collapse All Groups"
                                                 >
                                                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                                                         <polyline points="18 15 12 9 6 15" />
@@ -1152,7 +1152,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                                             }}
                                                                                             onClick={() => handleDelete(m.id)}
                                                                                         >
-                                                                                            Hapus
+                                                                                            Delete
                                                                                         </button>
                                                                                     </div>
                                                                                 </td>
@@ -1167,9 +1167,9 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                                         <MaterialCard label="Material A" info={materialA} attributeLabel={attributeLabelFor(m.mat_a_category)} />
                                                                                         <MaterialCard label="Material B" info={materialB} attributeLabel={attributeLabelFor(m.mat_b_category)} />
                                                                                         <div className="wm-calc">
-                                                                                            <div className="wm-calc__head">Perhitungan</div>
+                                                                                            <div className="wm-calc__head">Calculation</div>
                                                                                             <div className="wm-calc__row">
-                                                                                                <span>Panjang</span>
+                                                                                                <span>Length</span>
                                                                                                 <strong>{length ? `${fmt(length, 0)} mm` : '—'}</strong>
                                                                                             </div>
                                                                                             <div className="wm-calc__row">
@@ -1177,13 +1177,13 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                                                 <strong>{materialA.thickness ? `${fmt(materialA.thickness)} mm` : '—'}</strong>
                                                                                             </div>
                                                                                             <div className="wm-calc__row">
-                                                                                                <span>Berat A</span>
+                                                                                                <span>Weight (A)</span>
                                                                                                 <strong className="wm-calc__value">
                                                                                                     {weight != null ? `${fmt(weight, 3)} kg` : '—'}
                                                                                                 </strong>
                                                                                             </div>
                                                                                             <div className="wm-calc__row">
-                                                                                                <span>Biaya Elektroda</span>
+                                                                                                <span>Electrode Cost</span>
                                                                                                 <strong className="wm-calc__value text-success">
                                                                                                     {jointWeldingCost(m) != null ? formatRupiah(jointWeldingCost(m)) : '—'}
                                                                                                 </strong>
@@ -1198,8 +1198,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                                             </div>
                                                                                             {weight == null && (
                                                                                                 <p className="wm-calc__note">
-                                                                                                    Isi Length (mm) di bagian Material A (muncul bila Kategori = Pipe)
-                                                                                                    dan pastikan master pipa tersedia agar berat dihitung otomatis.
+                                                                                                    Enter Length (mm) in Material A (visible when Category = Pipe)
+                                                                                                    and ensure pipe master data exists for automatic weight calculation.
                                                                                                 </p>
                                                                                             )}
                                                                                         </div>
@@ -1221,13 +1221,13 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                         </div>
                         <div className="wm-foot">
                             <span>
-                                {filteredMaps.length} joint · {grouped.length} ISO · {filteredSpools} spool
+                                {filteredMaps.length} joints · {grouped.length} ISO · {filteredSpools} spools
                             </span>
                             <span>
-                                Total berat Material A: <strong>{filteredWeight > 0 ? `${fmt(filteredWeight, 2)} kg` : '—'}</strong>
+                                Total Material A Weight: <strong>{filteredWeight > 0 ? `${fmt(filteredWeight, 2)} kg` : '—'}</strong>
                             </span>
                             <span>
-                                Total Biaya Elektroda: <strong className="text-success">{filteredWeldingCost > 0 ? formatRupiah(filteredWeldingCost) : '—'}</strong>
+                                Total Electrode Cost: <strong className="text-success">{filteredWeldingCost > 0 ? formatRupiah(filteredWeldingCost) : '—'}</strong>
                             </span>
                         </div>
                     </>
@@ -1242,7 +1242,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                             <form onSubmit={handleSave}>
                                 <div className="modal-header">
                                     <h5 className="modal-title fw-bold">
-                                        {editingItem ? 'Edit Joint Mapping' : 'Tambah Joint Mapping Baru'}
+                                        {editingItem ? 'Edit Joint Mapping' : 'Add New Joint Mapping'}
                                     </h5>
                                     <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                                 </div>
@@ -1251,9 +1251,9 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         <div className="alert alert-danger py-2 small mb-3">{formError}</div>
                                     )}
 
-                                    {/* Identitas Spool & Joint */}
+                                    {/* Spool & Joint Identity */}
                                     <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">Identitas Spool &amp; Joint</span>
+                                        <span className="pcm-form-section__title">Spool &amp; Joint Identity</span>
                                         <div className="wm-form-grid">
                                             <div className="wm-form-grid__full">
                                                 <label className="form-label small fw-bold">Isometric Drawing *</label>
@@ -1286,9 +1286,9 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                         });
                                                     }}
                                                     options={availableDrawingOptions}
-                                                    placeholder="Cari & pilih nomor drawing / sheet..."
+                                                    placeholder="Search & select drawing number / sheet..."
                                                     allowCustom={false}
-                                                    ariaLabel="Pilih Isometric Drawing"
+                                                    ariaLabel="Select Isometric Drawing"
                                                 />
                                             </div>
                                             <div>
@@ -1303,7 +1303,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                         }}
                                                         required
                                                     >
-                                                        <option value="">-- Pilih Spool --</option>
+                                                        <option value="">-- Select Spool --</option>
                                                         {selectedDrawingSpools.map((sp, idx) => (
                                                             <option key={idx} value={sp.spool_no}>
                                                                 {sp.spool_no}
@@ -1359,7 +1359,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                                 onChange={(e) => setForm({ ...form, joint_no: e.target.value })}
                                                                 required
                                                             >
-                                                                <option value="">-- Pilih Joint No --</option>
+                                                                <option value="">-- Select Joint No --</option>
                                                                 {jointOptions.map(opt => (
                                                                     <option key={opt.val} value={opt.val}>
                                                                         {opt.label}
@@ -1395,9 +1395,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                 })()}
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Tipe Sambungan</label>
+                                                <label className="form-label small fw-bold">Joint Connection Type</label>
                                                 <PcmSelect
-                                                    
                                                     value={form.joint_type}
                                                     onChange={(e) => setForm({ ...form, joint_type: e.target.value })}
                                                 >
@@ -1410,7 +1409,6 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                             <div>
                                                 <label className="form-label small fw-bold">Sheet</label>
                                                     <PcmSelect
-                                                    
                                                     value={form.sheet}
                                                     onChange={(e) => setForm({ ...form, sheet: e.target.value })}
                                                 >
@@ -1423,14 +1421,14 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                             </div>
                                         </div>
                                         <div className="wm-form-meta">
-                                            Urutan: ISO → Spool → Joint. Satu spool dapat memiliki banyak joint.
+                                            Hierarchy: ISO → Spool → Joint. A single spool can have multiple joints.
                                         </div>
                                     </div>
 
                                     {/* Pilihan cepat Fit-Up */}
                                     {drawingSpecs.length > 0 && (
                                         <div className="pcm-form-section">
-                                            <span className="pcm-form-section__title">Pilihan Cepat Fit-Up Spec</span>
+                                            <span className="pcm-form-section__title">Quick Fit-Up Spec Selection</span>
                                             <div className="d-flex flex-wrap gap-2">
                                                 {drawingSpecs.map((spec, idx) => (
                                                     <div key={idx} className="wm-fitup">
@@ -1472,18 +1470,18 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     value={form.mat_a_group}
                                                     onChange={(value) => applyMaterial('a', 'group', value)}
                                                     options={optionsA.groupOpts}
-                                                    placeholder="Pilih group..."
+                                                    placeholder="Select group..."
                                                     ariaLabel="Material Group A"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Kategori</label>
+                                                <label className="form-label small fw-bold">Category</label>
                                                 <SearchSelect
                                                     value={form.mat_a_category}
                                                     onChange={(value) => applyMaterial('a', 'category', value)}
                                                     options={optionsA.categoryOpts}
-                                                    placeholder="Pilih kategori..."
-                                                    ariaLabel="Kategori Material A"
+                                                    placeholder="Select category..."
+                                                    ariaLabel="Material Category A"
                                                 />
                                             </div>
                                             <div>
@@ -1492,8 +1490,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     value={form.mat_a_size}
                                                     onChange={(value) => applyMaterial('a', 'size', value)}
                                                     options={optionsA.sizeOpts}
-                                                    placeholder="Pilih size..."
-                                                    ariaLabel="Size Material A"
+                                                    placeholder="Select size..."
+                                                    ariaLabel="Material Size A"
                                                 />
                                             </div>
                                             <div>
@@ -1502,18 +1500,18 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     value={form.mat_a_sch}
                                                     onChange={(value) => applyMaterial('a', 'sch', value)}
                                                     options={optionsA.schOpts}
-                                                    placeholder={`Pilih ${attributeLabelA}...`}
+                                                    placeholder={`Select ${attributeLabelA}...`}
                                                     ariaLabel={`${attributeLabelA} Material A`}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Spesifikasi Material</label>
+                                                <label className="form-label small fw-bold">Material Specification</label>
                                                 <SearchSelect
                                                     value={form.mat_a_spec}
                                                     onChange={(value) => applyMaterial('a', 'spec', value)}
                                                     options={optionsA.specOpts}
-                                                    placeholder="Pilih spesifikasi..."
-                                                    ariaLabel="Spesifikasi Material A"
+                                                    placeholder="Select specification..."
+                                                    ariaLabel="Material Specification A"
                                                 />
                                             </div>
                                             {showLengthA && (
@@ -1534,8 +1532,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         </div>
                                         <div className="wm-form-meta">
                                             {modalStandard
-                                                ? `Master: ${fmt(modalStandard.wall_thickness_mm)} mm · ${fmt(modalStandard.weight_kg_m)} kg/m${stickWeightA != null ? ` · ${fmt(stickWeightA)} kg/batang (${fmt(stickLengthA, 0)} m)` : ''}${modalStandard.dn ? ` · ${modalStandard.dn}` : ''}${modalStandard.wall_thickness_mm && modalStandard.outer_diameter_mm ? ` · Biaya Elektroda: ${formatRupiah(modalStandard.wall_thickness_mm * modalStandard.outer_diameter_mm * 1.2 * 50)}` : ''}`
-                                                : 'Kombinasi size & schedule ini belum ada di master pipa.'}
+                                                ? `Master: ${fmt(modalStandard.wall_thickness_mm)} mm · ${fmt(modalStandard.weight_kg_m)} kg/m${stickWeightA != null ? ` · ${fmt(stickWeightA)} kg/stick (${fmt(stickLengthA, 0)} m)` : ''}${modalStandard.dn ? ` · ${modalStandard.dn}` : ''}${modalStandard.wall_thickness_mm && modalStandard.outer_diameter_mm ? ` · Electrode Cost: ${formatRupiah(modalStandard.wall_thickness_mm * modalStandard.outer_diameter_mm * 1.2 * 50)}` : ''}`
+                                                : 'This size & schedule combination is not in the master pipe schedule yet.'}
                                         </div>
                                     </div>
 
@@ -1549,18 +1547,18 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     value={form.mat_b_group}
                                                     onChange={(value) => applyMaterial('b', 'group', value)}
                                                     options={optionsB.groupOpts}
-                                                    placeholder="Pilih group..."
+                                                    placeholder="Select group..."
                                                     ariaLabel="Material Group B"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Kategori</label>
+                                                <label className="form-label small fw-bold">Category</label>
                                                 <SearchSelect
                                                     value={form.mat_b_category}
                                                     onChange={(value) => applyMaterial('b', 'category', value)}
                                                     options={optionsB.categoryOpts}
-                                                    placeholder="Pilih kategori..."
-                                                    ariaLabel="Kategori Material B"
+                                                    placeholder="Select category..."
+                                                    ariaLabel="Material Category B"
                                                 />
                                             </div>
                                             <div>
@@ -1569,8 +1567,8 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     value={form.mat_b_size}
                                                     onChange={(value) => applyMaterial('b', 'size', value)}
                                                     options={optionsB.sizeOpts}
-                                                    placeholder="Pilih size..."
-                                                    ariaLabel="Size Material B"
+                                                    placeholder="Select size..."
+                                                    ariaLabel="Material Size B"
                                                 />
                                             </div>
                                             <div>
@@ -1579,47 +1577,45 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                                     value={form.mat_b_sch}
                                                     onChange={(value) => applyMaterial('b', 'sch', value)}
                                                     options={optionsB.schOpts}
-                                                    placeholder={`Pilih ${attributeLabelB}...`}
+                                                    placeholder={`Select ${attributeLabelB}...`}
                                                     ariaLabel={`${attributeLabelB} Material B`}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="form-label small fw-bold">Spesifikasi Material</label>
+                                                <label className="form-label small fw-bold">Material Specification</label>
                                                 <SearchSelect
                                                     value={form.mat_b_spec}
                                                     onChange={(value) => applyMaterial('b', 'spec', value)}
                                                     options={optionsB.specOpts}
-                                                    placeholder="Pilih spesifikasi..."
-                                                    ariaLabel="Spesifikasi Material B"
+                                                    placeholder="Select specification..."
+                                                    ariaLabel="Material Specification B"
                                                 />
                                             </div>
                                         </div>
                                         <div className="wm-form-meta">
                                             {modalStandardB
-                                                ? `Master: ${fmt(modalStandardB.wall_thickness_mm)} mm · ${fmt(modalStandardB.weight_kg_m)} kg/m${stickWeightB != null ? ` · ${fmt(stickWeightB)} kg/batang (${fmt(stickLengthB, 0)} m)` : ''}${modalStandardB.wall_thickness_mm && modalStandardB.outer_diameter_mm ? ` · Biaya Elektroda: ${formatRupiah(modalStandardB.wall_thickness_mm * modalStandardB.outer_diameter_mm * 1.2 * 50)}` : ''}`
-                                                : 'Kombinasi size & schedule ini belum ada di master pipa.'}
+                                                ? `Master: ${fmt(modalStandardB.wall_thickness_mm)} mm · ${fmt(modalStandardB.weight_kg_m)} kg/m${stickWeightB != null ? ` · ${fmt(stickWeightB)} kg/stick (${fmt(stickLengthB, 0)} m)` : ''}${modalStandardB.wall_thickness_mm && modalStandardB.outer_diameter_mm ? ` · Electrode Cost: ${formatRupiah(modalStandardB.wall_thickness_mm * modalStandardB.outer_diameter_mm * 1.2 * 50)}` : ''}`
+                                                : 'This size & schedule combination is not in the master pipe schedule yet.'}
                                         </div>
                                     </div>
 
                                     {/* Fabrikasi & Status */}
                                     <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">Fabrikasi &amp; Status</span>
+                                        <span className="pcm-form-section__title">Fabrication &amp; Status</span>
                                         <div className="wm-form-grid">
                                             <div>
-                                                <label className="form-label small fw-bold">Lokasi Las</label>
+                                                <label className="form-label small fw-bold">Welding Location</label>
                                                 <PcmSelect
-                                                    
                                                     value={form.location}
                                                     onChange={(e) => setForm({ ...form, location: e.target.value })}
                                                 >
                                                     <option value="Shop">Shop (Workshop)</option>
-                                                    <option value="Field">Field (Lapangan)</option>
+                                                    <option value="Field">Field (Erection)</option>
                                                 </PcmSelect>
                                             </div>
                                             <div>
                                                 <label className="form-label small fw-bold">Status</label>
                                                     <PcmSelect
-                                                    
                                                     value={form.status}
                                                     onChange={(e) => setForm({ ...form, status: e.target.value })}
                                                 >
@@ -1642,11 +1638,11 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                     </div>
                                 </div>
                                 <div className="modal-footer">
-                                    <button type="button" className="btn btn-sm wm-cancel-btn" onClick={() => setShowModal(false)}>
-                                        Batal
+                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowModal(false)}>
+                                        Cancel
                                     </button>
                                     <button type="submit" className="btn btn-primary btn-sm fw-bold" disabled={formLoading}>
-                                        {formLoading ? 'Menyimpan...' : (editingItem ? 'Perbarui Joint Mapping' : 'Simpan Joint Mapping')}
+                                        {formLoading ? 'Saving...' : (editingItem ? 'Update Joint Mapping' : 'Save Joint Mapping')}
                                     </button>
                                 </div>
                             </form>

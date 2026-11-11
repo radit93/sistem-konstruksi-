@@ -570,12 +570,12 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                 </div>
                 {!isProjectLocked(activeProjectId) && (
                     <PcmSelect
-                        
                         value={filterProject}
                         onChange={(e) => setFilterProject(e.target.value)}
                         style={{ width: 'auto' }}
+                        searchable={false}
                     >
-                        <option value="ALL">Semua Proyek</option>
+                        <option value="ALL">Proyek</option>
                         {projects.map((p) => (
                             <option key={p.id} value={p.id}>
                                 {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
@@ -583,14 +583,17 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                         ))}
                     </PcmSelect>
                 )}
-                {/* Filter Isometrik Drawing & Sheet */}
+                {/* Filter Isometrik Drawing & Sheet (menu melebar ke kiri agar nama panjang muat) */}
                 <PcmSelect
                     value={filterDrawing}
                     onChange={(e) => setFilterDrawing(e.target.value)}
                     style={{ width: 'auto' }}
                     aria-label="Filter Isometrik Drawing & Sheet"
+                    searchable={false}
+                    menuAlign="right"
+                    menuWidth={320}
                 >
-                    <option value="ALL">Semua Isometrik Drawing</option>
+                    <option value="ALL">Isometrik Drawing</option>
                     {drawingOptions.map((d) => {
                         const total = d.sheet_total || (d.sheet ? (d.sheet.match(/of\s+(\d+)/i) ? d.sheet.match(/of\s+(\d+)/i)[1] : '') : '') || '1';
                         const current = d.sheet_num || (d.sheet ? (d.sheet.match(/(?:sheet\s*)?(\d+)/i) ? d.sheet.match(/(?:sheet\s*)?(\d+)/i)[1] : '1') : '1');
@@ -608,8 +611,9 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                     onChange={(e) => setFilterSpool(e.target.value)}
                     style={{ width: 'auto' }}
                     aria-label="Filter Spool"
+                    searchable={false}
                 >
-                    <option value="ALL">Semua Spool</option>
+                    <option value="ALL">Spool</option>
                     {spoolOptions.map(s => <option key={s} value={s}>{s}</option>)}
                 </PcmSelect>
                 {/* Filter Jenis Komponen */}
@@ -618,8 +622,9 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                     onChange={(e) => setFilterType(e.target.value)}
                     style={{ width: 'auto' }}
                     aria-label="Filter Jenis Komponen"
+                    searchable={false}
                 >
-                    <option value="ALL">Semua Jenis Komponen</option>
+                    <option value="ALL">Jenis Komponen</option>
                     {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
                 </PcmSelect>
             </div>

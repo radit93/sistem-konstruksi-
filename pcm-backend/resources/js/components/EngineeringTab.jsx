@@ -3,7 +3,7 @@
  * direction: DESIGN.md · dials: ENERGY 1 · RHYTHM 1 · MOTION 1
  * disciplines: honest-copy · locked-tokens · mobile-responsive · keyboard-a11y
  */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { confirmDelete } from '../confirm';
@@ -14,8 +14,18 @@ import { BomSection } from './engineering/BomSection';
 import { MaterialStandardSection } from './engineering/MaterialStandardSection';
 import { PipeScheduleSection } from './engineering/PipeScheduleSection';
 import { DocumentControlSection } from './engineering/DocumentControlSection';
+import {
+    buildAttributeLabels,
+    buildMaterialIndex,
+    naturalCompare,
+    parseInch,
+    resolveAttributeLabel,
+    sizeWithinRange
+} from './engineering/materialCascade';
 import { getComponentBadgeStyle } from './engineering/BomSection';
 import { SearchSelect, PcmSelect } from './SearchSelect';
+
+const strcasecmp_clean = (str) => String(str || '').trim().toLowerCase();
 
 export const ENG_SUB_TABS = [
     { id: 'project_list', label: 'List Project' },
@@ -228,76 +238,90 @@ export function EngineeringTab({
     const [quickNps, setQuickNps] = useState('');
     const [quickSchedule, setQuickSchedule] = useState('');
 
-    const componentTypeOptions = [
-        { value: 'Pipe', label: 'Pipe (Pipa Lurus)' },
-        { value: 'Elbow 90 LR', label: 'Elbow 90° Long Radius' },
-        { value: 'Elbow 45 LR', label: 'Elbow 45° Long Radius' },
-        { value: 'Elbow 90 SR', label: 'Elbow 90° Short Radius' },
-        { value: 'Tee Straight', label: 'Tee Equal / Straight' },
-        { value: 'Tee Reducing', label: 'Tee Reducing' },
-        { value: 'Reducer Concentric', label: 'Reducer Concentric' },
-        { value: 'Reducer Eccentric', label: 'Reducer Eccentric' },
-        { value: 'Flange WN', label: 'Flange Weld Neck (WN)' },
-        { value: 'Flange SO', label: 'Flange Slip-On (SO)' },
-        { value: 'Flange Blind', label: 'Flange Blind' },
-        { value: 'Gate Valve', label: 'Gate Valve' },
-        { value: 'Globe Valve', label: 'Globe Valve' },
-        { value: 'Check Valve', label: 'Check Valve' },
-        { value: 'Ball Valve', label: 'Ball Valve' },
-        { value: 'Gasket', label: 'Gasket Spiral Wound' },
-        { value: 'Stud Bolt', label: 'Stud Bolt & Nuts' },
-    ];
+    const materialIndex = useMemo(() => buildMaterialIndex(materialStandards), [materialStandards]);
 
-    const npsOptions = useMemo(() => {
-        const set = new Set();
-        pipeStandards.forEach(p => { if (p.nps) set.add(p.nps.trim()); });
-        return Array.from(set).sort((a, b) => {
-            const parseVal = (v) => {
-                const clean = String(v).replace(/"/g, '').trim();
-                if (clean.includes('/')) {
-                    const parts = clean.split(' ');
-                    if (parts.length === 2) {
-                        const [w, f] = parts;
-                        const [num, den] = f.split('/');
-                        return parseFloat(w) + (parseFloat(num) / parseFloat(den));
-                    }
-                    const [num, den] = clean.split('/');
-                    return parseFloat(num) / parseFloat(den);
-                }
-                return parseFloat(clean) || 0;
-            };
-            return parseVal(a) - parseVal(b);
-        });
-    }, [pipeStandards]);
+    const attributeLabels = useMemo(() => buildAttributeLabels(systemParameters), [systemParameters]);
 
-    const npsSelectOptions = useMemo(() => {
-        return npsOptions.map(nps => ({ value: nps, label: nps, hint: 'NPS' }));
-    }, [npsOptions]);
-
-    const materialSpecOptions = useMemo(() => {
-        const seen = new Map();
-        materialStandards.forEach((std) => {
-            const spec = std.specification || std.code || '';
-            if (!spec || seen.has(spec)) return;
-            // Tampilkan Spesifikasi Material (ASTM) murni sebagai label & value
-            seen.set(spec, { value: spec, label: spec });
-        });
-        return Array.from(seen.values()).sort((a, b) =>
-            String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: 'base' })
-        );
+    // Opsi Jenis Komponen murni dari Master Material
+    const componentTypeOptions = useMemo(() => {
+        const types = Array.from(new Set(materialStandards.map((std) => std.category).filter(Boolean)));
+        return types.sort(naturalCompare).map((cat) => ({ value: cat, label: cat }));
     }, [materialStandards]);
 
-    const availableSchedulesFor = (npsVal) => {
-        if (!npsVal) {
+    // Opsi Spesifikasi Material difilter berdasarkan Jenis Komponen yang dipilih
+    const materialSpecOptions = useMemo(() => {
+        const filtered = materialStandards.filter((std) =>
+            !quickCompType || strcasecmp_clean(std.category) === strcasecmp_clean(quickCompType)
+        );
+        const seen = new Map();
+        filtered.forEach((std) => {
+            const spec = std.specification || std.code || '';
+            if (!spec || seen.has(spec)) return;
+            const hint = [std.material_group, std.size_range ? `Size ${std.size_range}` : '']
+                .filter(Boolean)
+                .join(' · ');
+            seen.set(spec, { value: spec, label: spec, hint });
+        });
+        return Array.from(seen.values()).sort((a, b) => naturalCompare(a.label, b.label));
+    }, [materialStandards, quickCompType]);
+
+    // Opsi Size NPS difilter berdasarkan Jenis Komponen & Spec yang dipilih
+    const npsSelectOptions = useMemo(() => {
+        const matchingStandards = materialStandards.filter((std) => {
+            const matchCat = !quickCompType || strcasecmp_clean(std.category) === strcasecmp_clean(quickCompType);
+            const matchSpec = !quickMatSpec || std.specification === quickMatSpec || std.code === quickMatSpec;
+            return matchCat && matchSpec;
+        });
+
+        const indexPool = buildMaterialIndex(matchingStandards.length ? matchingStandards : materialStandards);
+
+        const seenNps = new Map();
+        (pipeStandards || []).forEach((row) => {
+            if (!row.nps || seenNps.has(row.nps)) return;
+            const inch = parseInch(row.nps);
+            if (!indexPool.some((r) => sizeWithinRange(inch, r))) return;
+            const hint = [row.dn, row.outer_diameter_mm ? `OD ${row.outer_diameter_mm}mm` : '']
+                .filter(Boolean)
+                .join(' · ');
+            seenNps.set(row.nps, { value: row.nps, label: row.nps, hint });
+        });
+
+        return Array.from(seenNps.values()).sort((a, b) => (
+            (parseInch(a.value) - parseInch(b.value)) || naturalCompare(a.value, b.value)
+        ));
+    }, [materialStandards, pipeStandards, quickCompType, quickMatSpec]);
+
+    // Opsi Schedule difilter berdasarkan Size & Spec yang dipilih
+    const availableSchedulesFor = useCallback((npsVal, compType, specVal) => {
+        if (!npsVal && !compType && !specVal) {
             const set = new Set();
-            pipeStandards.forEach(p => { if (p.schedule) set.add(p.schedule.trim()); });
-            return Array.from(set);
+            pipeStandards.forEach((p) => { if (p.schedule) set.add(p.schedule.trim()); });
+            return Array.from(set).map((v) => ({ value: v, label: v }));
         }
-        const filtered = pipeStandards.filter(p => (p.nps || '').trim() === npsVal.trim());
-        const set = new Set();
-        filtered.forEach(p => { if (p.schedule) set.add(p.schedule.trim()); });
-        return Array.from(set);
-    };
+
+        const matchingStandards = materialStandards.filter((std) => {
+            const matchCat = !compType || strcasecmp_clean(std.category) === strcasecmp_clean(compType);
+            const matchSpec = !specVal || std.specification === specVal || std.code === specVal;
+            return matchCat && matchSpec;
+        });
+
+        const schedulesFromStd = new Set();
+        matchingStandards.forEach((std) => {
+            if (std.schedule) {
+                std.schedule.split('/').forEach((s) => {
+                    const clean = s.trim();
+                    if (clean && clean !== 'N/A') schedulesFromStd.add(clean);
+                });
+            }
+        });
+
+        const filteredPipes = pipeStandards.filter((p) => (p.nps || '').trim() === (npsVal || '').trim());
+        const schedulesFromPipe = new Set();
+        filteredPipes.forEach((p) => { if (p.schedule) schedulesFromPipe.add(p.schedule.trim()); });
+
+        const combined = Array.from(new Set([...schedulesFromStd, ...schedulesFromPipe])).filter(Boolean);
+        return combined.sort(naturalCompare).map((s) => ({ value: s, label: s }));
+    }, [materialStandards, pipeStandards]);
 
     const handleAddQuickSpec = () => {
         if (!quickNps && !quickMatSpec) return;
@@ -1613,25 +1637,34 @@ export function EngineeringTab({
                                     <div className="p-3 border rounded bg-light mb-3">
                                         <div className="row g-2 align-items-end">
                                             <div className="col-12 col-md-3">
-                                                <label className="form-label small fw-bold mb-1">Jenis Komponen</label>
+                                                <label className="form-label small fw-bold mb-1">Jenis Komponen (Master)</label>
                                                 <SearchSelect
                                                     value={quickCompType}
-                                                    onChange={(val) => setQuickCompType(val || 'Pipe')}
+                                                    onChange={(val) => {
+                                                        setQuickCompType(val || 'Pipe');
+                                                        setQuickMatSpec('');
+                                                        setQuickNps('');
+                                                        setQuickSchedule('');
+                                                    }}
                                                     options={componentTypeOptions}
                                                     placeholder="Pilih jenis..."
-                                                    allowCustom
+                                                    allowCustom={false}
                                                     ariaLabel="Jenis Komponen"
                                                 />
                                             </div>
                                             <div className="col-12 col-md-3">
-                                                <label className="form-label small fw-bold mb-1">Spesifikasi Material (ASTM)</label>
+                                                <label className="form-label small fw-bold mb-1">Spesifikasi Material</label>
                                                 <SearchSelect
                                                     value={quickMatSpec}
-                                                    onChange={(val) => setQuickMatSpec(val)}
+                                                    onChange={(val) => {
+                                                        setQuickMatSpec(val);
+                                                        setQuickNps('');
+                                                        setQuickSchedule('');
+                                                    }}
                                                     options={materialSpecOptions}
-                                                    placeholder="Pilih spesifikasi ASTM..."
-                                                    allowCustom
-                                                    ariaLabel="Spesifikasi Material ASTM"
+                                                    placeholder="Pilih spesifikasi..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Spesifikasi Material"
                                                 />
                                             </div>
                                             <div className="col-6 col-md-2">
@@ -1643,19 +1676,19 @@ export function EngineeringTab({
                                                         setQuickSchedule('');
                                                     }}
                                                     options={npsSelectOptions}
-                                                    placeholder="Cari NPS..."
-                                                    allowCustom
+                                                    placeholder="Pilih size..."
+                                                    allowCustom={false}
                                                     ariaLabel="Nominal Size NPS"
                                                 />
                                             </div>
                                             <div className="col-6 col-md-2">
-                                                <label className="form-label small fw-bold mb-1">Schedule</label>
+                                                <label className="form-label small fw-bold mb-1">Schedule / Rating</label>
                                                 <SearchSelect
                                                     value={quickSchedule}
                                                     onChange={(val) => setQuickSchedule(val)}
-                                                    options={availableSchedulesFor(quickNps)}
-                                                    placeholder="Schedule..."
-                                                    allowCustom
+                                                    options={availableSchedulesFor(quickNps, quickCompType, quickMatSpec)}
+                                                    placeholder="Pilih schedule..."
+                                                    allowCustom={false}
                                                     ariaLabel="Schedule Pipa"
                                                 />
                                             </div>
@@ -1850,22 +1883,40 @@ export function EngineeringTab({
                                                 <label className="form-label small fw-bold">Jenis Komponen *</label>
                                                 <SearchSelect
                                                     value={fitupForm.component_type}
-                                                    onChange={(val) => setFitupForm({ ...fitupForm, component_type: val || 'Pipe' })}
+                                                    onChange={(val) => {
+                                                        setFitupForm({
+                                                            ...fitupForm,
+                                                            component_type: val || 'Pipe',
+                                                            material_spec: '',
+                                                            size: '',
+                                                            schedule: ''
+                                                        });
+                                                    }}
                                                     options={componentTypeOptions}
                                                     placeholder="Pilih jenis..."
-                                                    allowCustom
+                                                    allowCustom={false}
                                                     ariaLabel="Jenis Komponen"
                                                 />
                                             </div>
                                             <div className="col-12 col-md-3">
-                                                <label className="form-label small fw-bold">Spesifikasi Material (ASTM) *</label>
+                                                <label className="form-label small fw-bold">Spesifikasi Material *</label>
                                                 <SearchSelect
                                                     value={fitupForm.material_spec}
-                                                    onChange={(val) => setFitupForm({ ...fitupForm, material_spec: val })}
-                                                    options={materialSpecOptions}
-                                                    placeholder="Pilih spesifikasi ASTM..."
-                                                    allowCustom
-                                                    ariaLabel="Spesifikasi Material ASTM"
+                                                    onChange={(val) => {
+                                                        setFitupForm({
+                                                            ...fitupForm,
+                                                            material_spec: val,
+                                                            size: '',
+                                                            schedule: ''
+                                                        });
+                                                    }}
+                                                    options={materialStandards
+                                                        .filter((std) => !fitupForm.component_type || strcasecmp_clean(std.category) === strcasecmp_clean(fitupForm.component_type))
+                                                        .map((std) => ({ value: std.specification || std.code, label: std.specification || std.code }))
+                                                    }
+                                                    placeholder="Pilih spesifikasi..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Spesifikasi Material"
                                                 />
                                             </div>
                                             <div className="col-6 col-md-2">
@@ -1874,19 +1925,19 @@ export function EngineeringTab({
                                                     value={fitupForm.size}
                                                     onChange={(val) => setFitupForm({ ...fitupForm, size: val, schedule: '' })}
                                                     options={npsSelectOptions}
-                                                    placeholder="Cari NPS..."
-                                                    allowCustom
+                                                    placeholder="Pilih size..."
+                                                    allowCustom={false}
                                                     ariaLabel="Size NPS"
                                                 />
                                             </div>
                                             <div className="col-6 col-md-2">
-                                                <label className="form-label small fw-bold">Schedule *</label>
+                                                <label className="form-label small fw-bold">Schedule / Rating *</label>
                                                 <SearchSelect
                                                     value={fitupForm.schedule}
                                                     onChange={(val) => setFitupForm({ ...fitupForm, schedule: val })}
-                                                    options={availableSchedulesFor(fitupForm.size)}
-                                                    placeholder="Schedule..."
-                                                    allowCustom
+                                                    options={availableSchedulesFor(fitupForm.size, fitupForm.component_type, fitupForm.material_spec)}
+                                                    placeholder="Pilih schedule..."
+                                                    allowCustom={false}
                                                     ariaLabel="Schedule Pipa"
                                                 />
                                             </div>

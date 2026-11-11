@@ -27,6 +27,13 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
     const [error, setError] = useState('');
 
     const canEdit = can(user, 'joint.write');
+    const canQcEdit = can(user, 'inspection.write');
+    const canTestEdit = can(user, 'testpackage.write');
+    const editableStatus = (status) => {
+        if (['VISUAL_OK', 'NDT_OK'].includes(status)) return canQcEdit;
+        if (status === 'TESTED') return canTestEdit;
+        return canEdit;
+    };
     const [activeProjectId, setActiveProjectId] = useState(() => (
         localStorage.getItem('pcm_active_erection_project_id') || ''
     ));
@@ -210,16 +217,25 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Status Field Erection</label>
                                         <PcmSelect
-                                            
                                             value={editData.status}
                                             onChange={e => setEditData({ ...editData, status: e.target.value })}
+                                            disabled={!editableStatus(selectedJoint.status)}
                                         >
-                                            <option value="ISSUED">ISSUED (Spool Siap Dipasang)</option>
-                                            <option value="FITUP_OK">FITUP_OK (Tack Weld & Fit-up Lapangan OK)</option>
-                                            <option value="WELDED">WELDED (Selesai Las Erection)</option>
-                                            <option value="VISUAL_OK">VISUAL_OK (Visual QC Lapangan Lolos)</option>
-                                            <option value="NDT_OK">NDT_OK (NDT Tie-in Lolos)</option>
-                                            <option value="TESTED">TESTED (Hydrotested)</option>
+                                            <option value="PLANNED" disabled={selectedJoint.status !== 'PLANNED'}>PLANNED (Terdaftar dari Engineering)</option>
+                                            <option value="RECEIVED" disabled={!canEdit}>RECEIVED (Material Lapangan Diterima)</option>
+                                            <option value="ISSUED" disabled={!canEdit}>ISSUED (Spool Siap Dipasang)</option>
+                                            <option value="FITUP_OK" disabled={!canEdit}>FITUP_OK (Tack Weld & Fit-up Lapangan OK)</option>
+                                            <option value="WELDED" disabled={!canEdit}>WELDED (Selesai Las Erection)</option>
+                                            <option value="REPAIR" disabled={!canEdit}>REPAIR (Perbaikan Defect)</option>
+                                            {(canQcEdit || editData.status === 'VISUAL_OK') && (
+                                                <option value="VISUAL_OK" disabled={!canQcEdit}>VISUAL_OK (Visual QC Lapangan Lolos)</option>
+                                            )}
+                                            {(canQcEdit || editData.status === 'NDT_OK') && (
+                                                <option value="NDT_OK" disabled={!canQcEdit}>NDT_OK (NDT Tie-in Lolos)</option>
+                                            )}
+                                            {(canTestEdit || editData.status === 'TESTED') && (
+                                                <option value="TESTED" disabled={!canTestEdit}>TESTED (Hydrotested)</option>
+                                            )}
                                         </PcmSelect>
                                     </div>
                                     <div className="mb-3">

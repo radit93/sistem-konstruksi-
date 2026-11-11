@@ -221,6 +221,22 @@ class PcmContractTest extends TestCase
         StockMove::where('description', 'PIPA KONTRAK-T')->delete();
     }
 
+    public function test_joint_status_cannot_skip_construction_stage(): void
+    {
+        $cons = $this->token('construction');
+        $consDept = \App\Models\Department::where('code', 'CONS')->value('id');
+        $joint = \App\Models\Joint::create([
+            'joint_no' => 'J-TEST-TRANSITION', 'drawing_no' => 'DWG-TRANSITION', 'spool_no' => 'SP-TRANSITION',
+            'size' => '4"', 'schedule' => 'Sch 40', 'joint_type' => 'BW', 'location' => 'Shop',
+            'status' => 'FITUP_OK', 'dia_inch' => 4.0, 'department_id' => $consDept,
+        ]);
+
+        $this->putJson("/api/joints/{$joint->id}", ['status' => 'NDT_OK'],
+            ['Authorization' => "Bearer $cons"])->assertStatus(422);
+
+        $joint->delete();
+    }
+
     public function test_qaqc_guards(): void
     {
         $qc = $this->token('qaqc');

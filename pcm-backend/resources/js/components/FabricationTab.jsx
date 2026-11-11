@@ -30,6 +30,13 @@ export function FabricationTab({ joints, user, onReload }) {
     const [error, setError] = useState('');
 
     const canEdit = can(user, 'joint.write');
+    const canQcEdit = can(user, 'inspection.write');
+    const canTestEdit = can(user, 'testpackage.write');
+    const editableStatus = (status) => {
+        if (['VISUAL_OK', 'NDT_OK'].includes(status)) return canQcEdit;
+        if (status === 'TESTED') return canTestEdit;
+        return canEdit;
+    };
 
     const shopJoints = (joints || []).filter(isShop);
 
@@ -209,17 +216,25 @@ export function FabricationTab({ joints, user, onReload }) {
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Status Tahapan Joint</label>
                                         <PcmSelect
-                                            
                                             value={editData.status}
                                             onChange={e => setEditData({ ...editData, status: e.target.value })}
+                                            disabled={!editableStatus(selectedJoint.status)}
                                         >
-                                            <option value="RECEIVED">RECEIVED (Material Diterima)</option>
-                                            <option value="ISSUED">ISSUED (Dikeluarkan ke Fabrikasi)</option>
-                                            <option value="FITUP_OK">FITUP_OK (Fit-up Selesai & Disetujui)</option>
-                                            <option value="WELDED">WELDED (Pengelasan Selesai)</option>
-                                            <option value="VISUAL_OK">VISUAL_OK (Visual QC Lolos)</option>
-                                            <option value="NDT_OK">NDT_OK (Radiography / PT Lolos)</option>
-                                            <option value="TESTED">TESTED (Telah Hydrotest)</option>
+                                            <option value="PLANNED" disabled={selectedJoint.status !== 'PLANNED'}>PLANNED (Terdaftar dari Engineering)</option>
+                                            <option value="RECEIVED" disabled={!canEdit}>RECEIVED (Material Diterima)</option>
+                                            <option value="ISSUED" disabled={!canEdit}>ISSUED (Dikeluarkan ke Fabrikasi)</option>
+                                            <option value="FITUP_OK" disabled={!canEdit}>FITUP_OK (Fit-up Selesai & Disetujui)</option>
+                                            <option value="WELDED" disabled={!canEdit}>WELDED (Pengelasan Selesai)</option>
+                                            <option value="REPAIR" disabled={!canEdit}>REPAIR (Perbaikan Defect)</option>
+                                            {(canQcEdit || editData.status === 'VISUAL_OK') && (
+                                                <option value="VISUAL_OK" disabled={!canQcEdit}>VISUAL_OK (Visual QC Lolos)</option>
+                                            )}
+                                            {(canQcEdit || editData.status === 'NDT_OK') && (
+                                                <option value="NDT_OK" disabled={!canQcEdit}>NDT_OK (Radiography / PT Lolos)</option>
+                                            )}
+                                            {(canTestEdit || editData.status === 'TESTED') && (
+                                                <option value="TESTED" disabled={!canTestEdit}>TESTED (Telah Hydrotest)</option>
+                                            )}
                                         </PcmSelect>
                                     </div>
                                     <div className="mb-3">

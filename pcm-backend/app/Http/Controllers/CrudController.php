@@ -698,6 +698,9 @@ class CrudController extends Controller
         $obj = $this->scope($request, $model::query(), $res)->findOrFail($id);
 
         $data = $request->all();
+        if ($res === 'joints' && array_key_exists('status', $data)) {
+            $this->validateJointStatusTransition($obj, (string) $data['status'], $request->user());
+        }
         if ($res === 'drawings' && $request->hasFile('file')) {
             $path = $request->file('file')->store('drawings', 'public');
             $data['scan_path'] = '/storage/'.$path;
@@ -980,6 +983,49 @@ class CrudController extends Controller
         $obj->delete();
 
         return response()->json(['message' => 'OK']);
+    }
+
+    private function validateJointStatusTransition(Joint $joint, string $nextStatus, $user): void
+    {
+        $current = strtoupper((string) ($joint->status ?: 'PLANNED'));
+        $next = strtoupper($nextStatus);
+        if ($current === $next) {
+            return;
+        }
+
+        $constructionStatuses = ['PLANNED', 'RECEIVED', 'ISSUED', 'FITUP_OK', 'WELDED', 'TESTED'];
+        $qaqcStatuses = ['VISUAL_OK', 'NDT_OK', 'REPAIR'];
+        $allStatuses = array_merge($constructionStatuses, $qaqcStatuses);
+        if (! in_array($next, $allStatuses, true)) {
+            throw ValidationException::withMessages(['status' => 'Status joint tidak dikenal.']);
+        }
+
+        if (in_array($next, ['VISUAL_OK', 'NDT_OK'], true) && ! $user->hasPermission('inspection.write')) {
+            throw ValidationException::withMessages(['status' => 'Status Visual/NDT hanya boleh diubah lewat Inspection.']);
+        }
+        if ($next === 'REPAIR' && ! $user->hasPermission('joint.write')) {
+            throw ValidationException::withMessages(['status' => 'Status REPAIR hanya boleh diubah oleh Construction.']);
+        }
+        if ($next === 'TESTED' && ! $user->hasPermission('testpackage.write')) {
+            throw ValidationException::withMessages(['status' => 'Status TESTED hanya boleh diubah oleh Test Package.']);
+        }
+
+        $allowed = [
+            'PLANNED' => ['RECEIVED'],
+            'RECEIVED' => ['ISSUED'],
+            'ISSUED' => ['FITUP_OK'],
+            'FITUP_OK' => ['WELDED'],
+            'WELDED' => ['TESTED'],
+            'VISUAL_OK' => ['NDT_OK', 'REPAIR'],
+            'NDT_OK' => ['TESTED', 'REPAIR'],
+            'REPAIR' => ['WELDED', 'VISUAL_OK', 'NDT_OK'],
+            'TESTED' => [],
+        ];
+        if (! in_array($next, $allowed[$current] ?? [], true)) {
+            throw ValidationException::withMessages([
+                'status' => "Transisi status {$current} ke {$next} tidak valid.",
+            ]);
+        }
     }
 
     private function syncWeldingMapToJoint(WeldingMap $map): void

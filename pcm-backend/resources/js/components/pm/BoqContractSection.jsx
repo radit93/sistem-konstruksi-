@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
+import { formatRupiah } from '../../currency';
 import { PcmSelect } from '../SearchSelect';
 
-export function BoqContractSection({ scopes = [], project, user, onReload }) {
+export function BoqContractSection({ scopes = [], engBoqs = [], joints = [], project, user, onReload }) {
     const [search, setSearch] = useState('');
     const [filterUnit, setFilterUnit] = useState('ALL');
     const [showModal, setShowModal] = useState(false);
@@ -29,15 +30,44 @@ export function BoqContractSection({ scopes = [], project, user, onReload }) {
         const totalContractDI = scopes
             .filter(s => s.unit === 'DI')
             .reduce((acc, s) => acc + (parseFloat(s.contract_qty) || 0), 0);
-        const totalActualDI = scopes
+        const totalActualScopeDI = scopes
             .filter(s => s.unit === 'DI')
             .reduce((acc, s) => acc + (parseFloat(s.cumulative_qty) || 0), 0);
-        const avgPct = totalContractDI > 0 ? Math.round((totalActualDI / totalContractDI) * 100) : 0;
+        const avgPct = totalContractDI > 0 ? Math.round((totalActualScopeDI / totalContractDI) * 100) : 0;
         const totalWeightTon = scopes
             .filter(s => s.unit === 'TON')
             .reduce((acc, s) => acc + (parseFloat(s.contract_qty) || 0), 0);
-        return { totalItems, totalContractDI, totalActualDI, avgPct, totalWeightTon };
-    }, [scopes]);
+
+        // Sinkronisasi dari Engineering BOQ (Welding Map) & Construction Joints aktual
+        const engBoqDI = (engBoqs || []).reduce((acc, b) => acc + (parseFloat(b.dia_inch_total ?? b.total_di) || 0), 0);
+        const engBoqValue = (engBoqs || []).reduce((acc, b) => acc + (parseFloat(b.total_amount ?? b.total_price) || 0), 0);
+        const engShopDI = (engBoqs || [])
+            .filter(b => (b.work_scope || b.work_type || '').toUpperCase().includes('SHOP'))
+            .reduce((acc, b) => acc + (parseFloat(b.dia_inch_total ?? b.total_di) || 0), 0);
+        const engFieldDI = (engBoqs || [])
+            .filter(b => (b.work_scope || b.work_type || '').toUpperCase().includes('FIELD'))
+            .reduce((acc, b) => acc + (parseFloat(b.dia_inch_total ?? b.total_di) || 0), 0);
+
+        const doneJointStatuses = new Set(['WELDED', 'VISUAL_OK', 'NDT_OK', 'TESTED']);
+        const jointTotalDI = (joints || []).reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0);
+        const jointWeldedDI = (joints || [])
+            .filter(j => doneJointStatuses.has((j.status || '').toUpperCase()))
+            .reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0);
+
+        return {
+            totalItems,
+            totalContractDI,
+            totalActualDI: totalActualScopeDI,
+            avgPct,
+            totalWeightTon,
+            engBoqDI,
+            engBoqValue,
+            engShopDI,
+            engFieldDI,
+            jointTotalDI,
+            jointWeldedDI,
+        };
+    }, [scopes, engBoqs, joints]);
 
     const filteredScopes = useMemo(() => {
         const q = search.toLowerCase();
@@ -130,23 +160,48 @@ export function BoqContractSection({ scopes = [], project, user, onReload }) {
                 </div>
                 <div className="col-6 col-md-3">
                     <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
+                        <span className="text-muted small text-uppercase fw-bold d-block">BOQ Engineering (Weld Map)</span>
+                        <strong className="h3 fw-bold text-info mb-0">{stats.engBoqDI.toLocaleString(undefined, { maximumFractionDigits: 1 })}</strong>
+                        <span className="text-muted ms-1 small">DI ({formatRupiah(stats.engBoqValue)})</span>
+                    </div>
+                </div>
+                <div className="col-6 col-md-3">
+                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
                         <span className="text-muted small text-uppercase fw-bold d-block">Realisasi Aktual DI</span>
                         <strong className="h3 fw-bold text-success mb-0">{stats.totalActualDI.toLocaleString()}</strong>
-                        <span className="text-muted ms-1 small">Dia-Inch</span>
+                        <span className="text-muted ms-1 small">
+                            DI (Las Lapangan: {stats.jointWeldedDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI)
+                        </span>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
                     <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Total Bobot Support</span>
-                        <strong className="h3 fw-bold text-dark mb-0">{stats.totalWeightTon.toLocaleString()}</strong>
-                        <span className="text-muted ms-1 small">TON</span>
-                    </div>
-                </div>
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Rata-Rata Progres</span>
+                        <span className="text-muted small text-uppercase fw-bold d-block">Rata-Rata Progres &amp; Support</span>
                         <strong className="h3 fw-bold text-primary mb-0">{stats.avgPct}%</strong>
-                        <span className="text-muted ms-1 small">tercapai</span>
+                        <span className="text-muted ms-1 small">&bull; {stats.totalWeightTon.toLocaleString()} TON</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Rekonsiliasi Engineering vs Kontrak */}
+            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '8px', borderLeft: '4px solid #0284c7' }}>
+                <div className="card-body py-3 px-4">
+                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div>
+                            <div className="small fw-bold text-uppercase text-primary mb-1">
+                                Sinkronisasi BOQ Engineering (Welding Map) vs Kontrak Baseline
+                            </div>
+                            <div className="small text-muted">
+                                Shop Fabrication: <strong className="text-dark">{stats.engShopDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI</strong> &bull;{' '}
+                                Field Erection: <strong className="text-dark">{stats.engFieldDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI</strong> &bull;{' '}
+                                Total Joint Terdaftar: <strong className="text-dark">{(joints || []).length} joints ({stats.jointTotalDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI)</strong>
+                            </div>
+                        </div>
+                        <span className={`badge ${stats.engBoqDI > stats.totalContractDI && stats.totalContractDI > 0 ? 'bg-danger' : 'bg-info text-dark'}`}>
+                            {stats.totalContractDI > 0
+                                ? `Cakupan Gambar: ${Math.round((stats.engBoqDI / stats.totalContractDI) * 100)}% dari Kontrak`
+                                : 'Menunggu Baseline Kontrak'}
+                        </span>
                     </div>
                 </div>
             </div>

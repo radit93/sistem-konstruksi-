@@ -114,6 +114,18 @@ export function ProjectManagerTab({
     const [searchFolder, setSearchFolder] = useState('');
     const [clientFilter, setClientFilter] = useState('ALL');
 
+    // Data lintas departemen untuk pengawasan PM pada proyek aktif
+    const [crossData, setCrossData] = useState({
+        engineeringBoqs: [],
+        boms: [],
+        dailyLogs: [],
+        materialInspections: [],
+        inspections: [],
+        testPackages: [],
+        hseLogs: [],
+        loading: false,
+    });
+
     // Modal buat folder proyek baru
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [folderForm, setFolderForm] = useState(emptyFolderForm);
@@ -121,6 +133,40 @@ export function ProjectManagerTab({
     const [folderError, setFormError] = useState('');
 
     const canEdit = can(user, 'project.create') || can(user, 'scope.write');
+
+    // Muat data lintas departemen setiap kali proyek aktif dibuka
+    useEffect(() => {
+        if (!selectedProjectId) return undefined;
+        let alive = true;
+        setCrossData((prev) => ({ ...prev, loading: true }));
+
+        Promise.allSettled([
+            api.get('/engineering-boqs'),
+            api.get('/bill-of-materials'),
+            api.get(`/daily-progress?project_id=${selectedProjectId}`),
+            api.get('/material-inspections'),
+            api.get('/inspections'),
+            api.get('/test-packages'),
+            api.get('/hse'),
+        ]).then((results) => {
+            if (!alive) return;
+            const val = (idx) => (results[idx]?.status === 'fulfilled' && Array.isArray(results[idx].value) ? results[idx].value : []);
+            setCrossData({
+                engineeringBoqs: val(0),
+                boms: val(1),
+                dailyLogs: val(2),
+                materialInspections: val(3),
+                inspections: val(4),
+                testPackages: val(5),
+                hseLogs: val(6),
+                loading: false,
+            });
+        });
+
+        return () => {
+            alive = false;
+        };
+    }, [selectedProjectId]);
 
     // Sinkronisasi penyimpanan proyek aktif ke local storage
     const handleSelectProject = (projId) => {
@@ -204,6 +250,27 @@ export function ProjectManagerTab({
         const dwgNos = new Set(projectDrawings.map(d => d.drawing_no));
         return (joints || []).filter(j => dwgNos.has(j.drawing_no) || (Number(activeProject.id) === 1 && !j.project_id));
     }, [activeProject, projectDrawings, joints]);
+
+    const projectEngBoqs = useMemo(() => {
+        if (!activeProject) return [];
+        return crossData.engineeringBoqs.filter(b =>
+            Number(b.project_id) === Number(activeProject.id) || (!b.project_id && Number(activeProject.id) === 1)
+        );
+    }, [activeProject, crossData.engineeringBoqs]);
+
+    const projectBoms = useMemo(() => {
+        if (!activeProject) return [];
+        return crossData.boms.filter(b =>
+            Number(b.project_id) === Number(activeProject.id) || (!b.project_id && Number(activeProject.id) === 1)
+        );
+    }, [activeProject, crossData.boms]);
+
+    const projectDailyLogs = useMemo(() => {
+        if (!activeProject) return [];
+        return crossData.dailyLogs.filter(l =>
+            Number(l.project_id) === Number(activeProject.id) || (!l.project_id && Number(activeProject.id) === 1)
+        );
+    }, [activeProject, crossData.dailyLogs]);
 
     // Handler buat proyek baru
     const handleCreateProject = async (e) => {
@@ -447,6 +514,8 @@ export function ProjectManagerTab({
                         <BoqContractSection
                             project={activeProject}
                             scopes={projectScopes}
+                            engBoqs={projectEngBoqs}
+                            joints={projectJoints}
                             user={user}
                             onReload={onReload}
                         />
@@ -455,12 +524,16 @@ export function ProjectManagerTab({
                         <SCurveSection
                             project={activeProject}
                             scopes={projectScopes}
+                            joints={projectJoints}
+                            dailyLogs={projectDailyLogs}
                             user={user}
                         />
                     )}
                     {currentSection === 'pm_budget' && (
                         <BudgetCostSection
                             project={activeProject}
+                            engBoqs={projectEngBoqs}
+                            boms={projectBoms}
                             user={user}
                             onToast={onReload}
                         />
@@ -469,6 +542,7 @@ export function ProjectManagerTab({
                         <DailyLogSection
                             project={activeProject}
                             scopes={projectScopes}
+                            joints={projectJoints}
                             user={user}
                             onReload={onReload}
                         />
@@ -476,6 +550,11 @@ export function ProjectManagerTab({
                     {currentSection === 'pm_milestone' && (
                         <MilestoneSection
                             project={activeProject}
+                            drawings={projectDrawings}
+                            joints={projectJoints}
+                            materialInspections={crossData.materialInspections}
+                            inspections={crossData.inspections}
+                            testPackages={crossData.testPackages}
                             user={user}
                             onToast={onReload}
                         />
@@ -487,6 +566,10 @@ export function ProjectManagerTab({
                             joints={projectJoints}
                             stockMoves={stockMoves}
                             scopes={projectScopes}
+                            engBoqs={projectEngBoqs}
+                            boms={projectBoms}
+                            testPackages={crossData.testPackages}
+                            hseLogs={crossData.hseLogs}
                             user={user}
                         />
                     )}

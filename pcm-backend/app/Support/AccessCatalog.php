@@ -117,10 +117,13 @@ class AccessCatalog
         $readAdmin = ['project.view', 'user.view', 'role.view', 'access.view'];
 
         return [
-            // Pengawas: lihat semua project dan semua role, hanya baca,
-            // plus menulis S-Curve dan progres harian di modulnya sendiri.
+            // Pengawas: lihat semua project, semua departemen, dan semua role (hanya baca),
+            // plus menulis kontrak/BOQ, budget, milestone, S-Curve, dan progres harian di modul PMO.
             'project_manager' => array_merge($readAdmin, [
-                'dashboard.view', 'scope.view', 'scope.write', 'progress.write', 'report.view',
+                'dashboard.view',
+                'scope.view', 'scope.write', 'progress.write', 'report.view',
+                'drawing.view', 'stock.view', 'material_inspection.view',
+                'joint.view', 'inspection.view', 'testpackage.view', 'hse.view',
             ]),
 
             // Engineer membuka folder proyek dan mengunggah drawing.

@@ -3,7 +3,7 @@ import { api } from '../../api';
 import { can } from '../../auth';
 import { PcmSelect } from '../SearchSelect';
 
-export function DailyLogSection({ scopes = [], project, user, onReload }) {
+export function DailyLogSection({ scopes = [], joints = [], project, user, onReload }) {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -44,8 +44,29 @@ export function DailyLogSection({ scopes = [], project, user, onReload }) {
     const stats = useMemo(() => {
         const totalLogs = logs.length;
         const totalQtyLogged = logs.reduce((acc, l) => acc + (parseFloat(l.qty) || 0), 0);
-        return { totalLogs, totalQtyLogged };
-    }, [logs]);
+        const weldedDI = (joints || [])
+            .filter(j => ['WELDED', 'VISUAL_OK', 'NDT_OK', 'TESTED'].includes((j.status || '').toUpperCase()))
+            .reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0);
+        return { totalLogs, totalQtyLogged, weldedDI };
+    }, [logs, joints]);
+
+    const jointDailyRecap = useMemo(() => {
+        const byDate = {};
+        (joints || []).forEach(j => {
+            if (j.fit_date) {
+                const d = j.fit_date;
+                if (!byDate[d]) byDate[d] = { date: d, fitCount: 0, weldCount: 0, weldDI: 0 };
+                byDate[d].fitCount += 1;
+            }
+            if (j.weld_date) {
+                const d = j.weld_date;
+                if (!byDate[d]) byDate[d] = { date: d, fitCount: 0, weldCount: 0, weldDI: 0 };
+                byDate[d].weldCount += 1;
+                byDate[d].weldDI += parseFloat(j.size_in ?? j.dia_inch) || 0;
+            }
+        });
+        return Object.values(byDate).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
+    }, [joints]);
 
     const filteredLogs = useMemo(() => {
         const q = search.toLowerCase();
@@ -138,9 +159,9 @@ export function DailyLogSection({ scopes = [], project, user, onReload }) {
                 </div>
                 <div className="col-6 col-md-4">
                     <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Volume Terinput</span>
+                        <span className="text-muted small text-uppercase fw-bold d-block">Volume Terinput / Las Aktual</span>
                         <strong className="h3 fw-bold text-success mb-0">{stats.totalQtyLogged.toLocaleString()}</strong>
-                        <span className="text-muted ms-1 small">unit total</span>
+                        <span className="text-muted ms-1 small">unit &bull; Las: {stats.weldedDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI</span>
                     </div>
                 </div>
                 <div className="col-12 col-md-4 d-flex align-items-center">
@@ -196,6 +217,46 @@ export function DailyLogSection({ scopes = [], project, user, onReload }) {
                                         </td>
                                         <td className="text-muted small">
                                             {l.created_at ? new Date(l.created_at).toLocaleString('id-ID') : '—'}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Rekap Output Lapangan Harian (Construction Sync) */}
+            <div className="card border-0 shadow-sm mt-4" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                    <h6 className="fw-bold text-dark mb-0">Rekap Produksi Fit-Up &amp; Welding Harian (Otomatis dari Construction)</h6>
+                    <span className="badge bg-info text-dark">Cross-Dept Sync</span>
+                </div>
+                <div className="table-responsive">
+                    <table className="table table-sm table-hover align-middle mb-0" style={{ fontSize: '0.84rem' }}>
+                        <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.72rem' }}>
+                            <tr>
+                                <th className="ps-3 py-2">Tanggal</th>
+                                <th className="py-2 text-end">Joint Fit-Up</th>
+                                <th className="py-2 text-end">Joint Welded</th>
+                                <th className="pe-3 py-2 text-end">Total Dia-Inch Las</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {jointDailyRecap.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="text-center py-3 text-muted">
+                                        Belum ada tanggal Fit-Up / Welding tercatat pada Construction Joints proyek ini.
+                                    </td>
+                                </tr>
+                            ) : (
+                                jointDailyRecap.map(r => (
+                                    <tr key={r.date}>
+                                        <td className="ps-3 font-monospace fw-bold text-dark">{r.date}</td>
+                                        <td className="text-end font-monospace">{r.fitCount} joints</td>
+                                        <td className="text-end font-monospace text-primary fw-bold">{r.weldCount} joints</td>
+                                        <td className="pe-3 text-end font-monospace text-success fw-bold">
+                                            {r.weldDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI
                                         </td>
                                     </tr>
                                 ))

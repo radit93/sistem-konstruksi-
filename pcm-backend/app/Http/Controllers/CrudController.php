@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\DocumentControl;
 use App\Models\Drawing;
 use App\Models\EngineeringBoq;
+use App\Models\FittingCatalog;
 use App\Models\FittingStandard;
 use App\Models\HseLog;
 use App\Models\Inspection;
@@ -112,6 +113,11 @@ class CrudController extends Controller
             'delete' => 'drawing.write',
         ]],
         'material-standards' => [MaterialStandard::class, [
+            'create' => 'drawing.write',
+            'update' => 'drawing.write',
+            'delete' => 'drawing.write',
+        ]],
+        'fitting-catalogs' => [FittingCatalog::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
@@ -609,6 +615,35 @@ class CrudController extends Controller
 
             $data['department_id'] = $receiving->department_id;
             $data['project_id'] = $data['project_id'] ?? $receiving->project_id;
+        }
+
+        // QA-QC: Auto-update joint status when inspection passes or fails
+        if ($res === 'inspections') {
+            $inspection = DB::transaction(function () use ($model, $data) {
+                $inspection = $model::create($data);
+                $jointId = $inspection->joint_id;
+
+                $inspections = Inspection::where('joint_id', $jointId)->get();
+                $newStatus = null;
+                if ($inspection->result === 'FAIL') {
+                    $newStatus = 'REPAIR';
+                } elseif ($inspection->result === 'PASS' && $inspection->kind === 'VISUAL') {
+                    $newStatus = 'VISUAL_OK';
+                } elseif ($inspection->result === 'PASS' && in_array($inspection->kind, ['RT', 'PT', 'UT'], true)) {
+                    $hasVisualPass = $inspections->contains(fn ($item) => $item->kind === 'VISUAL' && $item->result === 'PASS');
+                    if ($hasVisualPass) {
+                        $newStatus = 'NDT_OK';
+                    }
+                }
+
+                if ($newStatus !== null) {
+                    Joint::whereKey($jointId)->update(['status' => $newStatus]);
+                }
+
+                return $inspection->fresh();
+            });
+
+            return response()->json($inspection, 201);
         }
 
         if ($res === 'material-issuings') {

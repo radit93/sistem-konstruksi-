@@ -99,6 +99,14 @@ const getCategoryBadgeStyle = (cat) => {
 };
 
 /* Label tampilan untuk tab kategori — nilai data (id) tetap utuh agar filter tidak rusak */
+const cleanFittingItemCode = (rawCode) => {
+    const s = String(rawCode || '').trim();
+    if (!s) return '—';
+    // Hapus suffix -SchXX, -STD, -XS, -XXS, -SGP, -3000#, -6000#, -9000# dari akhir kode
+    // Contoh: EL90LR-1/2-STD -> EL90LR-1/2, FG-WELDOLET-4-Sch160 -> FG-WELDOLET-4
+    return s.replace(/-(?:sch\s*\w+|std|xs|xxs|sgp|\d+#|class\s*\d+)$/i, '');
+};
+
 const CATEGORY_TAB_LABELS = {
     ALL: 'Semua Kategori',
     Pipe: 'Pipe',
@@ -1020,45 +1028,45 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                             <div className="table-responsive flex-grow-1" style={{ minHeight: '440px' }}>
                                 <table className="table table-hover align-middle pcm-table mb-0" style={{ tableLayout: 'fixed', minWidth: '1080px', width: '100%' }}>
                                     <colgroup>
-                                        <col style={{ width: '140px' }} />
+                                        <col style={{ width: '130px' }} />
                                         <col style={{ width: '125px' }} />
                                         <col style={{ width: '100px' }} />
-                                        <col style={{ width: '130px' }} />
-                                        <col style={{ width: '90px' }} />
                                         <col style={{ width: '120px' }} />
+                                        <col style={{ width: '95px' }} />
+                                        <col style={{ width: '115px' }} />
                                         <col style={{ width: '130px' }} />
-                                        <col style={{ width: '100px' }} />
-                                        {canEdit && <col style={{ width: '145px' }} />}
+                                        <col style={{ width: '95px' }} />
+                                        {canEdit && <col style={{ width: '140px' }} />}
                                     </colgroup>
                                     <thead>
                                         <tr>
-                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Item Code</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #cbd5e1' }}>
+                                                <span className="pcm-th-title pcm-table-cell-collider text-center" style={{ fontSize: '0.78rem' }}>Item Code</span>
                                             </th>
-                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Kategori / Tipe</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #cbd5e1' }}>
+                                                <span className="pcm-th-title pcm-table-cell-collider text-center" style={{ fontSize: '0.78rem' }}>Kategori / Tipe</span>
                                             </th>
-                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Standar ASME</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #cbd5e1' }}>
+                                                <span className="pcm-th-title pcm-table-cell-collider text-center" style={{ fontSize: '0.78rem' }}>Standar ASME</span>
                                             </th>
-                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Koneksi</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #cbd5e1' }}>
+                                                <span className="pcm-th-title pcm-table-cell-collider text-center" style={{ fontSize: '0.78rem' }}>Koneksi</span>
                                             </th>
-                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Ukuran (NPS)</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #cbd5e1' }}>
+                                                <span className="pcm-th-title pcm-table-cell-collider text-center" style={{ fontSize: '0.78rem' }}>Ukuran (NPS)</span>
                                             </th>
-                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Schedule / Class</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #cbd5e1' }}>
+                                                <span className="pcm-th-title pcm-table-cell-collider text-center" style={{ fontSize: '0.78rem' }}>Schedule / Class</span>
                                             </th>
-                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Material CS</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #cbd5e1' }}>
+                                                <span className="pcm-th-title pcm-table-cell-collider text-center" style={{ fontSize: '0.78rem' }}>Material CS</span>
                                             </th>
-                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Berat (kg)</span>
+                                            <th className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #cbd5e1' }}>
+                                                <span className="pcm-th-title pcm-table-cell-collider text-center" style={{ fontSize: '0.78rem' }}>Berat (kg)</span>
                                             </th>
                                             {canEdit && (
                                                 <th className="text-center pe-3 text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                    <span className="pcm-th-title" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>Aksi</span>
+                                                    <span className="pcm-th-title pcm-table-cell-collider text-center" style={{ fontSize: '0.78rem' }}>Aksi</span>
                                                 </th>
                                             )}
                                         </tr>
@@ -1072,23 +1080,21 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                             </tr>
                                         ) : (
                                             paginatedFittings.map((row) => {
-                                                const pressureClassDisplay = row.schedule_class && (row.item_code || '').startsWith('FG-')
-                                                    ? row.schedule_class
-                                                    : null;
+                                                const cleanCode = cleanFittingItemCode(row.item_code);
                                                 return (
                                                     <tr key={row.id}>
-                                                        <td className="ps-3 pe-2 text-start fw-bold pcm-code text-nowrap" style={{ color: '#0f172a', verticalAlign: 'middle', padding: '0.45rem 0.5rem', fontSize: '0.78rem', whiteSpace: 'nowrap' }} title={row.item_code}>
-                                                            {row.item_code}
+                                                        <td className="ps-3 pe-2 text-start fw-bold pcm-code text-nowrap" style={{ color: '#0f172a', verticalAlign: 'middle', padding: '0.45rem 0.5rem', fontSize: '0.78rem', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }} title={cleanCode}>
+                                                            <span className="pcm-table-cell-collider text-start">{cleanCode}</span>
                                                         </td>
-                                                        <td className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                                        <td className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }}>
                                                             <span
-                                                                className="pcm-chip"
+                                                                className="pcm-chip pcm-table-cell-collider mx-auto"
                                                                 style={{
                                                                     ...getCategoryBadgeStyle(row.category || 'Fitting'),
                                                                     fontSize: '0.72rem',
                                                                     padding: '0.15rem 0.45rem',
                                                                     display: 'inline-block',
-                                                                    maxWidth: '135px',
+                                                                    maxWidth: '120px',
                                                                     overflow: 'hidden',
                                                                     textOverflow: 'ellipsis',
                                                                     whiteSpace: 'nowrap',
@@ -1098,28 +1104,32 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                                 {row.category}
                                                             </span>
                                                         </td>
-                                                        <td className="text-center pcm-code font-monospace text-nowrap" style={{ fontSize: '0.78rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                            {row.asme_standard || '—'}
+                                                        <td className="text-center pcm-code font-monospace text-nowrap" style={{ fontSize: '0.78rem', verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }}>
+                                                            <span className="pcm-table-cell-collider text-center">{row.asme_standard || '—'}</span>
                                                         </td>
-                                                        <td className="text-center pcm-cell-sub text-nowrap" style={{ fontSize: '0.76rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }} title={row.connection}>
-                                                            {row.connection || '—'}
+                                                        <td className="text-center pcm-cell-sub text-nowrap" style={{ fontSize: '0.76rem', verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }} title={row.connection}>
+                                                            <span className="pcm-table-cell-collider text-center">{row.connection || '—'}</span>
                                                         </td>
-                                                        <td className="text-center pcm-code fw-semibold text-nowrap" style={{ fontSize: '0.8rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                            {row.nps_main || '—'}
-                                                            {row.nps_secondary ? ` × ${row.nps_secondary}` : ''}
+                                                        <td className="text-center pcm-code fw-semibold text-nowrap" style={{ fontSize: '0.8rem', verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }}>
+                                                            <span className="pcm-table-cell-collider text-center">
+                                                                {row.nps_main || '—'}
+                                                                {row.nps_secondary ? ` × ${row.nps_secondary}` : ''}
+                                                            </span>
                                                         </td>
-                                                        <td className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                            {renderDynamicSchedule(row.schedule_class)}
+                                                        <td className="text-center text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }}>
+                                                            <span className="pcm-table-cell-collider text-center">{renderDynamicSchedule(row.schedule_class)}</span>
                                                         </td>
-                                                        <td className="text-center pcm-cell-sub text-nowrap" style={{ fontSize: '0.76rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }} title={row.material_cs}>
-                                                            {row.material_cs || '—'}
+                                                        <td className="text-center pcm-cell-sub text-nowrap" style={{ fontSize: '0.76rem', verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }} title={row.material_cs}>
+                                                            <span className="pcm-table-cell-collider text-center">{row.material_cs || '—'}</span>
                                                         </td>
-                                                        <td className="text-center pcm-code fw-semibold text-nowrap" style={{ fontSize: '0.8rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                            {row.weight_cs_kg != null && row.weight_cs_kg !== '' ? `${parseFloat(row.weight_cs_kg).toFixed(3)} kg` : '—'}
+                                                        <td className="text-center pcm-code fw-semibold text-nowrap" style={{ fontSize: '0.8rem', verticalAlign: 'middle', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }}>
+                                                            <span className="pcm-table-cell-collider text-center">
+                                                                {row.weight_cs_kg != null && row.weight_cs_kg !== '' ? `${parseFloat(row.weight_cs_kg).toFixed(3)} kg` : '—'}
+                                                            </span>
                                                         </td>
                                                         {canEdit && (
                                                             <td className="text-center pe-2 text-nowrap" style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                                                                <div className="d-inline-flex align-items-center justify-content-center gap-1.5">
+                                                                <div className="d-inline-flex align-items-center justify-content-center gap-1.5 pcm-table-cell-collider">
                                                                     <button
                                                                         type="button"
                                                                         className="btn btn-primary btn-sm px-2 py-0.5 fw-bold"

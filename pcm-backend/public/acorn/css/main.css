@@ -3171,3 +3171,74 @@ html[data-placement=horizontal] .nav-container .logo .img {
 .pcm-searchselect input.pcm-searchselect__input {
     padding-right: 1.9rem !important;
 }
+
+/* ==========================================================================
+   SIDEBAR RAIL (data-behaviour=unpinned)
+   --------------------------------------------------------------------------
+   Acorn melipat sidebar menjadi rail sempit (--nav-size-slim, 4.75rem) pada
+   lebar layar di bawah breakpoint XXL — kondisi umum laptop dengan display
+   scaling 125-150%. Override PCM di atas memaksa logo 120px dan tidak
+   menyembunyikan label grup/tombol logout, sehingga isinya meluber menimpa
+   judul halaman. Aturan berikut hanya berlaku saat rail sedang terlipat;
+   saat di-hover (data-menu-animate=show) atau pinned, tampilan penuh kembali.
+   ========================================================================== */
+html[data-placement=vertical]:not([data-dimension=mobile])[data-behaviour=unpinned]:not([data-menu-animate=show]) .nav-container .nav-content .logo {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+    justify-content: center !important;
+}
+
+/* Wordmark Acorn tidak muat di rail 80px: sembunyikan, ikon menu tetap tampil. */
+html[data-placement=vertical]:not([data-dimension=mobile])[data-behaviour=unpinned]:not([data-menu-animate=show]) .nav-container .nav-content .logo a,
+html[data-placement=vertical]:not([data-dimension=mobile])[data-behaviour=unpinned]:not([data-menu-animate=show]) .nav-container .nav-content .logo .img,
+html[data-placement=vertical]:not([data-dimension=mobile])[data-behaviour=unpinned]:not([data-menu-animate=show]) .nav-container .logo .img {
+    display: none !important;
+}
+
+/* Label kelompok menu (ENGINEERING, OPERASIONAL, ...) juga tidak muat. */
+html[data-placement=vertical]:not([data-dimension=mobile])[data-behaviour=unpinned]:not([data-menu-animate=show]) .nav-container .nav-content .menu-container .menu li.pcm-menu-group {
+    display: none !important;
+}
+
+/* Tombol logout versi teks meluber keluar rail; navbar atas tetap punya Logout. */
+html[data-placement=vertical]:not([data-dimension=mobile])[data-behaviour=unpinned]:not([data-menu-animate=show]) .nav-logout-container {
+    display: none !important;
+}
+
+/* ==========================================================================
+   TABEL LEBAR DI DALAM KARTU
+   --------------------------------------------------------------------------
+   Tabel master (fitting/pipa) memakai min-width inline 1080-1220px. Tanpa
+   batas, tabel mendorong lebar halaman sehingga kolom Aksi terpotong dan
+   pengguna harus zoom-out. Di sini tabel digulir di dalam kartu dan kolom
+   Aksi dibuat sticky di kanan agar tombol Edit/Hapus selalu terjangkau.
+   ========================================================================== */
+main {
+    min-width: 0;
+}
+
+.pcm-card .table-responsive {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Hanya tabel yang benar-benar punya tombol di kolom terakhir. */
+.pcm-card .table-responsive > table.pcm-table:has(tbody tr td:last-child .btn) thead th:last-child,
+.pcm-card .table-responsive > table.pcm-table:has(tbody tr td:last-child .btn) tbody td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background-color: #ffffff !important;
+    box-shadow: -10px 0 12px -10px rgba(15, 23, 42, 0.35);
+}
+
+.pcm-card .table-responsive > table.pcm-table:has(tbody tr td:last-child .btn) thead th:last-child {
+    background-color: #f8fafc !important;
+    z-index: 3;
+}
+
+.pcm-card .table-responsive > table.pcm-table:has(tbody tr td:last-child .btn) tbody tr:hover td:last-child {
+    background-color: #f1f5f9 !important;
+}

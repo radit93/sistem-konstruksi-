@@ -40,15 +40,16 @@ class FittingStandardSeeder extends Seeder
             throw new \RuntimeException('Invalid canonical fitting data: '.$path);
         }
 
-        /** @var list<string> $updateColumns Nama kolom, bukan nilai. */
-        $updateColumns = array_values(array_diff(self::COLUMNS, ['item_code']));
+        /*
+         * Truncate dulu supaya hasil seeding selalu persis sama dengan dataset
+         * canonical (tidak menyisakan baris lama), lalu insert per 250 baris.
+         * Jangan memakai upsert dengan daftar kolom berbentuk asosiatif: Laravel
+         * membacanya sebagai nilai konstanta sehingga semua baris tertimpa.
+         */
+        FittingStandard::query()->truncate();
 
-        foreach (array_chunk($rows, 500) as $chunk) {
-            FittingStandard::upsert(
-                $this->toInsertRows($chunk),
-                ['item_code'],
-                $updateColumns
-            );
+        foreach (array_chunk($rows, 250) as $chunk) {
+            FittingStandard::insert($this->toInsertRows($chunk));
         }
     }
 

@@ -304,77 +304,103 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
             {/* Table */}
             <div className="pcm-card">
                 <div className="table-responsive">
-                    <table className="table table-hover align-middle pcm-table">
+                    <table className="table table-hover align-middle pcm-table mb-0" style={{ minWidth: '820px' }}>
                         <thead>
                             <tr>
-                                <th className="ps-3">Item Code</th>
-                                <th>Lingkup Pekerjaan</th>
-                                <th>Material Group</th>
-                                <th>Volume (DI)</th>
-                                <th>Tarif / DI</th>
-                                <th>Joints</th>
-                                <th>Spools</th>
-                                <th>Weight (Kg)</th>
-                                <th>Biaya Elektroda</th>
-                                <th>Total Nilai (Rp)</th>
-                                <th>Status</th>
-                                {canEdit && <th className="text-end pe-3">Aksi</th>}
+                                <th className="ps-3 py-3" style={{ width: '22%' }}>Item &amp; Lingkup</th>
+                                <th className="py-3" style={{ width: '15%' }}>Material &amp; Status</th>
+                                <th className="py-3" style={{ width: '16%' }}>Volume Teknis</th>
+                                <th className="py-3" style={{ width: '14%' }}>Bobot Material</th>
+                                <th className="py-3" style={{ width: '21%' }}>Nilai Pekerjaan</th>
+                                {canEdit && <th className="text-end pe-3 py-3" style={{ width: '12%' }}>Aksi</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 pcm-cell-sub">
+                                    <td colSpan={canEdit ? 6 : 5} className="text-center py-4 pcm-cell-sub">
                                         Memuat data BOQ Engineering...
                                     </td>
                                 </tr>
                             ) : filteredBoq.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 pcm-cell-sub">
+                                    <td colSpan={canEdit ? 6 : 5} className="text-center py-4 pcm-cell-sub">
                                         Tidak ada item BOQ yang sesuai. Klik "Sinkronkan dari Welding Map" untuk menghitung otomatis dari titik pengelasan ISO aktif.
                                     </td>
                                 </tr>
                             ) : (
                                 filteredBoq.map((b) => (
                                     <tr key={b.id}>
-                                        <td className="ps-3 fw-bold pcm-code text-dark">{b.item_code}</td>
-                                        <td className="pcm-cell-strong">{b.work_scope}</td>
-                                        <td><span className="pcm-chip pcm-chip--neutral">{b.material_group}</span></td>
-                                        <td className="fw-bold pcm-code">{parseFloat(b.dia_inch_total).toFixed(1)} DI</td>
-                                        <td className="pcm-code text-muted">
-                                            {b.rate_per_di ? formatRupiah(b.rate_per_di) : '—'}
-                                        </td>
-                                        <td>{b.joints_count} joints</td>
-                                        <td>{b.spools_count} spools</td>
-                                        <td className="pcm-code">{parseFloat(b.weight_kg).toFixed(1)} kg</td>
-                                        <td className="pcm-code text-success fw-semibold">
-                                            {b.welding_cost_total ? formatRupiah(b.welding_cost_total) : '—'}
-                                        </td>
-                                        <td className="pcm-code text-primary fw-bold" style={{ fontSize: '0.9rem' }}>
-                                            {b.total_amount ? formatRupiah(b.total_amount) : '—'}
+                                        <td className="ps-3">
+                                            <div className="fw-bold pcm-code text-dark" style={{ fontSize: '0.875rem' }}>
+                                                {b.item_code}
+                                            </div>
+                                            <div className="pcm-cell-sub text-truncate" style={{ maxWidth: '240px' }} title={b.work_scope}>
+                                                {b.work_scope}
+                                            </div>
+                                            {b.line_no && (
+                                                <span className="badge bg-light text-muted border font-monospace mt-0.5" style={{ fontSize: '0.6875rem' }}>
+                                                    Line: {b.line_no}
+                                                </span>
+                                            )}
                                         </td>
                                         <td>
-                                            <span className={`pcm-chip ${b.status === 'APPROVED' ? 'pcm-chip--success' : 'pcm-chip--warning'}`}>
-                                                {b.status}
-                                            </span>
+                                            <div>
+                                                <span className="pcm-chip pcm-chip--neutral me-1" style={{ fontSize: '0.75rem' }}>
+                                                    {b.material_group}
+                                                </span>
+                                            </div>
+                                            <div className="mt-1">
+                                                <span className={`pcm-chip ${b.status === 'APPROVED' ? 'pcm-chip--success' : 'pcm-chip--warning'}`} style={{ fontSize: '0.6875rem' }}>
+                                                    {b.status}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="fw-bold pcm-code text-dark" style={{ fontSize: '0.9375rem' }}>
+                                                {parseFloat(b.dia_inch_total).toFixed(1)} DI
+                                            </div>
+                                            <div className="pcm-cell-sub small">
+                                                {b.joints_count} joints · {b.spools_count} spools
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="pcm-code fw-semibold text-dark">
+                                                {parseFloat(b.weight_kg).toFixed(1)} kg
+                                            </div>
+                                            <div className="pcm-cell-sub small">
+                                                {(parseFloat(b.weight_kg) / 1000).toFixed(2)} ton
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="pcm-code fw-bold text-primary" style={{ fontSize: '0.9375rem' }}>
+                                                {b.total_amount ? formatRupiah(b.total_amount) : '—'}
+                                            </div>
+                                            <div className="pcm-cell-sub small">
+                                                Rate: {b.rate_per_di ? formatRupiah(b.rate_per_di) : '—'}/DI
+                                                {b.welding_cost_total > 0 && ` · Las: ${formatRupiah(b.welding_cost_total)}`}
+                                            </div>
                                         </td>
                                         {canEdit && (
                                             <td className="text-end pe-3 text-nowrap">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-primary btn-sm me-1 px-2.5 py-1 fw-bold"
-                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
-                                                    onClick={() => handleOpenModal(b)}
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
-                                                    onClick={() => handleDelete(b.id)}
-                                                >
-                                                    Hapus
-                                                </button>
+                                                <div className="d-inline-flex gap-1 justify-content-end">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
+                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.75rem' }}
+                                                        onClick={() => handleOpenModal(b)}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
+                                                        style={{ fontSize: '0.75rem' }}
+                                                        onClick={() => handleDelete(b.id)}
+                                                    >
+                                                        Hapus
+                                                    </button>
+                                                </div>
                                             </td>
                                         )}
                                     </tr>

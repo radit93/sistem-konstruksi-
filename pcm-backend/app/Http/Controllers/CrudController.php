@@ -823,9 +823,100 @@ class CrudController extends Controller
         $obj->update($data);
         if ($res === 'welding-maps') {
             $this->syncWeldingMapToJoint($obj->fresh());
+        } elseif ($res === 'drawings' && isset($data['fitup_specs'])) {
+            $this->syncFitupSpecsToBom($obj->fresh());
         }
 
         return response()->json($obj);
+    }
+
+    private function syncFitupSpecsToBom(Drawing $drawing): void
+    {
+        $specs = $drawing->fitup_specs;
+        if (is_string($specs)) {
+            $specs = json_decode($specs, true);
+        }
+        if (! is_array($specs) || empty($specs)) {
+            return;
+        }
+
+        $standards = MaterialStandard::all();
+        $pipeStandards = PipeStandard::all();
+        $itemNo = (int) BillOfMaterial::where('drawing_id', $drawing->id)->count();
+
+        foreach ($specs as $index => $spec) {
+            $size = trim((string) ($spec['size'] ?? ''));
+            $schedule = trim((string) ($spec['schedule'] ?? ''));
+            $materialSpec = trim((string) ($spec['material_spec'] ?? ''));
+            $compType = ! empty($spec['component_type']) ? trim((string) $spec['component_type']) : 'Pipe';
+
+            if ($size === '' && $schedule === '') {
+                continue;
+            }
+
+            // Cek apakah item serupa sudah ada di BOM drawing ini
+            $existing = BillOfMaterial::where('drawing_id', $drawing->id)
+                ->where('size', $size)
+                ->where('rating_sch', $schedule)
+                ->where('material_spec', $materialSpec)
+                ->first();
+
+            if ($existing) {
+                continue;
+            }
+
+            $itemNo++;
+            $qty = ! empty($spec['qty']) ? (float) $spec['qty'] : (stripos($compType, 'pipe') !== false ? 6.0 : 1.0);
+            $unit = ! empty($spec['unit']) ? $spec['unit'] : (stripos($compType, 'pipe') !== false ? 'meter' : 'buah');
+
+            // Cari estimasi harga satuan
+            $unitPrice = match (true) {
+                stripos($compType, 'pipe') !== false => 320000,
+                stripos($compType, 'elbow') !== false => 185000,
+                stripos($compType, 'flange') !== false => 295000,
+                stripos($compType, 'valve') !== false => 1850000,
+                stripos($compType, 'gasket') !== false => 75000,
+                stripos($compType, 'bolt') !== false => 45000,
+                default => 150000,
+            };
+
+            // Cocokkan ke MaterialStandard
+            $matchedStd = $standards->first(function (MaterialStandard $std) use ($materialSpec, $compType) {
+                if ($materialSpec && stripos($std->specification, $materialSpec) !== false) {
+                    return true;
+                }
+                return strcasecmp($std->category, $compType) === 0;
+            });
+
+            $desc = ! empty($spec['description'])
+                ? $spec['description']
+                : "{$compType} {$size} {$schedule} {$materialSpec}";
+
+            $bomData = [
+                'project_id' => $drawing->project_id,
+                'drawing_id' => $drawing->id,
+                'material_standard_id' => $matchedStd?->id,
+                'spool_no' => $spec['spool_no'] ?? 'SP-01',
+                'item_no' => (string) $itemNo,
+                'component_type' => $compType,
+                'description' => trim($desc),
+                'size' => $size,
+                'rating_sch' => $schedule,
+                'material_spec' => $materialSpec ?: ($matchedStd?->specification ?? 'ASTM A106 Gr. B'),
+                'qty' => $qty,
+                'unit' => $unit,
+                'unit_price' => $unitPrice,
+                'total_price' => round($qty * $unitPrice, 2),
+                'tag_number' => $spec['tag_number'] ?? null,
+                'department_id' => $drawing->department_id,
+                'source' => 'FITUP_AUTO',
+            ];
+
+            $bomData = PipeSchedule::enrichBom($bomData);
+            $bomData = FittingStandard::enrichBom($bomData);
+
+            BillOfMaterial::create($bomData);
+        }
     }
 
     public function destroy(Request $request, string $res, int $id)

@@ -441,17 +441,6 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                         </button>
                         <button
                             type="button"
-                            className="btn btn-outline-success btn-sm fw-bold px-3 py-2"
-                            style={{ borderRadius: '6px' }}
-                            onClick={() => {
-                                setSelectedGenDrawingId(scopedDrawings[0]?.id || drawings[0]?.id || '');
-                                setShowGenModal(true);
-                            }}
-                        >
-                            ⚡ Generate BOM Otomatis
-                        </button>
-                        <button
-                            type="button"
                             className="btn btn-primary btn-sm fw-bold px-3 py-2"
                             style={{ borderRadius: '6px' }}
                             onClick={() => handleOpenModal()}
@@ -554,106 +543,132 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
             {/* Table */}
             <div className="pcm-card">
                 <div className="table-responsive">
-                    <table className="table table-hover align-middle pcm-table">
+                    <table className="table table-hover align-middle pcm-table mb-0" style={{ minWidth: '940px' }}>
                         <thead>
                             <tr>
-                                <th className="ps-3 py-3">No</th>
-                                <th className="py-3">Spool</th>
-                                <th className="py-3">Tipe</th>
-                                <th className="py-3">Deskripsi Komponen</th>
-                                <th className="py-3">Size</th>
-                                <th className="py-3">Sch / Rating</th>
-                                <th className="py-3">Material Spec</th>
-                                <th className="py-3">Kode Std</th>
-                                <th className="py-3">Qty</th>
-                                <th className="py-3">Berat</th>
-                                <th className="py-3">Harga Satuan</th>
-                                <th className="py-3">Total Biaya</th>
-                                <th className="py-3">Tag No</th>
-                                {canEdit && <th className="text-end pe-3 py-3">Aksi</th>}
+                                <th className="ps-3 py-3" style={{ width: '13%' }}>Part &amp; Spool</th>
+                                <th className="py-3" style={{ width: '27%' }}>Komponen &amp; Deskripsi</th>
+                                <th className="py-3" style={{ width: '13%' }}>Dimensi (Size/Sch)</th>
+                                <th className="py-3" style={{ width: '15%' }}>Material Spec</th>
+                                <th className="py-3" style={{ width: '14%' }}>Kuantitas &amp; Bobot</th>
+                                <th className="py-3" style={{ width: '18%' }}>Estimasi Biaya</th>
+                                {canEdit && <th className="text-end pe-3 py-3" style={{ width: '10%' }}>Aksi</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 14 : 13} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 7 : 6} className="text-center py-4 text-muted">
                                         Memuat data Bill of Material...
                                     </td>
                                 </tr>
                             ) : filteredBom.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 14 : 13} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 7 : 6} className="text-center py-4 text-muted">
                                         Tidak ada item BOM yang sesuai.
                                     </td>
                                 </tr>
                             ) : (
                                 filteredBom.map((b) => (
                                     <tr key={b.id}>
-                                        <td className="ps-3 font-monospace text-muted">{b.item_no}</td>
-                                        <td>
-                                            <span className="badge bg-light text-dark border font-monospace">{b.spool_no || '—'}</span>
+                                        <td className="ps-3">
+                                            <div className="d-flex align-items-center gap-1.5">
+                                                <span className="font-monospace fw-bold text-dark" style={{ fontSize: '0.875rem' }}>
+                                                    #{b.item_no}
+                                                </span>
+                                                <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: '0.6875rem' }}>
+                                                    {b.spool_no || 'SP-01'}
+                                                </span>
+                                            </div>
                                             {b.drawing?.drawing_no && (
-                                                <div className="text-muted small font-monospace mt-1">{b.drawing.drawing_no}</div>
+                                                <div className="text-muted small font-monospace mt-0.5 text-truncate" style={{ maxWidth: '140px' }} title={b.drawing.drawing_no}>
+                                                    {b.drawing.drawing_no}
+                                                </div>
                                             )}
                                         </td>
                                         <td>
-                                            <span className="badge bg-secondary">{b.component_type}</span>
-                                            {b.source === 'GENERATED' && (
-                                                <span className="badge bg-info text-dark ms-1" title="Dihasilkan otomatis dari piping class">
-                                                    Auto
+                                            <div className="fw-semibold text-dark text-truncate" style={{ maxWidth: '280px' }} title={b.description}>
+                                                {b.description}
+                                            </div>
+                                            <div className="d-flex align-items-center gap-1.5 mt-0.5">
+                                                <span className="badge bg-secondary" style={{ fontSize: '0.6875rem' }}>
+                                                    {b.component_type}
+                                                </span>
+                                                {b.source === 'FITUP_AUTO' ? (
+                                                    <span className="badge bg-success text-white" style={{ fontSize: '0.6875rem' }} title="Otomatis sinkron dari Fit-Up Drawing">
+                                                        Fit-Up
+                                                    </span>
+                                                ) : b.source === 'GENERATED' ? (
+                                                    <span className="badge bg-info text-dark" style={{ fontSize: '0.6875rem' }} title="Dihasilkan otomatis dari piping class">
+                                                        Auto
+                                                    </span>
+                                                ) : null}
+                                                {b.tag_number && (
+                                                    <span className="text-muted small font-monospace">
+                                                        Tag: {b.tag_number}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="font-monospace fw-bold text-dark" style={{ fontSize: '0.875rem' }}>
+                                                {b.size}
+                                            </div>
+                                            <div className="pcm-cell-sub small">
+                                                {b.rating_sch || '—'}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="small fw-semibold text-dark text-truncate" style={{ maxWidth: '160px' }} title={b.material_spec}>
+                                                {b.material_spec}
+                                            </div>
+                                            {b.material_standard?.code && (
+                                                <span className="badge bg-light text-muted border font-monospace mt-0.5" style={{ fontSize: '0.6875rem' }}>
+                                                    {b.material_standard.code}
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="fw-semibold">{b.description}</td>
-                                        <td className="font-monospace">{b.size}</td>
-                                        <td>{b.rating_sch || '—'}</td>
-                                        <td className="small pcm-cell-sub">{b.material_spec}</td>
                                         <td>
-                                            {b.material_standard?.code ? (
-                                                <span className="badge bg-light text-dark border font-monospace">{b.material_standard.code}</span>
-                                            ) : (
-                                                <span className="text-muted small">—</span>
+                                            <div className="fw-bold text-dark pcm-code" style={{ fontSize: '0.875rem' }}>
+                                                {parseFloat(b.qty).toFixed(1)} {b.unit}
+                                            </div>
+                                            {b.weight_kg != null && (
+                                                <div className="pcm-cell-sub small">
+                                                    {parseFloat(b.weight_kg).toFixed(1)} kg
+                                                    {b.od_mm != null && b.wall_mm != null && ` (Ø${b.od_mm})`}
+                                                </div>
                                             )}
                                         </td>
-                                        <td className="fw-bold text-dark pcm-code">{parseFloat(b.qty).toFixed(1)} {b.unit}</td>
-                                        <td className="text-nowrap">
-                                            {b.weight_kg != null ? (
-                                                <>
-                                                    <span className="fw-semibold text-dark pcm-code">{parseFloat(b.weight_kg).toFixed(2)} kg</span>
-                                                    {b.od_mm != null && b.wall_mm != null && (
-                                                        <div className="text-muted small font-monospace">
-                                                            Ø{b.od_mm} × {b.wall_mm} mm
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <span className="text-muted small">—</span>
+                                        <td>
+                                            <div className="pcm-code fw-bold text-primary" style={{ fontSize: '0.875rem' }}>
+                                                {b.total_price ? formatRupiah(b.total_price) : (b.unit_price ? formatRupiah(parseFloat(b.qty || 1) * parseFloat(b.unit_price)) : '—')}
+                                            </div>
+                                            {b.unit_price > 0 && (
+                                                <div className="pcm-cell-sub small">
+                                                    @{formatRupiah(b.unit_price)}/{b.unit}
+                                                </div>
                                             )}
                                         </td>
-                                        <td className="pcm-code text-muted text-nowrap">
-                                            {b.unit_price ? formatRupiah(b.unit_price) : '—'}
-                                        </td>
-                                        <td className="pcm-code fw-bold text-primary text-nowrap">
-                                            {b.total_price ? formatRupiah(b.total_price) : (b.unit_price ? formatRupiah(parseFloat(b.qty || 1) * parseFloat(b.unit_price)) : '—')}
-                                        </td>
-                                        <td className="pcm-code small">{b.tag_number || '—'}</td>
                                         {canEdit && (
-                                            <td className="text-end pe-3">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-primary btn-sm me-1 px-2.5 py-1 fw-bold"
-                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
-                                                    onClick={() => handleOpenModal(b)}
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
-                                                    onClick={() => handleDelete(b.id)}
-                                                >
-                                                    Hapus
-                                                </button>
+                                            <td className="text-end pe-3 text-nowrap">
+                                                <div className="d-inline-flex gap-1 justify-content-end">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary btn-sm px-2 py-0.5 fw-bold"
+                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.72rem' }}
+                                                        onClick={() => handleOpenModal(b)}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-danger btn-sm px-2 py-0.5 fw-bold"
+                                                        style={{ fontSize: '0.72rem' }}
+                                                        onClick={() => handleDelete(b.id)}
+                                                    >
+                                                        Hapus
+                                                    </button>
+                                                </div>
                                             </td>
                                         )}
                                     </tr>

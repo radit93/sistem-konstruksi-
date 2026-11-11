@@ -14,6 +14,7 @@ import { BomSection } from './engineering/BomSection';
 import { MaterialStandardSection } from './engineering/MaterialStandardSection';
 import { PipeScheduleSection } from './engineering/PipeScheduleSection';
 import { DocumentControlSection } from './engineering/DocumentControlSection';
+import { getComponentBadgeStyle } from './engineering/BomSection';
 import { SearchSelect, PcmSelect } from './SearchSelect';
 
 export const ENG_SUB_TABS = [
@@ -222,9 +223,30 @@ export function EngineeringTab({
     }, []);
 
     // Quick fit-up spec states for adding/editing drawing
+    const [quickCompType, setQuickCompType] = useState('Pipe');
     const [quickMatSpec, setQuickMatSpec] = useState('');
     const [quickNps, setQuickNps] = useState('');
     const [quickSchedule, setQuickSchedule] = useState('');
+
+    const componentTypeOptions = [
+        { value: 'Pipe', label: 'Pipe (Pipa Lurus)' },
+        { value: 'Elbow 90 LR', label: 'Elbow 90° Long Radius' },
+        { value: 'Elbow 45 LR', label: 'Elbow 45° Long Radius' },
+        { value: 'Elbow 90 SR', label: 'Elbow 90° Short Radius' },
+        { value: 'Tee Straight', label: 'Tee Equal / Straight' },
+        { value: 'Tee Reducing', label: 'Tee Reducing' },
+        { value: 'Reducer Concentric', label: 'Reducer Concentric' },
+        { value: 'Reducer Eccentric', label: 'Reducer Eccentric' },
+        { value: 'Flange WN', label: 'Flange Weld Neck (WN)' },
+        { value: 'Flange SO', label: 'Flange Slip-On (SO)' },
+        { value: 'Flange Blind', label: 'Flange Blind' },
+        { value: 'Gate Valve', label: 'Gate Valve' },
+        { value: 'Globe Valve', label: 'Globe Valve' },
+        { value: 'Check Valve', label: 'Check Valve' },
+        { value: 'Ball Valve', label: 'Ball Valve' },
+        { value: 'Gasket', label: 'Gasket Spiral Wound' },
+        { value: 'Stud Bolt', label: 'Stud Bolt & Nuts' },
+    ];
 
     const npsOptions = useMemo(() => {
         const set = new Set();
@@ -281,6 +303,7 @@ export function EngineeringTab({
         if (!quickNps && !quickMatSpec) return;
         const currentSpecs = Array.isArray(drawingForm.fitup_specs) ? [...drawingForm.fitup_specs] : [];
         currentSpecs.push({
+            component_type: quickCompType || 'Pipe',
             size: quickNps || '',
             schedule: quickSchedule || '',
             material_spec: quickMatSpec || ''
@@ -289,6 +312,7 @@ export function EngineeringTab({
         setQuickMatSpec('');
         setQuickNps('');
         setQuickSchedule('');
+        setQuickCompType('Pipe');
     };
 
     const handleRemoveQuickSpec = (index) => {
@@ -309,7 +333,7 @@ export function EngineeringTab({
     // Modal Fit-Up Specs Terpisah (setelah drawing dibuat)
     const [fitupModalDrawing, setFitupModalDrawing] = useState(null);
     const [fitupList, setFitupList] = useState([]);
-    const [fitupForm, setFitupForm] = useState({ size: '', schedule: '', material_spec: '' });
+    const [fitupForm, setFitupForm] = useState({ component_type: 'Pipe', size: '', schedule: '', material_spec: '' });
     const [fitupSaving, setFitupSaving] = useState(false);
     const [fitupError, setFitupError] = useState('');
 
@@ -347,7 +371,7 @@ export function EngineeringTab({
             try { specs = JSON.parse(drawing.fitup_specs); } catch (e) { specs = []; }
         }
         setFitupList(specs);
-        setFitupForm({ size: '', schedule: '', material_spec: '' });
+        setFitupForm({ component_type: 'Pipe', size: '', schedule: '', material_spec: '' });
         setFitupError('');
     };
 
@@ -358,8 +382,8 @@ export function EngineeringTab({
             return;
         }
         setFitupError('');
-        setFitupList([...fitupList, { ...fitupForm }]);
-        setFitupForm({ size: '', schedule: '', material_spec: '' });
+        setFitupList([...fitupList, { ...fitupForm, component_type: fitupForm.component_type || 'Pipe' }]);
+        setFitupForm({ component_type: 'Pipe', size: '', schedule: '', material_spec: '' });
     };
 
     const handleRemoveFitupRow = (index) => {
@@ -1588,7 +1612,18 @@ export function EngineeringTab({
                                     {/* Picker Master Data */}
                                     <div className="p-3 border rounded bg-light mb-3">
                                         <div className="row g-2 align-items-end">
-                                            <div className="col-12 col-md-5">
+                                            <div className="col-12 col-md-3">
+                                                <label className="form-label small fw-bold mb-1">Jenis Komponen</label>
+                                                <SearchSelect
+                                                    value={quickCompType}
+                                                    onChange={(val) => setQuickCompType(val || 'Pipe')}
+                                                    options={componentTypeOptions}
+                                                    placeholder="Pilih jenis..."
+                                                    allowCustom
+                                                    ariaLabel="Jenis Komponen"
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-3">
                                                 <label className="form-label small fw-bold mb-1">Spesifikasi Material (ASTM)</label>
                                                 <SearchSelect
                                                     value={quickMatSpec}
@@ -1599,8 +1634,8 @@ export function EngineeringTab({
                                                     ariaLabel="Spesifikasi Material ASTM"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-3">
-                                                <label className="form-label small fw-bold mb-1">Nominal Size (NPS)</label>
+                                            <div className="col-6 col-md-2">
+                                                <label className="form-label small fw-bold mb-1">Size (NPS)</label>
                                                 <SearchSelect
                                                     value={quickNps}
                                                     onChange={(val) => {
@@ -1619,7 +1654,7 @@ export function EngineeringTab({
                                                     value={quickSchedule}
                                                     onChange={(val) => setQuickSchedule(val)}
                                                     options={availableSchedulesFor(quickNps)}
-                                                    placeholder="Cari schedule..."
+                                                    placeholder="Schedule..."
                                                     allowCustom
                                                     ariaLabel="Schedule Pipa"
                                                 />
@@ -1644,16 +1679,25 @@ export function EngineeringTab({
                                             <table className="table table-sm align-middle pcm-table mb-0">
                                                 <thead>
                                                     <tr>
-                                                        <th className="ps-3 text-start">Spesifikasi Material</th>
-                                                        <th className="text-center" style={{ width: '130px' }}>Size (NPS)</th>
-                                                        <th className="text-center" style={{ width: '140px' }}>Schedule</th>
-                                                        <th className="text-center" style={{ width: '80px' }}>Aksi</th>
+                                                        <th className="ps-3 text-start" style={{ width: '140px' }}>Jenis</th>
+                                                        <th className="text-start">Spesifikasi Material</th>
+                                                        <th className="text-center" style={{ width: '110px' }}>Size (NPS)</th>
+                                                        <th className="text-center" style={{ width: '120px' }}>Schedule</th>
+                                                        <th className="text-center" style={{ width: '70px' }}>Aksi</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {(drawingForm.fitup_specs || []).map((spec, idx) => (
                                                         <tr key={idx}>
-                                                            <td className="ps-2 fw-semibold pcm-code text-dark">{spec.material_spec || '—'}</td>
+                                                            <td className="ps-3">
+                                                                <span
+                                                                    className="pcm-chip fw-bold border"
+                                                                    style={{ ...getComponentBadgeStyle(spec.component_type || 'Pipe'), fontSize: '0.6875rem', padding: '0.15rem 0.5rem' }}
+                                                                >
+                                                                    {spec.component_type || 'Pipe'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="fw-semibold pcm-code text-dark">{spec.material_spec || '—'}</td>
                                                             <td className="text-center pcm-code fw-bold text-dark">{spec.size || '—'}</td>
                                                             <td className="text-center pcm-code text-dark">{spec.schedule || '—'}</td>
                                                             <td className="text-center">
@@ -1746,7 +1790,7 @@ export function EngineeringTab({
                                     {fitupList.length === 0 ? (
                                         <div className="p-4 text-center border rounded bg-light">
                                             <p className="pcm-cell-sub mb-0">
-                                                Belum ada fit-up spec untuk drawing ini. Silakan input spesifikasi material pipa di formulir bawah ini.
+                                                Belum ada fit-up spec untuk drawing ini. Silakan input spesifikasi komponen perpipaan di formulir bawah ini.
                                             </p>
                                         </div>
                                     ) : (
@@ -1754,17 +1798,26 @@ export function EngineeringTab({
                                             <table className="table table-sm align-middle pcm-table mb-0">
                                                 <thead>
                                                     <tr>
-                                                        <th className="text-center" style={{ width: '50px' }}>No</th>
-                                                        <th>Spec Material Pipa</th>
-                                                        <th className="text-center" style={{ width: '130px' }}>Size (NPS)</th>
-                                                        <th className="text-center" style={{ width: '150px' }}>Schedule / Rating</th>
-                                                        <th className="text-center" style={{ width: '80px' }}>Hapus</th>
+                                                        <th className="text-center" style={{ width: '45px' }}>No</th>
+                                                        <th style={{ width: '130px' }}>Jenis</th>
+                                                        <th>Spec Material</th>
+                                                        <th className="text-center" style={{ width: '120px' }}>Size (NPS)</th>
+                                                        <th className="text-center" style={{ width: '130px' }}>Schedule / Rating</th>
+                                                        <th className="text-center" style={{ width: '70px' }}>Hapus</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {fitupList.map((sp, idx) => (
                                                         <tr key={idx}>
                                                             <td className="text-center pcm-cell-sub">{idx + 1}</td>
+                                                            <td>
+                                                                <span
+                                                                    className="pcm-chip fw-bold border"
+                                                                    style={{ ...getComponentBadgeStyle(sp.component_type || 'Pipe'), fontSize: '0.6875rem', padding: '0.15rem 0.5rem' }}
+                                                                >
+                                                                    {sp.component_type || 'Pipe'}
+                                                                </span>
+                                                            </td>
                                                             <td className="pcm-cell-strong">{sp.material_spec || '-'}</td>
                                                             <td className="text-center pcm-code fw-bold text-dark">{sp.size}</td>
                                                             <td className="text-center pcm-code">{sp.schedule}</td>
@@ -1789,11 +1842,22 @@ export function EngineeringTab({
                                 {/* Form Input Tambah Fit-Up Spec Baru */}
                                 <div className="p-3 border rounded bg-light">
                                     <h6 className="fw-bold small text-uppercase mb-2" style={{ color: '#0f172a' }}>
-                                        + Tambah Spesifikasi Pipa Baru (Master Data)
+                                        + Tambah Spesifikasi Komponen (Master Data)
                                     </h6>
                                     <form onSubmit={handleAddFitupRow}>
                                         <div className="row g-2 align-items-end">
-                                            <div className="col-12 col-md-5">
+                                            <div className="col-12 col-md-3">
+                                                <label className="form-label small fw-bold">Jenis Komponen *</label>
+                                                <SearchSelect
+                                                    value={fitupForm.component_type}
+                                                    onChange={(val) => setFitupForm({ ...fitupForm, component_type: val || 'Pipe' })}
+                                                    options={componentTypeOptions}
+                                                    placeholder="Pilih jenis..."
+                                                    allowCustom
+                                                    ariaLabel="Jenis Komponen"
+                                                />
+                                            </div>
+                                            <div className="col-12 col-md-3">
                                                 <label className="form-label small fw-bold">Spesifikasi Material (ASTM) *</label>
                                                 <SearchSelect
                                                     value={fitupForm.material_spec}
@@ -1804,7 +1868,7 @@ export function EngineeringTab({
                                                     ariaLabel="Spesifikasi Material ASTM"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-3">
+                                            <div className="col-6 col-md-2">
                                                 <label className="form-label small fw-bold">Size (NPS) *</label>
                                                 <SearchSelect
                                                     value={fitupForm.size}
@@ -1821,7 +1885,7 @@ export function EngineeringTab({
                                                     value={fitupForm.schedule}
                                                     onChange={(val) => setFitupForm({ ...fitupForm, schedule: val })}
                                                     options={availableSchedulesFor(fitupForm.size)}
-                                                    placeholder="Cari schedule..."
+                                                    placeholder="Schedule..."
                                                     allowCustom
                                                     ariaLabel="Schedule Pipa"
                                                 />

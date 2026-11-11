@@ -868,8 +868,9 @@ class CrudController extends Controller
             // Normalisasi pencocokan: format size seperti 4" atau 4
             $normSize = rtrim($size, '"');
 
-            // Cek apakah item serupa sudah ada di BOM drawing ini
+            // Cek apakah item serupa sudah ada di BOM drawing ini (berdasarkan tipe, size, dan schedule)
             $existing = BillOfMaterial::where('drawing_id', $drawing->id)
+                ->where('component_type', $compType)
                 ->where(function ($q) use ($size, $normSize) {
                     $q->where('size', $size)
                       ->orWhere('size', $normSize)

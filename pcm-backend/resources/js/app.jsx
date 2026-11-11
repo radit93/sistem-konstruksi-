@@ -118,26 +118,21 @@ function App() {
         if (!api.getToken()) return;
         setDataLoading(true);
         try {
-            const [
-                ovRes,
-                dwRes,
-                jtRes,
-                smRes,
-                inRes,
-                tpRes,
-                hsRes,
-                scRes,
-                pjRes
-            ] = await Promise.all([
+            // Hindari lonjakan 9 request paralel serentak yang memicu ERR_CONNECTION_CLOSED
+            const [ovRes, dwRes, jtRes] = await Promise.all([
                 api.get('/overview'),
                 api.get('/drawings'),
                 api.get('/joints'),
+            ]);
+            const [smRes, inRes, tpRes] = await Promise.all([
                 api.get('/stock'),
                 api.get('/inspections'),
                 api.get('/test-packages'),
+            ]);
+            const [hsRes, scRes, pjRes] = await Promise.all([
                 api.get('/hse'),
                 api.get('/scopes'),
-                api.get('/projects')
+                api.get('/projects'),
             ]);
 
             setOverview(ovRes);

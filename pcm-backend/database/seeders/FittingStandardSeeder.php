@@ -27,13 +27,18 @@ class FittingStandardSeeder extends Seeder
             throw new \RuntimeException('Invalid canonical fitting data: '.$path);
         }
 
-        foreach (array_chunk($rows, 500) as $chunk) {
-            $fittingStandards = $chunk;
-            FittingStandard::upsert(
-                $this->toInsertRows($fittingStandards),
-                ['item_code'],
-                $this->updateColumns($chunk)
-            );
+        $columns = [
+            'category', 'fitting_type', 'asme_standard', 'connection',
+            'nps_main', 'dn_main_mm', 'od_main_mm', 'nps_secondary', 'dn_secondary_mm',
+            'od_secondary_mm', 'dimension_primary_mm', 'dimension_secondary_mm',
+            'schedule_class', 'wall_mm', 'material_cs', 'material_ss',
+            'weight_cs_kg', 'weight_ss_kg', 'status', 'source_reference',
+        ];
+
+        FittingStandard::query()->truncate();
+
+        foreach (array_chunk($rows, 250) as $chunk) {
+            FittingStandard::insert($this->toInsertRows($chunk));
         }
     }
 

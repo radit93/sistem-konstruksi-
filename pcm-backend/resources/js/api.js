@@ -34,6 +34,17 @@ export const api = {
         if (id) localStorage.setItem(DEPT_KEY, String(id));
         else localStorage.removeItem(DEPT_KEY);
     },
+    async fetchWithRetry(url, options, maxRetries = 2) {
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                return await fetch(url, options);
+            } catch (err) {
+                if (attempt === maxRetries) throw err;
+                // Jeda progresif 200ms, 500ms saat server / network transient drop
+                await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+            }
+        }
+    },
     async request(endpoint, options = {}) {
         const { skipAuthRedirect = false, ...init } = options;
         const token = this.getToken();
@@ -46,7 +57,7 @@ export const api = {
             ...(department ? { 'X-Department-Id': String(department) } : {}),
             ...(init.headers || {})
         };
-        const res = await fetch(`${API_BASE}${endpoint}`, {
+        const res = await this.fetchWithRetry(`${API_BASE}${endpoint}`, {
             ...init,
             headers
         });

@@ -102,9 +102,13 @@ const getCategoryBadgeStyle = (cat) => {
 const cleanFittingItemCode = (rawCode) => {
     const s = String(rawCode || '').trim();
     if (!s) return '—';
-    // Hapus suffix -SchXX, -STD, -XS, -XXS, -SGP, -3000#, -6000#, -9000# dari akhir kode
-    // Contoh: EL90LR-1/2-STD -> EL90LR-1/2, FG-WELDOLET-4-Sch160 -> FG-WELDOLET-4
-    return s.replace(/-(?:sch\s*\w+|std|xs|xxs|sgp|\d+#|class\s*\d+)$/i, '');
+    // 1. Hapus suffix schedule / rating / pressure class dari akhir kode
+    // Contoh: -Sch40, -Sch160, -STD, -XS, -XXS, -SGP, -3000#, -6000#, -9000#
+    let code = s.replace(/-(?:sch\s*\w+|std|xs|xxs|sgp|\d+#|class\s*\d+)$/i, '');
+    // 2. Hapus suffix ukuran NPS (seperti -1/2, -2-1/2, -8x6, -1-1/2x1-1/4, -24, -4)
+    // agar di kolom Item Code murni hanya kodenya saja (contoh: EL90LR, TEEEQ, REDCON, FG-WELDOLET)
+    code = code.replace(/-(?:\d+(?:-\d+\/\d+|\/\d+)?(?:x\d+(?:-\d+\/\d+|\/\d+)?)?)$/i, '');
+    return code || s;
 };
 
 const CATEGORY_TAB_LABELS = {

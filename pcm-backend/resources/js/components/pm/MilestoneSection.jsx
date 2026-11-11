@@ -3,7 +3,16 @@ import { api } from '../../api';
 import { can } from '../../auth';
 import { PcmSelect } from '../SearchSelect';
 
-export function MilestoneSection({ project, user, onToast }) {
+export function MilestoneSection({
+    project,
+    drawings = [],
+    joints = [],
+    materialInspections = [],
+    inspections = [],
+    testPackages = [],
+    user,
+    onToast,
+}) {
     const [milestones, setMilestones] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -58,6 +67,37 @@ export function MilestoneSection({ project, user, onToast }) {
             .reduce((acc, m) => acc + (parseFloat(m.weight_pct) || 0), 0);
         return { total, completed, inProgress, holdPoints, completedWeight };
     }, [milestones]);
+
+    const liveGates = useMemo(() => {
+        const dwgTotal = drawings.length;
+        const dwgIfc = drawings.filter(d => ['IFC', 'ACTIVE'].includes((d.status || '').toUpperCase())).length;
+        const ifcPct = dwgTotal > 0 ? Math.round((dwgIfc / dwgTotal) * 100) : 0;
+
+        const matTotal = materialInspections.length;
+        const matPass = materialInspections.filter(m => ['PASS', 'ACCEPTED'].includes((m.result || m.status || '').toUpperCase())).length;
+        const matPct = matTotal > 0 ? Math.round((matPass / matTotal) * 100) : 0;
+
+        const jTotal = joints.length;
+        const jWelded = joints.filter(j => ['WELDED', 'VISUAL_OK', 'NDT_OK', 'TESTED'].includes((j.status || '').toUpperCase())).length;
+        const weldPct = jTotal > 0 ? Math.round((jWelded / jTotal) * 100) : 0;
+
+        const tpTotal = testPackages.length;
+        const tpPass = testPackages.filter(t => ['PASSED', 'TESTED', 'COMPLETED', 'REINSTATED'].includes((t.status || '').toUpperCase())).length;
+        const tpPct = tpTotal > 0 ? Math.round((tpPass / tpTotal) * 100) : 0;
+
+        const visualPass = joints.filter(j => (j.visual || '').toUpperCase() === 'PASS').length;
+        const inspPass = inspections.length > 0
+            ? inspections.filter(i => (i.result || '').toUpperCase() === 'PASS').length
+            : visualPass;
+        const inspTotal = inspections.length > 0 ? inspections.length : jTotal;
+
+        return [
+            { code: 'HP-1', title: 'Engineering IFC Drawing', pct: ifcPct, detail: `${dwgIfc}/${dwgTotal} drawings` },
+            { code: 'HP-2', title: 'Material & MTC QC Pass', pct: matPct, detail: `${matPass}/${matTotal} lot` },
+            { code: 'HP-3', title: 'Welding & Visual/NDT', pct: weldPct, detail: `${jWelded}/${jTotal} joints (QC Pass: ${inspPass}/${inspTotal})` },
+            { code: 'HP-4', title: 'Hydrotest & Test Package', pct: tpPct, detail: `${tpPass}/${tpTotal} packages` },
+        ];
+    }, [drawings, materialInspections, joints, inspections, testPackages]);
 
     const filteredMilestones = useMemo(() => {
         const q = search.toLowerCase();
@@ -196,6 +236,38 @@ export function MilestoneSection({ project, user, onToast }) {
                         <span className="text-muted small text-uppercase fw-bold d-block">Hold Points Kritis</span>
                         <strong className="h3 fw-bold text-danger mb-0">{stats.holdPoints}</strong>
                         <span className="text-muted ms-1 small">gerbang inspeksi</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Auto Hold-Point Readiness Tracker (Lintas Departemen) */}
+            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '8px' }}>
+                <div className="card-header bg-white border-bottom py-2.5 d-flex justify-content-between align-items-center">
+                    <span className="small fw-bold text-uppercase text-primary">
+                        Kesiapan Gerbang Proyek Otomatis (Live Data Lintas Departemen)
+                    </span>
+                    <span className="badge bg-light text-muted border">Auto-Synced</span>
+                </div>
+                <div className="card-body py-3">
+                    <div className="row g-3">
+                        {liveGates.map(g => (
+                            <div key={g.code} className="col-12 col-sm-6 col-md-3">
+                                <div className="p-2.5 rounded border bg-light h-100">
+                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                        <span className="badge bg-primary">{g.code}</span>
+                                        <strong className="small text-dark">{g.pct}%</strong>
+                                    </div>
+                                    <div className="fw-bold small text-dark mb-1">{g.title}</div>
+                                    <div className="progress mb-1" style={{ height: '6px', backgroundColor: '#e2e8f0' }}>
+                                        <div
+                                            className={`progress-bar ${g.pct >= 100 ? 'bg-success' : 'bg-primary'}`}
+                                            style={{ width: `${g.pct}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="text-muted" style={{ fontSize: '0.72rem' }}>{g.detail}</div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

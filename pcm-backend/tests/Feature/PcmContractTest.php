@@ -1259,4 +1259,50 @@ class PcmContractTest extends TestCase
 
         \App\Models\BillOfMaterial::where('spool_no', 'SP-TEST-PRICING')->delete();
     }
+
+    public function test_project_manager_has_cross_department_readonly_and_pmo_write(): void
+    {
+        $pm = $this->token('project_manager');
+
+        // PM dapat membaca data operasional lintas departemen (ENG/MAT/CONS/QAQC/HSE)
+        foreach (['drawings', 'engineering-boqs', 'bill-of-materials', 'joints', 'inspections', 'test-packages', 'hse'] as $res) {
+            $data = $this->getJson("/api/{$res}", ['Authorization' => "Bearer {$pm}"])
+                ->assertOk()
+                ->json();
+            $this->assertIsArray($data);
+        }
+
+        // PM tetap ditolak menulis ke modul departemen lain (read-only)
+        $this->postJson('/api/joints', [
+            'drawing_no' => 'DWG-PM-FORBID',
+            'seq' => 999,
+            'shop_field' => 'Shop',
+            'joint_type' => 'BW',
+            'item_a' => 'Pipe',
+            'item_b' => 'Elbow',
+            'spec_a' => 'A106B',
+            'spec_b' => 'A234',
+            'size_in' => 4,
+            'dia_inch' => 4,
+        ], ['Authorization' => "Bearer {$pm}"])->assertStatus(403);
+
+        // PM dapat menulis di modul PMO (budget-items & project-milestones)
+        $budget = $this->postJson('/api/budget-items', [
+            'item_code' => 'BUD-TEST-PM',
+            'category' => 'Direct Cost',
+            'scope_description' => 'Test Budget PM',
+            'unit' => 'DI',
+            'contract_qty' => 100,
+            'unit_price' => 50000,
+            'labor_cost' => 2500000,
+            'equipment_cost' => 1500000,
+            'consumable_cost' => 1000000,
+            'total_budget' => 5000000,
+            'actual_cost' => 1000000,
+            'currency' => 'IDR',
+        ], ['Authorization' => "Bearer {$pm}"])->assertCreated()->json();
+
+        $this->deleteJson("/api/budget-items/{$budget['id']}", [], ['Authorization' => "Bearer {$pm}"])
+            ->assertOk();
+    }
 }

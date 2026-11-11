@@ -305,7 +305,7 @@ class CrudController extends Controller
             return $query;
         }
 
-        if (! $user || $user->isSuperAdmin()) {
+        if (! $user || $user->isSuperAdmin() || $user->role === 'project_manager') {
             if ($user && in_array($res, $this->departmentScoped, true)) {
                 $filter = $this->requestedDepartment($request);
                 if ($filter !== null) {
@@ -954,7 +954,7 @@ class CrudController extends Controller
         return in_array($res, $this->departmentScoped, true);
     }
 
-    // Ringkasan angka untuk Overview. Angka mengikuti departemen user.
+    // Ringkasan angka untuk Overview. Angka mengikuti departemen user, kecuali Superadmin & Project Manager.
     public function overview(Request $request)
     {
         // Global dashboard menampilkan ringkasan lintas departemen untuk superadmin dan project manager.
@@ -962,11 +962,11 @@ class CrudController extends Controller
 
         $joints = $canViewAll ? Joint::query() : $this->scope($request, Joint::query(), 'joints');
         $inspections = $canViewAll ? Inspection::query() : $this->scope($request, Inspection::query(), 'inspections');
-        $stock = $this->scope($request, StockMove::query(), 'stock');
-        $testPackages = $this->scope($request, TestPackage::query(), 'test-packages');
-        $hse = $this->scope($request, HseLog::query(), 'hse');
-        $scopes = $this->scope($request, Scope::query(), 'scopes');
-        $daily = $this->scope($request, DailyProgress::query(), 'daily-progress');
+        $stock = $canViewAll ? StockMove::query() : $this->scope($request, StockMove::query(), 'stock');
+        $testPackages = $canViewAll ? TestPackage::query() : $this->scope($request, TestPackage::query(), 'test-packages');
+        $hse = $canViewAll ? HseLog::query() : $this->scope($request, HseLog::query(), 'hse');
+        $scopes = $canViewAll ? Scope::query() : $this->scope($request, Scope::query(), 'scopes');
+        $daily = $canViewAll ? DailyProgress::query() : $this->scope($request, DailyProgress::query(), 'daily-progress');
 
         $total = (clone $joints)->count();
         $by = (clone $joints)->selectRaw('status, COUNT(*) c')->groupBy('status')->pluck('c', 'status');

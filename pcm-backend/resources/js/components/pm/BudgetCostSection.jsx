@@ -4,7 +4,7 @@ import { can } from '../../auth';
 import { formatRupiah } from '../../currency';
 import { PcmSelect } from '../SearchSelect';
 
-export function BudgetCostSection({ project, user, onToast }) {
+export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onToast }) {
     const [budgetList, setBudgetList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -58,8 +58,29 @@ export function BudgetCostSection({ project, user, onToast }) {
         const totalLabor = budgetList.reduce((acc, b) => acc + (parseFloat(b.labor_cost) || 0), 0);
         const totalEquip = budgetList.reduce((acc, b) => acc + (parseFloat(b.equipment_cost) || 0), 0);
         const burnRatePct = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 100) : 0;
-        return { totalBudget, totalActual, totalLabor, totalEquip, burnRatePct };
-    }, [budgetList]);
+
+        // Integrasi langsung dari Engineering BOQ & Bill of Materials (MTO)
+        const engBoqTotal = (engBoqs || []).reduce((acc, b) => acc + (parseFloat(b.total_amount ?? b.total_price) || 0), 0);
+        const engWeldingTotal = (engBoqs || []).reduce((acc, b) => acc + (parseFloat(b.welding_cost_total) || 0), 0);
+        const engWorkTotal = Math.max(0, engBoqTotal - engWeldingTotal);
+        const bomMaterialTotal = (boms || []).reduce((acc, b) => acc + (parseFloat(b.total_price) || 0), 0);
+        const totalEngineeringEstimate = engBoqTotal + bomMaterialTotal;
+        const budgetVariance = totalBudget - totalActual;
+
+        return {
+            totalBudget,
+            totalActual,
+            totalLabor,
+            totalEquip,
+            burnRatePct,
+            engBoqTotal,
+            engWeldingTotal,
+            engWorkTotal,
+            bomMaterialTotal,
+            totalEngineeringEstimate,
+            budgetVariance,
+        };
+    }, [budgetList, engBoqs, boms]);
 
     const filteredBudget = useMemo(() => {
         const q = search.toLowerCase();
@@ -163,28 +184,75 @@ export function BudgetCostSection({ project, user, onToast }) {
             {/* Metric Summary Tiles */}
             <div className="row g-3 mb-4">
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
+                    <div className="pcm-tile h-100" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
                         <span className="text-muted small text-uppercase fw-bold d-block">Total Anggaran (Budget)</span>
-                        <strong className="h3 fw-bold text-primary mb-0">{formatRupiah(stats.totalBudget)}</strong>
+                        <strong className="h4 fw-bold text-primary mb-0 d-block text-truncate" title={formatRupiah(stats.totalBudget)}>{formatRupiah(stats.totalBudget)}</strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
+                    <div className="pcm-tile h-100" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
                         <span className="text-muted small text-uppercase fw-bold d-block">Realisasi Biaya (Actual)</span>
-                        <strong className="h3 fw-bold text-success mb-0">{formatRupiah(stats.totalActual)}</strong>
+                        <strong className="h4 fw-bold text-success mb-0 d-block text-truncate" title={formatRupiah(stats.totalActual)}>{formatRupiah(stats.totalActual)}</strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Alokasi Manpower/Labor</span>
-                        <strong className="h3 fw-bold text-dark mb-0">{formatRupiah(stats.totalLabor)}</strong>
+                    <div className="pcm-tile h-100" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
+                        <span className="text-muted small text-uppercase fw-bold d-block">Sisa Pagu Anggaran</span>
+                        <strong className={`h4 fw-bold mb-0 d-block text-truncate ${stats.budgetVariance < 0 ? 'text-danger' : 'text-dark'}`} title={formatRupiah(stats.budgetVariance)}>
+                            {formatRupiah(stats.budgetVariance)}
+                        </strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
+                    <div className="pcm-tile h-100" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
                         <span className="text-muted small text-uppercase fw-bold d-block">Budget Absorption</span>
-                        <strong className="h3 fw-bold text-primary mb-0">{stats.burnRatePct}%</strong>
+                        <strong className="h4 fw-bold text-primary mb-0">{stats.burnRatePct}%</strong>
                         <span className="text-muted ms-1 small">terserap</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Integrasi Biaya Engineering BOQ & Material BOM (Sinkronisasi Pekerjaan Engineering) */}
+            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '8px', borderLeft: '4px solid #1d4ed8' }}>
+                <div className="card-body py-3 px-4">
+                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <div className="small fw-bold text-uppercase text-primary">
+                                Estimasi Biaya Teknis Dari Engineering (BOQ Jasa Las + Elektroda + Material MTO)
+                            </div>
+                            <div className="text-muted small">
+                                Dihitung otomatis dari tabel Welding Map Engineering BOQ ({(engBoqs || []).length} baris) dan Bill of Materials ({(boms || []).length} item).
+                            </div>
+                        </div>
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold px-2.5 py-1.5">
+                            Total Proyeksi Teknis: {formatRupiah(stats.totalEngineeringEstimate)}
+                        </span>
+                    </div>
+                    <div className="row g-2 small">
+                        <div className="col-6 col-md-3">
+                            <div className="p-2 rounded bg-light border">
+                                <div className="text-muted" style={{ fontSize: '0.72rem' }}>Jasa Fabrikasi &amp; Erection</div>
+                                <div className="fw-bold text-dark">{formatRupiah(stats.engWorkTotal)}</div>
+                            </div>
+                        </div>
+                        <div className="col-6 col-md-3">
+                            <div className="p-2 rounded bg-light border">
+                                <div className="text-muted" style={{ fontSize: '0.72rem' }}>Biaya Elektroda Las</div>
+                                <div className="fw-bold text-dark">{formatRupiah(stats.engWeldingTotal)}</div>
+                            </div>
+                        </div>
+                        <div className="col-6 col-md-3">
+                            <div className="p-2 rounded bg-light border">
+                                <div className="text-muted" style={{ fontSize: '0.72rem' }}>Pengadaan Material (BOM/MTO)</div>
+                                <div className="fw-bold text-dark">{formatRupiah(stats.bomMaterialTotal)}</div>
+                            </div>
+                        </div>
+                        <div className="col-6 col-md-3">
+                            <div className="p-2 rounded bg-light border">
+                                <div className="text-muted" style={{ fontSize: '0.72rem' }}>Alokasi Manpower (Budget)</div>
+                                <div className="fw-bold text-dark">{formatRupiah(stats.totalLabor)}</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

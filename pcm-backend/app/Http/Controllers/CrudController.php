@@ -663,6 +663,15 @@ class CrudController extends Controller
             return response()->json($obj, 201);
         }
 
+        if ($res === 'drawings') {
+            if (isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
+                $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
+            }
+            if (isset($data['spool_data']) && is_string($data['spool_data'])) {
+                $data['spool_data'] = json_decode($data['spool_data'], true);
+            }
+        }
+
         if ($res === 'material-inspections') {
             $obj = DB::transaction(function () use ($model, $data, $request) {
                 $inspection = $model::create($data);

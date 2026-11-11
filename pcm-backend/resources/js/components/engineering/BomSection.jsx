@@ -586,11 +586,16 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                     aria-label="Filter Isometrik Drawing & Sheet"
                 >
                     <option value="ALL">Semua Isometrik Drawing</option>
-                    {drawingOptions.map((d) => (
-                        <option key={d.id} value={d.id}>
-                            ISO: {d.drawing_no}{d.sheet ? ` · ${d.sheet}` : ''}{d.line_no ? ` (${d.line_no})` : ''}
-                        </option>
-                    ))}
+                    {drawingOptions.map((d) => {
+                        const total = d.sheet_total || (d.sheet ? (d.sheet.match(/of\s+(\d+)/i) ? d.sheet.match(/of\s+(\d+)/i)[1] : '') : '') || '1';
+                        const current = d.sheet_num || (d.sheet ? (d.sheet.match(/(?:sheet\s*)?(\d+)/i) ? d.sheet.match(/(?:sheet\s*)?(\d+)/i)[1] : '1') : '1');
+                        const sheetLabel = `(${current} of ${total})`;
+                        return (
+                            <option key={d.id} value={d.id}>
+                                {d.drawing_no} {sheetLabel}
+                            </option>
+                        );
+                    })}
                 </PcmSelect>
                 {/* Filter Spool */}
                 <PcmSelect
@@ -656,7 +661,12 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             </div>
                                             {b.drawing?.drawing_no && (
                                                 <div className="text-muted small font-monospace mt-0.5 text-truncate" style={{ maxWidth: '140px' }} title={b.drawing.drawing_no}>
-                                                    {b.drawing.drawing_no}{b.drawing.sheet ? ` · ${b.drawing.sheet}` : ''}
+                                                    {(() => {
+                                                        const d = b.drawing;
+                                                        const total = d.sheet_total || (d.sheet ? (d.sheet.match(/of\s+(\d+)/i) ? d.sheet.match(/of\s+(\d+)/i)[1] : '') : '') || '1';
+                                                        const current = d.sheet_num || (d.sheet ? (d.sheet.match(/(?:sheet\s*)?(\d+)/i) ? d.sheet.match(/(?:sheet\s*)?(\d+)/i)[1] : '1') : '1');
+                                                        return `${d.drawing_no} (${current} of ${total})`;
+                                                    })()}
                                                 </div>
                                             )}
                                         </td>

@@ -40,14 +40,19 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.get('/engineering-boqs');
+            const params = new URLSearchParams();
+            if (activeProjectId && activeProjectId !== 'ALL') {
+                params.append('project_id', activeProjectId);
+            }
+            const url = params.toString() ? `/engineering-boqs?${params.toString()}` : '/engineering-boqs';
+            const data = await api.get(url);
             setBoqList(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to load engineering BOQ:', err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeProjectId]);
 
     useEffect(() => {
         loadData();

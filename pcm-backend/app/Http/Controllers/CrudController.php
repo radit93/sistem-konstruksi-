@@ -425,6 +425,14 @@ class CrudController extends Controller
                         ->orWhereHas('materialStandard', fn ($standard) => $standard->where('code', 'like', "%{$s}%"));
                 });
             }
+        } elseif ($res === 'engineering-boqs') {
+            $q->with('drawing');
+            if ($request->filled('project_id')) {
+                $q->where('project_id', $request->project_id);
+            }
+            if ($request->filled('drawing_id')) {
+                $q->where('drawing_id', $request->drawing_id);
+            }
         } elseif ($res === 'material-receivings') {
             $q->with(['storing', 'inspections', 'materialStandard', 'documents']);
             if ($request->filled('search')) {

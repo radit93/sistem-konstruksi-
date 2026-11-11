@@ -90,14 +90,19 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.get('/bill-of-materials');
+            const params = new URLSearchParams();
+            if (activeProjectId && activeProjectId !== 'ALL') {
+                params.append('project_id', activeProjectId);
+            }
+            const url = params.toString() ? `/bill-of-materials?${params.toString()}` : '/bill-of-materials';
+            const data = await api.get(url);
             setBomList(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to load BOM:', err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeProjectId]);
 
     useEffect(() => {
         loadData();

@@ -685,6 +685,8 @@ class CrudController extends Controller
             $obj->load('inspections');
         } elseif ($res === 'welding-maps') {
             $this->syncWeldingMapToJoint($obj);
+        } elseif ($res === 'drawings') {
+            $this->syncFitupSpecsToBom($obj);
         }
 
         return response()->json($obj, 201);
@@ -854,14 +856,24 @@ class CrudController extends Controller
                 continue;
             }
 
+            // Normalisasi pencocokan: format size seperti 4" atau 4
+            $normSize = rtrim($size, '"');
+
             // Cek apakah item serupa sudah ada di BOM drawing ini
             $existing = BillOfMaterial::where('drawing_id', $drawing->id)
-                ->where('size', $size)
+                ->where(function ($q) use ($size, $normSize) {
+                    $q->where('size', $size)
+                      ->orWhere('size', $normSize)
+                      ->orWhere('size', $normSize.'"');
+                })
                 ->where('rating_sch', $schedule)
-                ->where('material_spec', $materialSpec)
                 ->first();
 
             if ($existing) {
+                // Perbarui jika ada perubahan spesifikasi material
+                if ($materialSpec && empty($existing->material_spec)) {
+                    $existing->update(['material_spec' => $materialSpec]);
+                }
                 continue;
             }
 

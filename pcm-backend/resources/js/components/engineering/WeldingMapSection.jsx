@@ -302,7 +302,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
             if (!od) od = parseFloat(materialB.od) || 0;
         }
         if (thk > 0 && od > 0) {
-            return thk * od * 1.2;
+            return Math.round(thk * od * 1.2 * 50);
         }
         return null;
     }, [readMaterial]);
@@ -1534,7 +1534,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         </div>
                                         <div className="wm-form-meta">
                                             {modalStandard
-                                                ? `Master: ${fmt(modalStandard.wall_thickness_mm)} mm · ${fmt(modalStandard.weight_kg_m)} kg/m${stickWeightA != null ? ` · ${fmt(stickWeightA)} kg/batang (${fmt(stickLengthA, 0)} m)` : ''}${modalStandard.dn ? ` · ${modalStandard.dn}` : ''}${modalStandard.wall_thickness_mm && modalStandard.outer_diameter_mm ? ` · Biaya Elektroda: ${formatRupiah(modalStandard.wall_thickness_mm * modalStandard.outer_diameter_mm * 1.2)}` : ''}`
+                                                ? `Master: ${fmt(modalStandard.wall_thickness_mm)} mm · ${fmt(modalStandard.weight_kg_m)} kg/m${stickWeightA != null ? ` · ${fmt(stickWeightA)} kg/batang (${fmt(stickLengthA, 0)} m)` : ''}${modalStandard.dn ? ` · ${modalStandard.dn}` : ''}${modalStandard.wall_thickness_mm && modalStandard.outer_diameter_mm ? ` · Biaya Elektroda: ${formatRupiah(modalStandard.wall_thickness_mm * modalStandard.outer_diameter_mm * 1.2 * 50)}` : ''}`
                                                 : 'Kombinasi size & schedule ini belum ada di master pipa.'}
                                         </div>
                                     </div>
@@ -1596,7 +1596,7 @@ export function WeldingMapSection({ user, projects = [], drawings = [], activePr
                                         </div>
                                         <div className="wm-form-meta">
                                             {modalStandardB
-                                                ? `Master: ${fmt(modalStandardB.wall_thickness_mm)} mm · ${fmt(modalStandardB.weight_kg_m)} kg/m${stickWeightB != null ? ` · ${fmt(stickWeightB)} kg/batang (${fmt(stickLengthB, 0)} m)` : ''}${modalStandardB.wall_thickness_mm && modalStandardB.outer_diameter_mm ? ` · Biaya Elektroda: ${formatRupiah(modalStandardB.wall_thickness_mm * modalStandardB.outer_diameter_mm * 1.2)}` : ''}`
+                                                ? `Master: ${fmt(modalStandardB.wall_thickness_mm)} mm · ${fmt(modalStandardB.weight_kg_m)} kg/m${stickWeightB != null ? ` · ${fmt(stickWeightB)} kg/batang (${fmt(stickLengthB, 0)} m)` : ''}${modalStandardB.wall_thickness_mm && modalStandardB.outer_diameter_mm ? ` · Biaya Elektroda: ${formatRupiah(modalStandardB.wall_thickness_mm * modalStandardB.outer_diameter_mm * 1.2 * 50)}` : ''}`
                                                 : 'Kombinasi size & schedule ini belum ada di master pipa.'}
                                         </div>
                                     </div>

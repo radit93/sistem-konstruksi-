@@ -59,7 +59,7 @@ const weldingCostOf = (row) => {
     const thk = Number(row.wall_thickness_mm);
     const od = Number(row.outer_diameter_mm);
     if (Number.isFinite(thk) && thk > 0 && Number.isFinite(od) && od > 0) {
-        return thk * od * 1.2;
+        return Math.round(thk * od * 1.2 * 50);
     }
     return null;
 };
@@ -1586,11 +1586,11 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                     <div className="small">
                                                         <span className="fw-bold text-success">Estimasi Biaya Las Elektroda:</span>{' '}
                                                         <span className="text-muted font-monospace">
-                                                            {Number(pipeForm.wall_thickness_mm).toFixed(2)} mm × {Number(pipeForm.outer_diameter_mm).toFixed(2)} mm × 1.2
+                                                            {Number(pipeForm.wall_thickness_mm).toFixed(2)} mm × {Number(pipeForm.outer_diameter_mm).toFixed(2)} mm × 1.2 × Rp 50
                                                         </span>
                                                     </div>
                                                     <span className="fw-bolder pcm-code text-success" style={{ fontSize: '0.95rem' }}>
-                                                        {formatRupiah(Number(pipeForm.wall_thickness_mm) * Number(pipeForm.outer_diameter_mm) * 1.2)} / joint
+                                                        {formatRupiah(Number(pipeForm.wall_thickness_mm) * Number(pipeForm.outer_diameter_mm) * 1.2 * 50)} / joint
                                                     </span>
                                                 </div>
                                             </div>

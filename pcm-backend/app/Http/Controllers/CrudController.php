@@ -425,6 +425,14 @@ class CrudController extends Controller
                         ->orWhereHas('materialStandard', fn ($standard) => $standard->where('code', 'like', "%{$s}%"));
                 });
             }
+        } elseif ($res === 'engineering-boqs') {
+            $q->with('drawing');
+            if ($request->filled('project_id')) {
+                $q->where('project_id', $request->project_id);
+            }
+            if ($request->filled('drawing_id')) {
+                $q->where('drawing_id', $request->drawing_id);
+            }
         } elseif ($res === 'material-receivings') {
             $q->with(['storing', 'inspections', 'materialStandard', 'documents']);
             if ($request->filled('search')) {
@@ -663,6 +671,15 @@ class CrudController extends Controller
             return response()->json($obj, 201);
         }
 
+        if ($res === 'drawings') {
+            if (isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
+                $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
+            }
+            if (isset($data['spool_data']) && is_string($data['spool_data'])) {
+                $data['spool_data'] = json_decode($data['spool_data'], true);
+            }
+        }
+
         if ($res === 'material-inspections') {
             $obj = DB::transaction(function () use ($model, $data, $request) {
                 $inspection = $model::create($data);
@@ -685,6 +702,8 @@ class CrudController extends Controller
             $obj->load('inspections');
         } elseif ($res === 'welding-maps') {
             $this->syncWeldingMapToJoint($obj);
+        } elseif ($res === 'drawings') {
+            $this->syncFitupSpecsToBom($obj);
         }
 
         return response()->json($obj, 201);
@@ -857,14 +876,25 @@ class CrudController extends Controller
                 continue;
             }
 
-            // Cek apakah item serupa sudah ada di BOM drawing ini
+            // Normalisasi pencocokan: format size seperti 4" atau 4
+            $normSize = rtrim($size, '"');
+
+            // Cek apakah item serupa sudah ada di BOM drawing ini (berdasarkan tipe, size, dan schedule)
             $existing = BillOfMaterial::where('drawing_id', $drawing->id)
-                ->where('size', $size)
+                ->where('component_type', $compType)
+                ->where(function ($q) use ($size, $normSize) {
+                    $q->where('size', $size)
+                      ->orWhere('size', $normSize)
+                      ->orWhere('size', $normSize.'"');
+                })
                 ->where('rating_sch', $schedule)
-                ->where('material_spec', $materialSpec)
                 ->first();
 
             if ($existing) {
+                // Perbarui jika ada perubahan spesifikasi material
+                if ($materialSpec && empty($existing->material_spec)) {
+                    $existing->update(['material_spec' => $materialSpec]);
+                }
                 continue;
             }
 

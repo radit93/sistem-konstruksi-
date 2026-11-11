@@ -30,15 +30,18 @@ export function SearchSelect({
     value = '',
     onChange,
     options = [],
-    placeholder = 'Cari...',
+    placeholder = 'Pilih...',
     disabled = false,
-    allowCustom = false,
     className = '',
-    emptyText = 'Tidak ada pilihan.',
     ariaLabel,
     inputId,
     required = false,
+    allowCustom = false,
+    emptyText = 'Tidak ada pilihan yang cocok',
     children,
+    searchable = true,
+    menuAlign = 'left',
+    menuWidth,
 }) {
     const list = useMemo(() => {
         /* Dukungan <option> anak: memudahkan pemakaian sebagai pengganti
@@ -94,8 +97,13 @@ export function SearchSelect({
         const r = el.getBoundingClientRect();
         const spaceBelow = window.innerHeight - r.bottom;
         const openUp = spaceBelow < 220 && r.top > 220;
-        const width = Math.min(r.width, window.innerWidth - 16);
-        const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+        const targetWidth = menuWidth ? Number(menuWidth) : r.width;
+        const width = Math.min(targetWidth, window.innerWidth - 16);
+        let left = r.left;
+        if (menuAlign === 'right') {
+            left = r.right - width;
+        }
+        left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
         setRect({
             left,
             width,
@@ -188,19 +196,22 @@ export function SearchSelect({
                 id={inputId}
                 required={required}
                 type="text"
+                readOnly={!searchable}
                 className="form-control form-control-sm pcm-searchselect__input"
-                value={open ? query : selectedLabel}
+                style={!searchable ? { cursor: 'pointer', userSelect: 'none' } : undefined}
+                value={open ? (searchable ? query : selectedLabel) : selectedLabel}
                 placeholder={placeholder}
                 disabled={disabled}
                 role="combobox"
                 aria-label={ariaLabel || placeholder}
                 aria-expanded={open}
                 aria-controls={listId}
-                aria-autocomplete="list"
+                aria-autocomplete={searchable ? 'list' : 'none'}
                 autoComplete="off"
                 onFocus={openMenu}
                 onClick={openMenu}
                 onChange={(event) => {
+                    if (!searchable) return;
                     setQuery(event.target.value);
                     setOpen(true);
                     setHighlight(0);
@@ -307,6 +318,9 @@ export function PcmSelect({
     className = '',
     ariaLabel,
     emptyText,
+    searchable = true,
+    menuAlign = 'left',
+    menuWidth,
 }) {
     const { options, placeholderOption } = useMemo(() => {
         const kids = React.Children.toArray(children)
@@ -339,6 +353,9 @@ export function PcmSelect({
             inputId={id}
             required={required}
             emptyText={emptyText}
+            searchable={searchable}
+            menuAlign={menuAlign}
+            menuWidth={menuWidth}
         />
     );
 }

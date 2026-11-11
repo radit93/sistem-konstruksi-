@@ -39,6 +39,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterProject, setFilterProject] = useProjectFilter(activeProjectId);
+    const [filterDrawing, setFilterDrawing] = useState('ALL');
     const [filterSpool, setFilterSpool] = useState('ALL');
     const [filterType, setFilterType] = useState('ALL');
     const [showModal, setShowModal] = useState(false);
@@ -89,23 +90,33 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.get('/bill-of-materials');
+            const params = new URLSearchParams();
+            if (activeProjectId && activeProjectId !== 'ALL') {
+                params.append('project_id', activeProjectId);
+            }
+            const url = params.toString() ? `/bill-of-materials?${params.toString()}` : '/bill-of-materials';
+            const data = await api.get(url);
             setBomList(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to load BOM:', err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeProjectId]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
     useEffect(() => {
+        setFilterDrawing('ALL');
         setFilterSpool('ALL');
         setFilterType('ALL');
     }, [activeProjectId]);
+
+    useEffect(() => {
+        setFilterSpool('ALL');
+    }, [filterDrawing]);
 
     useEffect(() => {
         let active = true;
@@ -174,13 +185,36 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
         [drawings, activeProjectId, filterProject]
     );
 
+    const drawingOptions = useMemo(() => {
+        const map = new Map();
+        scopedBom.forEach((b) => {
+            if (b.drawing_id && b.drawing) {
+                map.set(String(b.drawing_id), b.drawing);
+            }
+        });
+        scopedDrawings.forEach((d) => {
+            if (d.id && !map.has(String(d.id))) {
+                map.set(String(d.id), d);
+            }
+        });
+        return Array.from(map.values()).sort((a, b) =>
+            String(a.drawing_no || '').localeCompare(String(b.drawing_no || ''), undefined, { numeric: true })
+        );
+    }, [scopedBom, scopedDrawings]);
+
     const spoolOptions = useMemo(() => {
-        return Array.from(new Set(scopedBom.map(b => b.spool_no).filter(Boolean))).sort();
-    }, [scopedBom]);
+        const source = filterDrawing === 'ALL'
+            ? scopedBom
+            : scopedBom.filter(b => String(b.drawing_id) === String(filterDrawing));
+        return Array.from(new Set(source.map(b => b.spool_no).filter(Boolean))).sort();
+    }, [scopedBom, filterDrawing]);
 
     const typeOptions = useMemo(() => {
-        return Array.from(new Set(scopedBom.map(b => b.component_type).filter(Boolean))).sort();
-    }, [scopedBom]);
+        const source = filterDrawing === 'ALL'
+            ? scopedBom
+            : scopedBom.filter(b => String(b.drawing_id) === String(filterDrawing));
+        return Array.from(new Set(source.map(b => b.component_type).filter(Boolean))).sort();
+    }, [scopedBom, filterDrawing]);
 
     const bomDrawingOptions = useMemo(() => {
         if (!form.project_id) return drawings;
@@ -241,6 +275,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
     const filteredBom = useMemo(() => {
         const q = search.toLowerCase();
         return scopedBom.filter(b => {
+            const matchDrawing = filterDrawing === 'ALL' || String(b.drawing_id) === String(filterDrawing);
             const matchSpool = filterSpool === 'ALL' || b.spool_no === filterSpool;
             const matchType = filterType === 'ALL' || b.component_type === filterType;
             const matchSearch = !q ||
@@ -249,10 +284,11 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                 (b.material_spec || '').toLowerCase().includes(q) ||
                 (b.material_standard?.code || '').toLowerCase().includes(q) ||
                 (b.spool_no || '').toLowerCase().includes(q) ||
+                (b.drawing?.drawing_no || '').toLowerCase().includes(q) ||
                 (b.tag_number || '').toLowerCase().includes(q);
-            return matchSpool && matchType && matchSearch;
+            return matchDrawing && matchSpool && matchType && matchSearch;
         });
-    }, [scopedBom, search, filterSpool, filterType]);
+    }, [scopedBom, search, filterDrawing, filterSpool, filterType]);
 
     const handleOpenModal = (item = null) => {
         setFormError('');
@@ -534,12 +570,12 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                 </div>
                 {!isProjectLocked(activeProjectId) && (
                     <PcmSelect
-                        
                         value={filterProject}
                         onChange={(e) => setFilterProject(e.target.value)}
                         style={{ width: 'auto' }}
+                        searchable={false}
                     >
-                        <option value="ALL">Semua Proyek ({projects.length})</option>
+                        <option value="ALL">Proyek</option>
                         {projects.map((p) => (
                             <option key={p.id} value={p.id}>
                                 {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
@@ -547,22 +583,48 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                         ))}
                     </PcmSelect>
                 )}
+                {/* Filter Isometrik Drawing & Sheet (menu melebar ke kiri agar nama panjang muat) */}
                 <PcmSelect
-                    
+                    value={filterDrawing}
+                    onChange={(e) => setFilterDrawing(e.target.value)}
+                    style={{ width: 'auto' }}
+                    aria-label="Filter Isometrik Drawing & Sheet"
+                    searchable={false}
+                    menuAlign="right"
+                    menuWidth={320}
+                >
+                    <option value="ALL">Isometrik Drawing</option>
+                    {drawingOptions.map((d) => {
+                        const total = d.sheet_total || (d.sheet ? (d.sheet.match(/of\s+(\d+)/i) ? d.sheet.match(/of\s+(\d+)/i)[1] : '') : '') || '1';
+                        const current = d.sheet_num || (d.sheet ? (d.sheet.match(/(?:sheet\s*)?(\d+)/i) ? d.sheet.match(/(?:sheet\s*)?(\d+)/i)[1] : '1') : '1');
+                        const sheetLabel = `(${current} of ${total})`;
+                        return (
+                            <option key={d.id} value={d.id}>
+                                {d.drawing_no} {sheetLabel}
+                            </option>
+                        );
+                    })}
+                </PcmSelect>
+                {/* Filter Spool */}
+                <PcmSelect
                     value={filterSpool}
                     onChange={(e) => setFilterSpool(e.target.value)}
                     style={{ width: 'auto' }}
+                    aria-label="Filter Spool"
+                    searchable={false}
                 >
-                    <option value="ALL">Semua Spool ({spoolOptions.length})</option>
+                    <option value="ALL">Spool</option>
                     {spoolOptions.map(s => <option key={s} value={s}>{s}</option>)}
                 </PcmSelect>
+                {/* Filter Jenis Komponen */}
                 <PcmSelect
-                    
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
                     style={{ width: 'auto' }}
+                    aria-label="Filter Jenis Komponen"
+                    searchable={false}
                 >
-                    <option value="ALL">Semua Jenis Komponen ({typeOptions.length})</option>
+                    <option value="ALL">Jenis Komponen</option>
                     {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
                 </PcmSelect>
             </div>
@@ -609,7 +671,12 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             </div>
                                             {b.drawing?.drawing_no && (
                                                 <div className="text-muted small font-monospace mt-0.5 text-truncate" style={{ maxWidth: '140px' }} title={b.drawing.drawing_no}>
-                                                    {b.drawing.drawing_no}
+                                                    {(() => {
+                                                        const d = b.drawing;
+                                                        const total = d.sheet_total || (d.sheet ? (d.sheet.match(/of\s+(\d+)/i) ? d.sheet.match(/of\s+(\d+)/i)[1] : '') : '') || '1';
+                                                        const current = d.sheet_num || (d.sheet ? (d.sheet.match(/(?:sheet\s*)?(\d+)/i) ? d.sheet.match(/(?:sheet\s*)?(\d+)/i)[1] : '1') : '1');
+                                                        return `${d.drawing_no} (${current} of ${total})`;
+                                                    })()}
                                                 </div>
                                             )}
                                         </td>

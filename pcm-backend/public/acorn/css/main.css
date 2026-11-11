@@ -367,6 +367,13 @@ html {
 }
 
 /* Keep the theme's responsive steps, one size up */
+@media (max-width: 1399.98px) {
+    :root {
+        /* Laptop: sidebar lebih ramping supaya tabel master dapat ruang. */
+        --nav-size: 16rem;
+    }
+}
+
 @media (max-width: 1199.98px) {
     :root {
         --main-spacing-horizontal: 2.25rem;

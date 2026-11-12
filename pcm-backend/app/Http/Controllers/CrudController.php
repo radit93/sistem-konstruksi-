@@ -20,10 +20,12 @@ use App\Models\MaterialIssuing;
 use App\Models\MaterialReceiving;
 use App\Models\MaterialStandard;
 use App\Models\MaterialStoring;
+use App\Models\MilestoneActivity;
 use App\Models\PipeSchedule;
 use App\Models\PipeStandard;
 use App\Models\PipingClassTemplate;
 use App\Models\Project;
+use App\Models\ProjectMember;
 use App\Models\ProjectMilestone;
 use App\Models\Scope;
 use App\Models\StockMove;
@@ -32,6 +34,7 @@ use App\Models\TestPackage;
 use App\Models\WeldingMap;
 use App\Services\MaterialFlowService;
 use App\Services\MaterialRequirementService;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -168,6 +171,11 @@ class CrudController extends Controller
             'delete' => 'drawing.write',
         ]],
         'project-milestones' => [ProjectMilestone::class, [
+            'create' => 'milestone.write',
+            'update' => 'milestone.write',
+            'delete' => 'milestone.write',
+        ]],
+        'project-members' => [ProjectMember::class, [
             'create' => 'scope.write',
             'update' => 'scope.write',
             'delete' => 'scope.write',
@@ -342,6 +350,9 @@ class CrudController extends Controller
 
             return $query;
         }
+        if ($res === 'project-members') {
+            return $query->where('project_members.user_id', $user->id);
+        }
         if (! in_array($res, $this->departmentScoped, true)) {
             return $query;
         }
@@ -354,6 +365,12 @@ class CrudController extends Controller
             if ($allowed) {
                 return $query;
             }
+        }
+
+        // Untuk project-milestones, setiap akun operasional hanya mengelola milestonenya sendiri
+        // (PM & Superadmin melihat seluruh akun lintas departemen di cabang kondisi atas).
+        if ($res === 'project-milestones') {
+            return $query->where($query->getModel()->getTable().'.user_id', $user->id);
         }
 
         // No department means no rows, never "all rows". A misconfigured user
@@ -510,6 +527,10 @@ class CrudController extends Controller
                         ->orWhereHas('materialStandard', fn ($standard) => $standard->where('code', 'like', "%{$s}%"));
                 });
             }
+        } elseif ($res === 'project-milestones') {
+            $q->with(['user:id,name,email,role', 'project:id,job_no,name,client', 'activities']);
+        } elseif ($res === 'project-members') {
+            $q->with(['user:id,name,email,role', 'project:id,job_no,name,client', 'assignedBy:id,name']);
         } elseif ($request->filled('search')) {
             $s = $request->search;
             $col = $res === 'stock' ? 'description' : 'id';
@@ -535,6 +556,8 @@ class CrudController extends Controller
             'material-inspections' => ['receiving.materialStandard'],
             'material-storings' => ['movements.creator', 'receiving', 'materialStandard', 'documents.uploader:id,name'],
             'material-issuings' => ['storing', 'materialStandard', 'drawing', 'bom', 'documents.uploader:id,name'],
+            'project-milestones' => ['user:id,name,email,role', 'project:id,job_no,name,client', 'activities'],
+            'project-members' => ['user:id,name,email,role', 'project:id,job_no,name,client', 'assignedBy:id,name'],
             default => [],
         };
 
@@ -756,6 +779,61 @@ class CrudController extends Controller
             $data = FittingStandard::enrichBom($data);
         }
 
+        if ($res === 'project-milestones') {
+            $activities = is_array($data['activities'] ?? null) ? $data['activities'] : [];
+            unset($data['activities']);
+
+            $user = $request->user();
+            $isManager = $user->isSuperAdmin() || $user->role === 'project_manager';
+            if (! $isManager || empty($data['user_id'])) {
+                $data['user_id'] = $user->id;
+            }
+            if (empty($data['pic_lead'])) {
+                $data['pic_lead'] = $user->name;
+            }
+            if (empty($data['project_role'])) {
+                $data['project_role'] = $user->role_name ?? $user->role;
+            }
+
+            $obj = DB::transaction(function () use ($model, $data, $activities) {
+                $milestone = $model::create($data);
+                $this->syncMilestoneActivities($milestone, $activities);
+
+                return $milestone->fresh()->load(['user:id,name,email,role', 'project:id,job_no,name,client', 'activities']);
+            });
+
+            return response()->json($obj, 201);
+        }
+
+        if ($res === 'project-members') {
+            $validated = $request->validate([
+                'project_id' => ['required', 'integer', 'exists:projects,id'],
+                'user_id' => ['required', 'integer', 'exists:users,id'],
+                'project_role' => ['required', 'string', 'max:64'],
+                'responsibilities' => ['nullable', 'string'],
+                'estimated_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+                'status' => ['nullable', 'string', 'max:32'],
+            ]);
+            $member = ProjectMember::updateOrCreate(
+                [
+                    'project_id' => $validated['project_id'],
+                    'user_id' => $validated['user_id'],
+                ],
+                [
+                    'project_role' => $validated['project_role'],
+                    'responsibilities' => $validated['responsibilities'] ?? null,
+                    'estimated_days' => $validated['estimated_days'] ?? null,
+                    'status' => $validated['status'] ?? 'ACTIVE',
+                    'assigned_by' => $request->user()->id,
+                ]
+            );
+
+            return response()->json(
+                $member->fresh()->load(['user:id,name,email,role', 'project:id,job_no,name,client', 'assignedBy:id,name']),
+                201
+            );
+        }
+
         $obj = $model::create($data);
 
         if ($res === 'joints') {
@@ -926,6 +1004,46 @@ class CrudController extends Controller
             $data = FittingStandard::enrichBom($data);
         }
 
+        if ($res === 'project-milestones') {
+            $user = $request->user();
+            $isManager = $user->isSuperAdmin() || $user->role === 'project_manager';
+            if (! $isManager && (int) $obj->user_id !== (int) $user->id) {
+                abort(403, 'Akses ditolak: hanya pemilik milestone atau Project Manager yang dapat mengubah.');
+            }
+            if (! $isManager) {
+                unset($data['user_id']);
+            }
+
+            $hasActivities = array_key_exists('activities', $data) && is_array($data['activities']);
+            $activities = $hasActivities ? $data['activities'] : [];
+            unset($data['activities']);
+
+            $obj = DB::transaction(function () use ($obj, $data, $hasActivities, $activities) {
+                $obj->update($data);
+                if ($hasActivities) {
+                    $this->syncMilestoneActivities($obj, $activities);
+                }
+
+                return $obj->fresh()->load(['user:id,name,email,role', 'project:id,job_no,name,client', 'activities']);
+            });
+
+            return response()->json($obj);
+        }
+
+        if ($res === 'project-members') {
+            $validated = $request->validate([
+                'project_role' => ['sometimes', 'string', 'max:64'],
+                'responsibilities' => ['nullable', 'string'],
+                'estimated_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+                'status' => ['sometimes', 'string', 'max:32'],
+            ]);
+            $obj->update($validated);
+
+            return response()->json(
+                $obj->fresh()->load(['user:id,name,email,role', 'project:id,job_no,name,client', 'assignedBy:id,name'])
+            );
+        }
+
         $obj->update($data);
         if ($res === 'welding-maps') {
             $this->syncWeldingMapToJoint($obj->fresh());
@@ -968,8 +1086,8 @@ class CrudController extends Controller
                 ->where('component_type', $compType)
                 ->where(function ($q) use ($size, $normSize) {
                     $q->where('size', $size)
-                      ->orWhere('size', $normSize)
-                      ->orWhere('size', $normSize.'"');
+                        ->orWhere('size', $normSize)
+                        ->orWhere('size', $normSize.'"');
                 })
                 ->where('rating_sch', $schedule)
                 ->first();
@@ -979,6 +1097,7 @@ class CrudController extends Controller
                 if ($materialSpec && empty($existing->material_spec)) {
                     $existing->update(['material_spec' => $materialSpec]);
                 }
+
                 continue;
             }
 
@@ -1002,6 +1121,7 @@ class CrudController extends Controller
                 if ($materialSpec && stripos($std->specification, $materialSpec) !== false) {
                     return true;
                 }
+
                 return strcasecmp($std->category, $compType) === 0;
             });
 
@@ -1297,5 +1417,99 @@ class CrudController extends Controller
             'unit_weight_kg' => (float) $unitWeight,
             'is_stainless' => $isSs,
         ]);
+    }
+
+    public function toggleMilestoneActivity(Request $request, int $id): JsonResponse
+    {
+        abort_unless(
+            $request->user()->hasPermission('milestone.write'),
+            403,
+            'Akses ditolak: butuh izin milestone.write'
+        );
+
+        $activity = MilestoneActivity::with('milestone')->findOrFail($id);
+        $milestone = $activity->milestone;
+        $user = $request->user();
+        $isManager = $user->isSuperAdmin() || $user->role === 'project_manager';
+
+        if (! $isManager && (int) $milestone->user_id !== (int) $user->id) {
+            abort(403, 'Akses ditolak: aktivitas milestone milik akun lain.');
+        }
+
+        $activity->is_done = $request->has('is_done')
+            ? $request->boolean('is_done')
+            : ! $activity->is_done;
+        $activity->save();
+
+        // Update status milestone otomatis berdasarkan checklist aktivitas
+        $allActivities = $milestone->activities()->get();
+        if ($allActivities->isNotEmpty()) {
+            $doneCount = $allActivities->where('is_done', true)->count();
+            if ($doneCount === $allActivities->count()) {
+                $milestone->update([
+                    'status' => 'COMPLETED',
+                    'actual_date' => $milestone->actual_date ?: now()->toDateString(),
+                ]);
+            } elseif ($doneCount > 0 && $milestone->status === 'PENDING') {
+                $milestone->update(['status' => 'IN_PROGRESS']);
+            }
+        }
+
+        return response()->json($milestone->fresh()->load(['user:id,name,email,role', 'project:id,job_no,name,client', 'activities']));
+    }
+
+    public function noteMilestoneActivity(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $isManager = $user->isSuperAdmin() || $user->role === 'project_manager' || $user->hasPermission('scope.write');
+
+        abort_unless(
+            $isManager,
+            403,
+            'Akses ditolak: hanya Project Manager atau Super Admin yang dapat memberi catatan/teguran.'
+        );
+
+        $validated = $request->validate([
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $activity = MilestoneActivity::with('milestone')->findOrFail($id);
+        $noteText = trim((string) ($validated['notes'] ?? ''));
+        $activity->notes = $noteText !== '' ? $noteText : null;
+        $activity->save();
+
+        return response()->json(
+            $activity->milestone->fresh()->load(['user:id,name,email,role', 'project:id,job_no,name,client', 'activities'])
+        );
+    }
+
+    private function syncMilestoneActivities(ProjectMilestone $milestone, array $activities): void
+    {
+        $milestone->activities()->delete();
+
+        $startDate = $milestone->start_date ? Carbon::parse($milestone->start_date) : null;
+        foreach ($activities as $row) {
+            $activityText = trim((string) ($row['activity'] ?? ''));
+            $timeStart = trim((string) ($row['time_start'] ?? '08:00'));
+            $timeEnd = trim((string) ($row['time_end'] ?? '17:00'));
+            if ($activityText === '') {
+                continue;
+            }
+            $dayNo = max(1, (int) ($row['day_number'] ?? 1));
+            $workDate = ! empty($row['work_date'])
+                ? $row['work_date']
+                : ($startDate ? $startDate->copy()->addDays($dayNo - 1)->toDateString() : null);
+
+            $milestone->activities()->create([
+                'day_number' => $dayNo,
+                'work_date' => $workDate,
+                'time_start' => substr($timeStart, 0, 8),
+                'time_end' => substr($timeEnd, 0, 8),
+                'activity' => substr($activityText, 0, 255),
+                'target_output' => isset($row['target_output']) ? substr((string) $row['target_output'], 0, 120) : null,
+                'is_done' => (bool) ($row['is_done'] ?? false),
+                'notes' => $row['notes'] ?? null,
+            ]);
+        }
     }
 }

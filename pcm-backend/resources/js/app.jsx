@@ -530,12 +530,14 @@ function App() {
                             }}
                         />
                     )}
-                    {['schedule', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report'].includes(activeTab) && (
+                    {['pm_projects', 'schedule', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report'].includes(activeTab) && (
                         <ProjectManagerTab
                             currentSection={activeTab}
                             projects={projects}
                             activeProjectId={activeProjectId}
                             onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
+                            loading={dataLoading}
                             drawings={drawings}
                             scopes={scopes}
                             joints={joints}

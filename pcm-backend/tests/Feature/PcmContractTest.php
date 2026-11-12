@@ -19,7 +19,7 @@ use App\Models\MaterialStandard;
 use App\Models\MaterialStockMovement;
 use App\Models\MaterialStoring;
 use App\Models\PipeSchedule;
-use App\Models\FittingStandard;
+use App\Models\PipeStandard;
 use App\Models\PipingClassTemplate;
 use App\Models\Project;
 use App\Models\ProjectMilestone;
@@ -180,10 +180,10 @@ class PcmContractTest extends TestCase
         $this->assertSame('W-TEST-01', $wm['joint_no']);
         // Test write pipe-standard
         $ps = $this->postJson('/api/pipe-standards', [
-            'nps' => '4"', 'dn' => 'DN 100', 'schedule' => 'Sch 40', 'wall_thickness_mm' => 6.02, 'weight_kg_m' => 16.07
+            'nps' => '4"', 'dn' => 'DN 100', 'schedule' => 'Sch 40', 'wall_thickness_mm' => 6.02, 'weight_kg_m' => 16.07,
         ], ['Authorization' => "Bearer $eng"])->assertCreated()->json();
         $this->assertSame('4"', $ps['nps']);
-        \App\Models\PipeStandard::where('nps', '4"')->delete();
+        PipeStandard::where('nps', '4"')->delete();
 
         // Test write drawing with fitup_specs
         $dwg = $this->postJson('/api/drawings', [
@@ -191,12 +191,12 @@ class PcmContractTest extends TestCase
             'title' => 'Test Fitup Drawing',
             'line_no' => 'TEST-LINE-01',
             'fitup_specs' => [
-                ['size' => '4"', 'schedule' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B']
-            ]
+                ['size' => '4"', 'schedule' => 'Sch 40', 'material_spec' => 'ASTM A106 Gr. B'],
+            ],
         ], ['Authorization' => "Bearer $eng"])->assertCreated()->json();
         $this->assertSame('DWG-FITUP-01', $dwg['drawing_no']);
         $this->assertIsArray($dwg['fitup_specs']);
-        \App\Models\Drawing::where('drawing_no', 'DWG-FITUP-01')->delete();
+        Drawing::where('drawing_no', 'DWG-FITUP-01')->delete();
         WeldingMap::where('joint_no', 'W-TEST-01')->delete();
     }
 
@@ -224,8 +224,8 @@ class PcmContractTest extends TestCase
     public function test_joint_status_cannot_skip_construction_stage(): void
     {
         $cons = $this->token('construction');
-        $consDept = \App\Models\Department::where('code', 'CONS')->value('id');
-        $joint = \App\Models\Joint::create([
+        $consDept = Department::where('code', 'CONS')->value('id');
+        $joint = Joint::create([
             'joint_no' => 'J-TEST-TRANSITION', 'drawing_no' => 'DWG-TRANSITION', 'spool_no' => 'SP-TRANSITION',
             'size' => '4"', 'schedule' => 'Sch 40', 'joint_type' => 'BW', 'location' => 'Shop',
             'status' => 'FITUP_OK', 'dia_inch' => 4.0, 'department_id' => $consDept,
@@ -244,8 +244,8 @@ class PcmContractTest extends TestCase
         $this->postJson('/api/stock', ['kind' => 'IN', 'description' => 'X', 'qty' => 1],
             ['Authorization' => "Bearer $qc"])->assertForbidden();
 
-        $consDept = \App\Models\Department::where('code', 'CONS')->value('id');
-        $joint = \App\Models\Joint::create([
+        $consDept = Department::where('code', 'CONS')->value('id');
+        $joint = Joint::create([
             'joint_no' => 'J-TEST-QC',
             'drawing_no' => 'DWG-QC',
             'spool_no' => 'SP-QC',
@@ -294,8 +294,8 @@ class PcmContractTest extends TestCase
     // scoping, construction tidak lagi menulis ke dua tabel milik PMO.
     public function test_construction_cannot_write_boq(): void
     {
-        $pmoDept = \App\Models\Department::where('code', 'PMO')->value('id');
-        $scope = \App\Models\Scope::create([
+        $pmoDept = Department::where('code', 'PMO')->value('id');
+        $scope = Scope::create([
             'scope' => 'Test Scope',
             'unit' => 'joint',
             'contract_qty' => 10,
@@ -316,8 +316,8 @@ class PcmContractTest extends TestCase
 
     public function test_project_manager_writes_progress(): void
     {
-        $pmoDept = \App\Models\Department::where('code', 'PMO')->value('id');
-        $scope = \App\Models\Scope::create([
+        $pmoDept = Department::where('code', 'PMO')->value('id');
+        $scope = Scope::create([
             'scope' => 'Test Scope PM',
             'unit' => 'joint',
             'contract_qty' => 10,
@@ -334,7 +334,7 @@ class PcmContractTest extends TestCase
             ['Authorization' => "Bearer $pm"])->assertOk();
         $cum = $this->getJson("/api/scopes/{$scope->id}", ['Authorization' => "Bearer $pm"])->assertOk()->json('cumulative_qty');
         $this->assertEquals(7, $cum);
-        \App\Models\DailyProgress::where('scope', 'Test Scope PM')->where('qty', 7)->delete();
+        DailyProgress::where('scope', 'Test Scope PM')->where('qty', 7)->delete();
         $scope->delete();
     }
 
@@ -1238,7 +1238,7 @@ class PcmContractTest extends TestCase
     public function test_engineer_syncs_boq_and_bom_pricing(): void
     {
         $eng = $this->token('engineer');
-        $proj = \App\Models\Project::first();
+        $proj = Project::first();
 
         // 1. Uji endpoint sync BOQ dari Welding Map
         $res = $this->postJson('/api/engineering-boqs/sync-from-welding-map', [
@@ -1255,7 +1255,7 @@ class PcmContractTest extends TestCase
         $this->assertArrayHasKey('total_amount', $firstBoq);
 
         // 2. Uji BOM pricing save & auto calculation
-        $drawing = \App\Models\Drawing::where('project_id', $proj->id)->first();
+        $drawing = Drawing::where('project_id', $proj->id)->first();
         $bom = $this->postJson('/api/bill-of-materials', [
             'project_id' => $proj->id,
             'drawing_id' => $drawing->id,
@@ -1273,7 +1273,7 @@ class PcmContractTest extends TestCase
         $this->assertEquals(320000, $bom['unit_price']);
         $this->assertEquals(3200000, $bom['total_price']);
 
-        \App\Models\BillOfMaterial::where('spool_no', 'SP-TEST-PRICING')->delete();
+        BillOfMaterial::where('spool_no', 'SP-TEST-PRICING')->delete();
     }
 
     public function test_project_manager_has_cross_department_readonly_and_pmo_write(): void
@@ -1320,5 +1320,96 @@ class PcmContractTest extends TestCase
 
         $this->deleteJson("/api/budget-items/{$budget['id']}", [], ['Authorization' => "Bearer {$pm}"])
             ->assertOk();
+    }
+
+    public function test_worker_account_submits_milestone_with_daily_hourly_schedule(): void
+    {
+        $con = $this->token('construction');
+        $eng = $this->token('engineer');
+        $pm = $this->token('project_manager');
+
+        // 1. Akun Welder (construction) membuat milestone estimasi 30 hari + rincian jam kerja
+        $created = $this->postJson('/api/project-milestones', [
+            'project_id' => 1,
+            'code' => 'M-WLD-TEST',
+            'name' => 'Pengelasan Spool Line MPP-AB',
+            'project_role' => 'Welder',
+            'phase' => 'Fabrication',
+            'start_date' => '2026-11-11',
+            'estimated_days' => 30,
+            'target_date' => '2026-12-10',
+            'work_hours_per_day' => 8,
+            'status' => 'PENDING',
+            'activities' => [
+                [
+                    'day_number' => 1,
+                    'time_start' => '08:00',
+                    'time_end' => '10:00',
+                    'activity' => 'Persiapan mesin las & cek fit-up',
+                    'target_output' => 'Siap las',
+                ],
+                [
+                    'day_number' => 1,
+                    'time_start' => '10:00',
+                    'time_end' => '12:00',
+                    'activity' => 'Pengelasan Root Pass',
+                    'target_output' => '4 Joint',
+                ],
+            ],
+        ], ['Authorization' => "Bearer {$con}"])->assertCreated()->json();
+
+        $this->assertSame('Welder', $created['project_role']);
+        $this->assertSame(30, $created['estimated_days']);
+        $this->assertCount(2, $created['activities']);
+        $this->assertSame('2026-11-11', $created['activities'][0]['work_date']);
+
+        // 2. Toggle 1 slot jam selesai -> milestone otomatis jadi IN_PROGRESS
+        $actId = $created['activities'][0]['id'];
+        $toggled = $this->patchJson("/api/milestone-activities/{$actId}/toggle", [
+            'is_done' => true,
+        ], ['Authorization' => "Bearer {$con}"])->assertOk()->json();
+        $this->assertSame('IN_PROGRESS', $toggled['status']);
+        $this->assertTrue($toggled['activities'][0]['is_done']);
+
+        // 3. Akun lain (engineer) tidak bisa melihat atau mengubah milestone milik Welder
+        $this->app['auth']->forgetGuards();
+        $engList = $this->getJson('/api/project-milestones', ['Authorization' => "Bearer {$eng}"])
+            ->assertOk()
+            ->json();
+        $this->assertFalse(collect($engList)->contains('id', $created['id']));
+        $this->patchJson("/api/milestone-activities/{$actId}/toggle", [
+            'is_done' => false,
+        ], ['Authorization' => "Bearer {$eng}"])->assertForbidden();
+
+        // 4. PM dapat melihat daftar akun (/admin/users) dan milestone per akun + per project
+        $this->app['auth']->forgetGuards();
+        $pmUsers = $this->getJson('/api/admin/users', ['Authorization' => "Bearer {$pm}"])
+            ->assertOk()
+            ->json();
+        $this->assertTrue(collect($pmUsers)->contains('role', 'construction'));
+
+        $pmList = $this->getJson('/api/project-milestones', ['Authorization' => "Bearer {$pm}"])
+            ->assertOk()
+            ->json();
+        $found = collect($pmList)->firstWhere('id', $created['id']);
+        $this->assertNotNull($found);
+        $this->assertSame('Welder', $found['project_role']);
+        $this->assertSame(1, $found['project']['id']);
+        $this->assertNotEmpty($found['user']['name']);
+        $this->assertCount(2, $found['activities']);
+
+        // 5. PM dapat memberi note/teguran pada blok jam tertentu, sedangkan worker ditolak
+        $this->app['auth']->forgetGuards();
+        $this->patchJson("/api/milestone-activities/{$actId}/note", [
+            'notes' => 'Di sistem selesai, tapi di lapangan belum beres.',
+        ], ['Authorization' => "Bearer {$eng}"])->assertForbidden();
+
+        $this->app['auth']->forgetGuards();
+        $noted = $this->patchJson("/api/milestone-activities/{$actId}/note", [
+            'notes' => 'Di sistem 2 jam pertama selesai, cek lapangan belum beres.',
+        ], ['Authorization' => "Bearer {$pm}"])->assertOk()->json();
+        $this->assertSame('Di sistem 2 jam pertama selesai, cek lapangan belum beres.', $noted['activities'][0]['notes']);
+
+        ProjectMilestone::where('id', $created['id'])->delete();
     }
 }

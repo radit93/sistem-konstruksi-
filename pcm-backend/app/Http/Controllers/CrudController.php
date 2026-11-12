@@ -232,7 +232,8 @@ class CrudController extends Controller
         // Material Control perlu membaca master Engineering (drawing, katalog
         // standar, BOM) untuk mencocokkan requirement dengan stok. Hak tulis
         // tetap dijaga permission drawing.write di checkWrite().
-        'drawings' => 'stock.view',
+        'drawings' => ['stock.view', 'inspection.view', 'joint.view'],
+        'welding-maps' => ['stock.view', 'inspection.view', 'joint.view'],
         'material-standards' => 'stock.view',
         'bill-of-materials' => 'stock.view',
         'material-receivings' => 'material_inspection.write',
@@ -346,8 +347,13 @@ class CrudController extends Controller
         }
 
         $cross = $this->crossDepartment[$res] ?? null;
-        if ($cross && $user->hasPermission($cross)) {
-            return $query;
+        if ($cross) {
+            $allowed = is_array($cross)
+                ? collect($cross)->some(fn ($permission) => $user->hasPermission($permission))
+                : $user->hasPermission($cross);
+            if ($allowed) {
+                return $query;
+            }
         }
 
         // No department means no rows, never "all rows". A misconfigured user
@@ -660,6 +666,27 @@ class CrudController extends Controller
 
         // QA-QC: Auto-update joint status when inspection passes or fails
         if ($res === 'inspections') {
+            $joint = Joint::query()->find($data['joint_id'] ?? null);
+            if (! $joint) {
+                throw ValidationException::withMessages([
+                    'joint_id' => 'Joint wajib dipilih untuk laporan inspeksi.',
+                ]);
+            }
+
+            // Nomor laporan yang masih berupa placeholder diganti dengan nomor
+            // traceable project/drawing/joint/type yang konsisten.
+            $reportNo = (string) ($data['report_no'] ?? '');
+            if ($reportNo === '' || str_starts_with($reportNo, 'QC-SEQ') || str_starts_with($reportNo, 'QC-VR') || str_starts_with($reportNo, 'AUTO')) {
+                $drawing = Drawing::query()->where('drawing_no', $joint->drawing_no)->first();
+                $project = $drawing?->project;
+                $projectCode = $project?->job_no ?: $project?->code ?: 'PROJECT';
+                $drawingCode = strtoupper((string) preg_replace('/[^A-Z0-9]/i', '', $drawing?->drawing_no ?: $joint->drawing_no ?: 'ISO'));
+                $kind = strtoupper((string) ($data['kind'] ?? 'VISUAL'));
+                $kindCode = in_array($kind, ['RT', 'PT', 'UT', 'PMI'], true) ? $kind : 'VT';
+                $count = Inspection::query()->where('joint_id', $joint->id)->where('kind', $kind)->count() + 1;
+                $data['report_no'] = sprintf('QC-%s-%s-J%s-%s-%02d', $projectCode, $drawingCode, str_pad((string) ($joint->seq ?: 1), 2, '0', STR_PAD_LEFT), $kindCode, $count);
+            }
+
             $inspection = DB::transaction(function () use ($model, $data) {
                 $inspection = $model::create($data);
                 $jointId = $inspection->joint_id;

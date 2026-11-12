@@ -3,8 +3,15 @@ import { api } from '../../api';
 import { can } from '../../auth';
 import { confirmDelete } from '../../confirm';
 import { PcmSelect } from '../SearchSelect';
+import { scopeRows } from '../engineering/projectScope';
 
-export function MaterialInspectionSection({ user, onToast }) {
+export function MaterialInspectionSection({
+    user,
+    onToast,
+    projects = [],
+    activeProjectId = '',
+    filterProject = 'ALL',
+}) {
     const [inspections, setInspections] = useState([]);
     const [receivings, setReceivings] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -54,17 +61,27 @@ export function MaterialInspectionSection({ user, onToast }) {
         loadData();
     }, [loadData]);
 
+    const scopedInspections = useMemo(
+        () => scopeRows(inspections, activeProjectId, filterProject),
+        [inspections, activeProjectId, filterProject]
+    );
+
+    const scopedReceivings = useMemo(
+        () => scopeRows(receivings, activeProjectId, filterProject),
+        [receivings, activeProjectId, filterProject]
+    );
+
     const stats = useMemo(() => {
-        const total = inspections.length;
-        const accepted = inspections.filter(i => i.result === 'ACCEPTED').length;
-        const hold = inspections.filter(i => i.result === 'HOLD').length;
-        const rejected = inspections.filter(i => i.result === 'REJECTED').length;
+        const total = scopedInspections.length;
+        const accepted = scopedInspections.filter(i => i.result === 'ACCEPTED').length;
+        const hold = scopedInspections.filter(i => i.result === 'HOLD').length;
+        const rejected = scopedInspections.filter(i => i.result === 'REJECTED').length;
         return { total, accepted, hold, rejected };
-    }, [inspections]);
+    }, [scopedInspections]);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return inspections.filter(item => {
+        return scopedInspections.filter(item => {
             const matchSearch = !q ||
                 (item.report_no || '').toLowerCase().includes(q) ||
                 (item.inspector_name || '').toLowerCase().includes(q) ||
@@ -75,21 +92,21 @@ export function MaterialInspectionSection({ user, onToast }) {
             const matchResult = filterResult === 'ALL' || item.result === filterResult;
             return matchSearch && matchResult;
         });
-    }, [inspections, search, filterResult]);
+    }, [scopedInspections, search, filterResult]);
 
     const inspectableReceivings = useMemo(() => {
-        const candidates = receivings.filter(r => r.status === 'REQUESTED');
+        const candidates = scopedReceivings.filter(r => r.status === 'REQUESTED');
 
         if (editingItem?.material_receiving_id
             && !candidates.some(r => r.id === editingItem.material_receiving_id)) {
-            const current = receivings.find(r => r.id === editingItem.material_receiving_id);
+            const current = scopedReceivings.find(r => r.id === editingItem.material_receiving_id);
             if (current) {
                 return [current, ...candidates];
             }
         }
 
         return candidates;
-    }, [receivings, editingItem]);
+    }, [scopedReceivings, editingItem]);
 
     const handleOpenModal = (item = null) => {
         setFormError('');
@@ -425,7 +442,7 @@ export function MaterialInspectionSection({ user, onToast }) {
                             </PcmSelect>
                         </div>
                         <div className="col-6 col-md-3 text-md-end text-muted small">
-                            {filtered.length} dari {inspections.length} pemeriksaan
+                            {filtered.length} dari {scopedInspections.length} pemeriksaan
                         </div>
                     </div>
                 </div>

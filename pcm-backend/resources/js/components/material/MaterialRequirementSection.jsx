@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { PcmSelect } from '../SearchSelect';
+import { isProjectLocked } from '../engineering/projectScope';
 
 const EMPTY_SUMMARY = {
     total_lines: 0,
@@ -14,7 +15,12 @@ const formatQty = (value) => (parseFloat(value) || 0).toLocaleString('id-ID', {
     maximumFractionDigits: 2,
 });
 
-export function MaterialRequirementSection({ user, onToast }) {
+export function MaterialRequirementSection({
+    user,
+    onToast,
+    activeProjectId = '',
+    filterProject = 'ALL',
+}) {
     const [data, setData] = useState({ summary: EMPTY_SUMMARY, rows: [] });
     const [projects, setProjects] = useState([]);
     const [drawings, setDrawings] = useState([]);
@@ -26,6 +32,20 @@ export function MaterialRequirementSection({ user, onToast }) {
         drawing_id: '',
         status: 'ALL',
     });
+
+    // Ikuti pilihan project dari bar Material Control (workspace / dropdown).
+    const sharedProjectId = filterProject === 'ALL' || filterProject === 'unassigned'
+        ? ''
+        : String(filterProject);
+    const projectLocked = isProjectLocked(activeProjectId) || sharedProjectId !== '';
+
+    useEffect(() => {
+        setFilters((prev) => (
+            prev.project_id === sharedProjectId
+                ? prev
+                : { ...prev, project_id: sharedProjectId, drawing_id: '' }
+        ));
+    }, [sharedProjectId]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -164,8 +184,8 @@ export function MaterialRequirementSection({ user, onToast }) {
                         </div>
                         <div className="col-6 col-md-3">
                             <PcmSelect
-                                
                                 value={filters.project_id}
+                                disabled={projectLocked}
                                 onChange={(e) => setFilters((prev) => ({
                                     ...prev,
                                     project_id: e.target.value,

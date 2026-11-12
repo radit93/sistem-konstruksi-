@@ -407,6 +407,10 @@ function App() {
                         <MaterialTab
                             currentSection={activeTab}
                             stockMoves={stockMoves}
+                            projects={projects}
+                            activeProject={activeProject}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
                             user={user}
                             onReload={() => {
                                 loadData();

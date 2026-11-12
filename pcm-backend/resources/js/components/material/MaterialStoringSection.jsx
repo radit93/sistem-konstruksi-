@@ -5,8 +5,15 @@ import { confirmDelete } from '../../confirm';
 import { MaterialDocumentsModal } from './MaterialDocumentsModal';
 import { MaterialReportModal } from './MaterialReportModal';
 import { PcmSelect } from '../SearchSelect';
+import { defaultProjectId, scopeRows } from '../engineering/projectScope';
 
-export function MaterialStoringSection({ user, onToast }) {
+export function MaterialStoringSection({
+    user,
+    onToast,
+    projects = [],
+    activeProjectId = '',
+    filterProject = 'ALL',
+}) {
     const [storings, setStorings] = useState([]);
     const [standards, setStandards] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -84,11 +91,16 @@ export function MaterialStoringSection({ user, onToast }) {
         };
     }, []);
 
+    const scoped = useMemo(
+        () => scopeRows(storings, activeProjectId, filterProject),
+        [storings, activeProjectId, filterProject]
+    );
+
     const stats = useMemo(() => {
-        const totalItems = storings.length;
-        const totalIn = storings.reduce((acc, s) => acc + (parseFloat(s.stock_in) || 0), 0);
-        const totalOut = storings.reduce((acc, s) => acc + (parseFloat(s.stock_out) || 0), 0);
-        const lowStockItems = storings.filter(s => {
+        const totalItems = scoped.length;
+        const totalIn = scoped.reduce((acc, s) => acc + (parseFloat(s.stock_in) || 0), 0);
+        const totalOut = scoped.reduce((acc, s) => acc + (parseFloat(s.stock_out) || 0), 0);
+        const lowStockItems = scoped.filter(s => {
             const bal = parseFloat(s.balance) || 0;
             const min = parseFloat(s.min_stock_alert) || 0;
             return bal <= min;
@@ -96,11 +108,11 @@ export function MaterialStoringSection({ user, onToast }) {
         const lowStock = lowStockItems.length;
         const outOfStock = lowStockItems.filter(s => (parseFloat(s.balance) || 0) <= 0).length;
         return { totalItems, totalIn, totalOut, lowStock, outOfStock };
-    }, [storings]);
+    }, [scoped]);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return storings.filter(item => {
+        return scoped.filter(item => {
             const matchSearch = !q ||
                 (item.item_code || '').toLowerCase().includes(q) ||
                 (item.item_name || '').toLowerCase().includes(q) ||
@@ -117,7 +129,7 @@ export function MaterialStoringSection({ user, onToast }) {
 
             return matchSearch && matchCat && matchStock;
         });
-    }, [storings, search, filterCategory, filterStockStatus]);
+    }, [scoped, search, filterCategory, filterStockStatus]);
 
     const handleOpenModal = (item = null) => {
         setFormError('');
@@ -199,6 +211,11 @@ export function MaterialStoringSection({ user, onToast }) {
             material_standard_id: form.material_standard_id || null,
             balance: (parseFloat(form.stock_in) || 0) - (parseFloat(form.stock_out) || 0)
         };
+
+        if (!editingItem) {
+            const projectId = defaultProjectId(activeProjectId, filterProject, projects);
+            if (projectId) payload.project_id = projectId;
+        }
 
         try {
             if (editingItem) {
@@ -457,7 +474,7 @@ export function MaterialStoringSection({ user, onToast }) {
                             </PcmSelect>
                         </div>
                         <div className="col-12 col-md-2 text-md-end text-muted small">
-                            {filtered.length} dari {storings.length} item
+                            {filtered.length} dari {scoped.length} item
                         </div>
                     </div>
                 </div>

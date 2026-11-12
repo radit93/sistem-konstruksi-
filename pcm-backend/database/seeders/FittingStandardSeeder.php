@@ -8,6 +8,19 @@ use Illuminate\Database\Seeder;
 class FittingStandardSeeder extends Seeder
 {
     /**
+     * Kolom yang ditulis ke fitting_standards, urut sesuai skema.
+     *
+     * @var list<string>
+     */
+    private const COLUMNS = [
+        'item_code', 'category', 'fitting_type', 'asme_standard', 'connection',
+        'nps_main', 'dn_main_mm', 'od_main_mm', 'nps_secondary', 'dn_secondary_mm',
+        'od_secondary_mm', 'dimension_primary_mm', 'dimension_secondary_mm',
+        'schedule_class', 'wall_mm', 'material_cs', 'material_ss',
+        'weight_cs_kg', 'weight_ss_kg', 'status', 'source_reference',
+    ];
+
+    /**
      * Seed tabel fitting_standards dari dataset canonical
      * database/data/fitting_master_asme.json (ASME B16.9 / B16.11 /
      * MSS-SP-97 / MSS-SP-43, 2.303 baris).
@@ -27,49 +40,41 @@ class FittingStandardSeeder extends Seeder
             throw new \RuntimeException('Invalid canonical fitting data: '.$path);
         }
 
-        foreach (array_chunk($rows, 500) as $chunk) {
-            $fittingStandards = $chunk;
-            FittingStandard::upsert(
-                $this->toInsertRows($fittingStandards),
-                ['item_code'],
-                $this->updateColumns($chunk)
-            );
+        /*
+         * Truncate dulu supaya hasil seeding selalu persis sama dengan dataset
+         * canonical (tidak menyisakan baris lama), lalu insert per 250 baris.
+         * Jangan memakai upsert dengan daftar kolom berbentuk asosiatif: Laravel
+         * membacanya sebagai nilai konstanta sehingga semua baris tertimpa.
+         */
+        FittingStandard::query()->truncate();
+
+        foreach (array_chunk($rows, 250) as $chunk) {
+            FittingStandard::insert($this->toInsertRows($chunk));
         }
     }
 
     /**
      * Baris insert dalam bentuk array kunci => nilai (tanpa id/timestamps,
      * dibiarkan default DB agar upsert tetap ringan).
+     *
+     * @param  array<int, array<string, mixed>>  $chunk
+     * @return array<int, array<string, mixed>>
      */
     private function toInsertRows(array $chunk): array
     {
-        $columns = [
-            'item_code', 'category', 'fitting_type', 'asme_standard', 'connection',
-            'nps_main', 'dn_main_mm', 'od_main_mm', 'nps_secondary', 'dn_secondary_mm',
-            'od_secondary_mm', 'dimension_primary_mm', 'dimension_secondary_mm',
-            'schedule_class', 'wall_mm', 'material_cs', 'material_ss',
-            'weight_cs_kg', 'weight_ss_kg', 'status', 'source_reference',
-        ];
-
         return array_map(
-            fn (array $row) => $this->pick($row, $columns),
+            fn (array $row): array => $this->pick($row, self::COLUMNS),
             $chunk
         );
     }
 
-    private function updateColumns(array $chunk): array
-    {
-        $columns = [
-            'category', 'fitting_type', 'asme_standard', 'connection',
-            'nps_main', 'dn_main_mm', 'od_main_mm', 'nps_secondary', 'dn_secondary_mm',
-            'od_secondary_mm', 'dimension_primary_mm', 'dimension_secondary_mm',
-            'schedule_class', 'wall_mm', 'material_cs', 'material_ss',
-            'weight_cs_kg', 'weight_ss_kg', 'status', 'source_reference',
-        ];
-
-        return $this->pick($chunk[0], $columns);
-    }
-
+    /**
+     * Ambil hanya kolom yang dikenal, dengan nilai null bila tidak tersedia.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  list<string>  $columns
+     * @return array<string, mixed>
+     */
     private function pick(array $row, array $columns): array
     {
         $out = [];

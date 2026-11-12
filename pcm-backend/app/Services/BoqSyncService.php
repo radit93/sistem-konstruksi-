@@ -94,7 +94,7 @@ class BoqSyncService
                         $thk = (float) $pipeStd->wall_thickness_mm;
                         $od = (float) $pipeStd->outer_diameter_mm;
                         if ($thk > 0 && $od > 0) {
-                            $weldingCostTotal += round($thk * $od * 1.2, 2);
+                            $weldingCostTotal += round($thk * $od * 1.2 * 50, 0);
                         }
 
                         $lengthMm = (float) ($j->length_mm ?: 0);

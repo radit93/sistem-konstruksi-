@@ -5,8 +5,15 @@ import { confirmDelete } from '../../confirm';
 import { MaterialDocumentsModal } from './MaterialDocumentsModal';
 import { MaterialReportModal } from './MaterialReportModal';
 import { PcmSelect } from '../SearchSelect';
+import { defaultProjectId, scopeRows } from '../engineering/projectScope';
 
-export function MaterialReceivingSection({ user, onToast }) {
+export function MaterialReceivingSection({
+    user,
+    onToast,
+    projects = [],
+    activeProjectId = '',
+    filterProject = 'ALL',
+}) {
     const [receivings, setReceivings] = useState([]);
     const [standards, setStandards] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -76,18 +83,23 @@ export function MaterialReceivingSection({ user, onToast }) {
         };
     }, []);
 
+    const scoped = useMemo(
+        () => scopeRows(receivings, activeProjectId, filterProject),
+        [receivings, activeProjectId, filterProject]
+    );
+
     const stats = useMemo(() => {
-        const total = receivings.length;
-        const accepted = receivings.filter(r => r.status === 'ACCEPTED').length;
-        const pending = receivings.filter(r => r.status === 'RECEIVED' || r.status === 'REQUESTED' || r.status === 'INSPECTED').length;
-        const openYardCount = receivings.filter(r => r.storage_type === 'OPEN_YARD').length;
-        const warehouseCount = receivings.filter(r => r.storage_type === 'WAREHOUSE').length;
+        const total = scoped.length;
+        const accepted = scoped.filter(r => r.status === 'ACCEPTED').length;
+        const pending = scoped.filter(r => r.status === 'RECEIVED' || r.status === 'REQUESTED' || r.status === 'INSPECTED').length;
+        const openYardCount = scoped.filter(r => r.storage_type === 'OPEN_YARD').length;
+        const warehouseCount = scoped.filter(r => r.storage_type === 'WAREHOUSE').length;
         return { total, accepted, pending, openYardCount, warehouseCount };
-    }, [receivings]);
+    }, [scoped]);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return receivings.filter(r => {
+        return scoped.filter(r => {
             const matchSearch = !q ||
                 (r.shipment_no || '').toLowerCase().includes(q) ||
                 (r.po_no || '').toLowerCase().includes(q) ||
@@ -195,6 +207,11 @@ export function MaterialReceivingSection({ user, onToast }) {
             ...form,
             material_standard_id: form.material_standard_id || null,
         };
+
+        if (!editingItem) {
+            const projectId = defaultProjectId(activeProjectId, filterProject, projects);
+            if (projectId) payload.project_id = projectId;
+        }
 
         try {
             if (editingItem) {
@@ -356,7 +373,7 @@ export function MaterialReceivingSection({ user, onToast }) {
                             </PcmSelect>
                         </div>
                         <div className="col-12 col-md-2 text-md-end text-muted small">
-                            {filtered.length} dari {receivings.length} batch
+                            {filtered.length} dari {scoped.length} batch
                         </div>
                     </div>
                 </div>

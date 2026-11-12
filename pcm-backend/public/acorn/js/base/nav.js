@@ -18,7 +18,9 @@ class Nav {
     return {
       matchUrl: true,
       disablePinning: false,
-      verticalUnpinned: Globals.xxl.replace('px', ''),
+      // PCM: sidebar selalu tampil penuh (pinned) sejak 992px. Menu PCM hanya
+      // teks tanpa ikon, jadi rail 80px milik Acorn akan tampak kosong.
+      verticalUnpinned: Globals.lg.replace('px', ''),
       verticalMobile: Globals.lg.replace('px', ''),
       horizontalMobile: Globals.lg.replace('px', ''),
     };

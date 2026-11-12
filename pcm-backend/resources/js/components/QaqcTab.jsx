@@ -20,7 +20,8 @@ export function QaqcTab({ joints, inspections, user, onReload }) {
         defect_type: 'NONE',
         inspector: user?.name || 'QC Inspector',
         insp_date: today(),
-        remarks: 'Weld bead uniform, no undercut/porosity'
+        remarks: 'Weld bead uniform, no undercut/porosity',
+        repair_cycle: { cycle: '', date: '', result: '' }
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -36,7 +37,8 @@ export function QaqcTab({ joints, inspections, user, onReload }) {
             defect_type: 'NONE',
             inspector: user?.name || 'QC Inspector',
             insp_date: today(),
-            remarks: 'Weld appearance good, compliance to ASME B31.3'
+            remarks: 'Weld appearance good, compliance to ASME B31.3',
+            repair_cycle: { cycle: '', date: '', result: '' }
         });
         setShowInspectModal(true);
     };
@@ -53,21 +55,7 @@ export function QaqcTab({ joints, inspections, user, onReload }) {
                 ...formData
             });
 
-            // Update status joint jika hasil PASS
-            let newStatus = selectedJoint.status;
-            if (formData.result === 'PASS') {
-                if (formData.kind === 'VISUAL') {
-                    newStatus = 'VISUAL_OK';
-                } else if (['RT', 'PT', 'UT'].includes(formData.kind)) {
-                    newStatus = 'NDT_OK';
-                }
-            } else if (formData.result === 'FAIL') {
-                newStatus = 'REPAIR';
-            }
-
-            if (newStatus !== selectedJoint.status) {
-                await api.put(`/joints/${selectedJoint.id}`, { status: newStatus });
-            }
+            // Status joint dihitung backend agar semua role memakai satu aturan.
 
             setShowInspectModal(false);
             setSelectedJoint(null);
@@ -376,6 +364,33 @@ export function QaqcTab({ joints, inspections, user, onReload }) {
                                             onChange={e => setFormData({ ...formData, insp_date: e.target.value })}
                                         />
                                     </div>
+                                    {formData.result === 'FAIL' && (
+                                        <div className="border rounded p-3 mb-3 bg-warning-subtle">
+                                            <div className="small fw-bold mb-2">Siklus Perbaikan</div>
+                                            <div className="row g-2">
+                                                <div className="col-4">
+                                                    <label className="form-label small">Cycle</label>
+                                                    <select className="form-select form-select-sm" value={formData.repair_cycle?.cycle || ''} onChange={e => setFormData({ ...formData, repair_cycle: { ...formData.repair_cycle, cycle: e.target.value } })} required>
+                                                        <option value="">Pilih</option>
+                                                        <option value="R1">R1</option>
+                                                        <option value="R2">R2</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-4">
+                                                    <label className="form-label small">Tanggal</label>
+                                                    <input type="date" className="form-control form-control-sm" value={formData.repair_cycle?.date || ''} onChange={e => setFormData({ ...formData, repair_cycle: { ...formData.repair_cycle, date: e.target.value } })} required />
+                                                </div>
+                                                <div className="col-4">
+                                                    <label className="form-label small">Hasil</label>
+                                                    <select className="form-select form-select-sm" value={formData.repair_cycle?.result || ''} onChange={e => setFormData({ ...formData, repair_cycle: { ...formData.repair_cycle, result: e.target.value } })} required>
+                                                        <option value="">Pilih</option>
+                                                        <option value="PASS">PASS</option>
+                                                        <option value="FAIL">FAIL</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Catatan Temuan / Rekomendasi</label>
                                         <textarea

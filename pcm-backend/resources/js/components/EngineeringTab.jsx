@@ -3,7 +3,7 @@
  * direction: DESIGN.md · dials: ENERGY 1 · RHYTHM 1 · MOTION 1
  * disciplines: honest-copy · locked-tokens · mobile-responsive · keyboard-a11y
  */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { confirmDelete } from '../confirm';
@@ -14,17 +14,28 @@ import { BomSection } from './engineering/BomSection';
 import { MaterialStandardSection } from './engineering/MaterialStandardSection';
 import { PipeScheduleSection } from './engineering/PipeScheduleSection';
 import { DocumentControlSection } from './engineering/DocumentControlSection';
+import {
+    buildAttributeLabels,
+    buildMaterialIndex,
+    naturalCompare,
+    parseInch,
+    resolveAttributeLabel,
+    sizeWithinRange
+} from './engineering/materialCascade';
+import { getComponentBadgeStyle } from './engineering/BomSection';
 import { SearchSelect, PcmSelect } from './SearchSelect';
 
+const strcasecmp_clean = (str) => String(str || '').trim().toLowerCase();
+
 export const ENG_SUB_TABS = [
-    { id: 'project_list', label: 'List Project' },
+    { id: 'project_list', label: 'Project List' },
     { id: 'isometric', label: 'Isometric Drawing' },
     { id: 'welding_map', label: 'Welding Map' },
     { id: 'line_service', label: 'Line Service' },
-    { id: 'boq', label: 'Bill of Quantity' },
-    { id: 'bom', label: 'Bill of Material' },
-    { id: 'material_standard', label: 'Material Standart' },
-    { id: 'pipe_schedule', label: 'Master Diameter & Ketebalan' },
+    { id: 'boq', label: 'Bill of Quantities' },
+    { id: 'bom', label: 'Bill of Materials' },
+    { id: 'material_standard', label: 'Material Standard' },
+    { id: 'pipe_schedule', label: 'Master Diameter & Thickness' },
     { id: 'document_control', label: 'Document Control' },
 ];
 
@@ -222,65 +233,101 @@ export function EngineeringTab({
     }, []);
 
     // Quick fit-up spec states for adding/editing drawing
+    const [quickCompType, setQuickCompType] = useState('Pipe');
     const [quickMatSpec, setQuickMatSpec] = useState('');
     const [quickNps, setQuickNps] = useState('');
     const [quickSchedule, setQuickSchedule] = useState('');
 
-    const npsOptions = useMemo(() => {
-        const set = new Set();
-        pipeStandards.forEach(p => { if (p.nps) set.add(p.nps.trim()); });
-        return Array.from(set).sort((a, b) => {
-            const parseVal = (v) => {
-                const clean = String(v).replace(/"/g, '').trim();
-                if (clean.includes('/')) {
-                    const parts = clean.split(' ');
-                    if (parts.length === 2) {
-                        const [w, f] = parts;
-                        const [num, den] = f.split('/');
-                        return parseFloat(w) + (parseFloat(num) / parseFloat(den));
-                    }
-                    const [num, den] = clean.split('/');
-                    return parseFloat(num) / parseFloat(den);
-                }
-                return parseFloat(clean) || 0;
-            };
-            return parseVal(a) - parseVal(b);
-        });
-    }, [pipeStandards]);
+    const materialIndex = useMemo(() => buildMaterialIndex(materialStandards), [materialStandards]);
 
-    const npsSelectOptions = useMemo(() => {
-        return npsOptions.map(nps => ({ value: nps, label: nps, hint: 'NPS' }));
-    }, [npsOptions]);
+    const attributeLabels = useMemo(() => buildAttributeLabels(systemParameters), [systemParameters]);
 
-    const materialSpecOptions = useMemo(() => {
-        const seen = new Map();
-        materialStandards.forEach((std) => {
-            const spec = std.specification || std.code || '';
-            if (!spec || seen.has(spec)) return;
-            // Tampilkan Spesifikasi Material (ASTM) murni sebagai label & value
-            seen.set(spec, { value: spec, label: spec });
-        });
-        return Array.from(seen.values()).sort((a, b) =>
-            String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: 'base' })
-        );
+    // Opsi Jenis Komponen murni dari Master Material
+    const componentTypeOptions = useMemo(() => {
+        const types = Array.from(new Set(materialStandards.map((std) => std.category).filter(Boolean)));
+        return types.sort(naturalCompare).map((cat) => ({ value: cat, label: cat }));
     }, [materialStandards]);
 
-    const availableSchedulesFor = (npsVal) => {
-        if (!npsVal) {
+    // Opsi Spesifikasi Material difilter berdasarkan Jenis Komponen yang dipilih
+    const materialSpecOptions = useMemo(() => {
+        const filtered = materialStandards.filter((std) =>
+            !quickCompType || strcasecmp_clean(std.category) === strcasecmp_clean(quickCompType)
+        );
+        const seen = new Map();
+        filtered.forEach((std) => {
+            const spec = std.specification || std.code || '';
+            if (!spec || seen.has(spec)) return;
+            const hint = [std.material_group, std.size_range ? `Size ${std.size_range}` : '']
+                .filter(Boolean)
+                .join(' · ');
+            seen.set(spec, { value: spec, label: spec, hint });
+        });
+        return Array.from(seen.values()).sort((a, b) => naturalCompare(a.label, b.label));
+    }, [materialStandards, quickCompType]);
+
+    // Opsi Size NPS difilter berdasarkan Jenis Komponen & Spec yang dipilih
+    const npsSelectOptions = useMemo(() => {
+        const matchingStandards = materialStandards.filter((std) => {
+            const matchCat = !quickCompType || strcasecmp_clean(std.category) === strcasecmp_clean(quickCompType);
+            const matchSpec = !quickMatSpec || std.specification === quickMatSpec || std.code === quickMatSpec;
+            return matchCat && matchSpec;
+        });
+
+        const indexPool = buildMaterialIndex(matchingStandards.length ? matchingStandards : materialStandards);
+
+        const seenNps = new Map();
+        (pipeStandards || []).forEach((row) => {
+            if (!row.nps || seenNps.has(row.nps)) return;
+            const inch = parseInch(row.nps);
+            if (!indexPool.some((r) => sizeWithinRange(inch, r))) return;
+            const hint = [row.dn, row.outer_diameter_mm ? `OD ${row.outer_diameter_mm}mm` : '']
+                .filter(Boolean)
+                .join(' · ');
+            seenNps.set(row.nps, { value: row.nps, label: row.nps, hint });
+        });
+
+        return Array.from(seenNps.values()).sort((a, b) => (
+            (parseInch(a.value) - parseInch(b.value)) || naturalCompare(a.value, b.value)
+        ));
+    }, [materialStandards, pipeStandards, quickCompType, quickMatSpec]);
+
+    // Opsi Schedule difilter berdasarkan Size & Spec yang dipilih
+    const availableSchedulesFor = useCallback((npsVal, compType, specVal) => {
+        if (!npsVal && !compType && !specVal) {
             const set = new Set();
-            pipeStandards.forEach(p => { if (p.schedule) set.add(p.schedule.trim()); });
-            return Array.from(set);
+            pipeStandards.forEach((p) => { if (p.schedule) set.add(p.schedule.trim()); });
+            return Array.from(set).map((v) => ({ value: v, label: v }));
         }
-        const filtered = pipeStandards.filter(p => (p.nps || '').trim() === npsVal.trim());
-        const set = new Set();
-        filtered.forEach(p => { if (p.schedule) set.add(p.schedule.trim()); });
-        return Array.from(set);
-    };
+
+        const matchingStandards = materialStandards.filter((std) => {
+            const matchCat = !compType || strcasecmp_clean(std.category) === strcasecmp_clean(compType);
+            const matchSpec = !specVal || std.specification === specVal || std.code === specVal;
+            return matchCat && matchSpec;
+        });
+
+        const schedulesFromStd = new Set();
+        matchingStandards.forEach((std) => {
+            if (std.schedule) {
+                std.schedule.split('/').forEach((s) => {
+                    const clean = s.trim();
+                    if (clean && clean !== 'N/A') schedulesFromStd.add(clean);
+                });
+            }
+        });
+
+        const filteredPipes = pipeStandards.filter((p) => (p.nps || '').trim() === (npsVal || '').trim());
+        const schedulesFromPipe = new Set();
+        filteredPipes.forEach((p) => { if (p.schedule) schedulesFromPipe.add(p.schedule.trim()); });
+
+        const combined = Array.from(new Set([...schedulesFromStd, ...schedulesFromPipe])).filter(Boolean);
+        return combined.sort(naturalCompare).map((s) => ({ value: s, label: s }));
+    }, [materialStandards, pipeStandards]);
 
     const handleAddQuickSpec = () => {
         if (!quickNps && !quickMatSpec) return;
         const currentSpecs = Array.isArray(drawingForm.fitup_specs) ? [...drawingForm.fitup_specs] : [];
         currentSpecs.push({
+            component_type: quickCompType || 'Pipe',
             size: quickNps || '',
             schedule: quickSchedule || '',
             material_spec: quickMatSpec || ''
@@ -289,6 +336,7 @@ export function EngineeringTab({
         setQuickMatSpec('');
         setQuickNps('');
         setQuickSchedule('');
+        setQuickCompType('Pipe');
     };
 
     const handleRemoveQuickSpec = (index) => {
@@ -300,6 +348,7 @@ export function EngineeringTab({
     // Filter dan pencarian
     const [searchFolder, setSearchFolder] = useState('');
     const [clientFilter, setClientFilter] = useState('ALL');
+    const [projectListPage, setProjectListPage] = useState(1);
     const [searchDrawing, setSearchDrawing] = useState('');
 
     // Modal Drawing
@@ -309,7 +358,7 @@ export function EngineeringTab({
     // Modal Fit-Up Specs Terpisah (setelah drawing dibuat)
     const [fitupModalDrawing, setFitupModalDrawing] = useState(null);
     const [fitupList, setFitupList] = useState([]);
-    const [fitupForm, setFitupForm] = useState({ size: '', schedule: '', material_spec: '' });
+    const [fitupForm, setFitupForm] = useState({ component_type: 'Pipe', size: '', schedule: '', material_spec: '' });
     const [fitupSaving, setFitupSaving] = useState(false);
     const [fitupError, setFitupError] = useState('');
 
@@ -347,7 +396,7 @@ export function EngineeringTab({
             try { specs = JSON.parse(drawing.fitup_specs); } catch (e) { specs = []; }
         }
         setFitupList(specs);
-        setFitupForm({ size: '', schedule: '', material_spec: '' });
+        setFitupForm({ component_type: 'Pipe', size: '', schedule: '', material_spec: '' });
         setFitupError('');
     };
 
@@ -358,8 +407,8 @@ export function EngineeringTab({
             return;
         }
         setFitupError('');
-        setFitupList([...fitupList, { ...fitupForm }]);
-        setFitupForm({ size: '', schedule: '', material_spec: '' });
+        setFitupList([...fitupList, { ...fitupForm, component_type: fitupForm.component_type || 'Pipe' }]);
+        setFitupForm({ component_type: 'Pipe', size: '', schedule: '', material_spec: '' });
     };
 
     const handleRemoveFitupRow = (index) => {
@@ -379,7 +428,7 @@ export function EngineeringTab({
             setFitupModalDrawing(null);
             if (onReload) await onReload();
         } catch (err) {
-            setFitupError(err.message || 'Gagal menyimpan Fit-Up Specs.');
+            setFitupError(err.message || 'Failed to save Fit-Up Specs.');
         } finally {
             setFitupSaving(false);
         }
@@ -427,8 +476,8 @@ export function EngineeringTab({
         if (selectedProjectId === 'unassigned') {
             return {
                 id: 'unassigned',
-                name: 'Drawing Tanpa Folder / Umum',
-                client: 'Umum (Belum Diplot)',
+                name: 'Unassigned Drawings / General',
+                client: 'General (Unassigned)',
                 job_no: 'N/A',
                 drawings_count: unassignedDrawings.length,
                 total_dia_inch: unassignedDrawings.reduce((sum, d) => sum + (parseFloat(d.total_dia_inch) || 0), 0),
@@ -448,6 +497,36 @@ export function EngineeringTab({
             || (f.job_no || '').toLowerCase().includes(q);
         return matchClient && matchSearch;
     }), [folderList, clientFilter, searchFolder]);
+
+    const projectListPageSize = 10;
+    const projectListRows = useMemo(() => {
+        const rows = filteredFolders.map((folder) => ({
+            ...folder,
+            _isUnassigned: false
+        }));
+        if (unassignedDrawings.length > 0) {
+            const q = searchFolder.trim().toLowerCase();
+            if (!q || 'unassigned drawings'.includes(q) || 'general'.includes(q)) {
+                rows.push({
+                    id: 'unassigned',
+                    job_no: 'UNASSIGNED',
+                    name: 'Unassigned Drawings',
+                    client: 'General (Unassigned)',
+                    drawings_count: unassignedDrawings.length,
+                    total_joints: unassignedDrawings.reduce((sum, d) => sum + (parseInt(d.total_joints, 10) || 0), 0),
+                    _isUnassigned: true
+                });
+            }
+        }
+        return rows;
+    }, [filteredFolders, unassignedDrawings, searchFolder]);
+
+    const totalProjectPages = Math.max(1, Math.ceil(projectListRows.length / projectListPageSize));
+    const safeProjectPage = Math.min(projectListPage, totalProjectPages);
+    const paginatedProjectRows = useMemo(() => {
+        const start = (safeProjectPage - 1) * projectListPageSize;
+        return projectListRows.slice(start, start + projectListPageSize);
+    }, [projectListRows, safeProjectPage]);
 
     const activeFolderDrawings = useMemo(() => {
         const list = !selectedProjectId
@@ -552,9 +631,9 @@ export function EngineeringTab({
         setShowDrawingModal(true);
     };
 
-    // Hapus drawing
+    // Delete drawing
     const handleDeleteDrawing = async (drawingId) => {
-        if (!(await confirmDelete('Yakin ingin menghapus drawing ini?'))) return;
+        if (!(await confirmDelete('Are you sure you want to delete this drawing?'))) return;
         try {
             await api.del(`/drawings/${drawingId}`);
             if (selectedDrawing && selectedDrawing.id === drawingId) {
@@ -562,16 +641,16 @@ export function EngineeringTab({
             }
             if (onReload) await onReload();
         } catch (err) {
-            alert(err.message || 'Gagal menghapus drawing');
+            alert(err.message || 'Failed to delete drawing');
         }
     };
 
-    // Handler: simpan atau perbarui drawing
+    // Handler: save or update drawing
     const handleSaveDrawing = async (event) => {
         event.preventDefault();
         setDrawingError('');
         if (!targetProjectId) {
-            setDrawingError('Silakan pilih Folder Proyek Client terlebih dahulu.');
+            setDrawingError('Please select a Client Project Folder first.');
             return;
         }
         setDrawingLoading(true);
@@ -678,9 +757,10 @@ export function EngineeringTab({
             setEditingDrawing(null);
             setDrawingFile(null);
             setDrawingForm(emptyDrawingForm());
+            if (onToast) onToast(editingDrawing ? 'Drawing successfully updated.' : 'New drawing successfully added.');
             if (onReload) onReload();
         } catch (err) {
-            setDrawingError(err.message || 'Gagal menyimpan isometrik drawing');
+            setDrawingError(err.message || 'Failed to save isometric drawing');
         } finally {
             setDrawingLoading(false);
         }
@@ -695,18 +775,18 @@ export function EngineeringTab({
 
             {error && (
                 <div className="alert alert-danger py-2 mb-4" role="alert">
-                    <strong className="fw-bold">Gagal memuat data.</strong> {error}
+                    <strong className="fw-bold">Failed to load data.</strong> {error}
                 </div>
             )}
 
             {/* ============================================================
-                MODUL 0: List Project (Direktori Folder Proyek Persegi 4)
+                MODUL 0: Project List (Table / List View)
                 ============================================================ */}
             {activeEngTab === 'project_list' && (
                 <div>
                     <div className="mb-4">
                         <h2 className="h3 fw-bolder text-dark mb-0" style={{ letterSpacing: '-0.02em' }}>
-                            Direktori List Project
+                            Project List
                         </h2>
                     </div>
 
@@ -714,39 +794,39 @@ export function EngineeringTab({
                     <div className="row g-3 mb-4">
                         <div className="col-6 col-lg-3">
                             <div className="pcm-tile">
-                                <span className="pcm-tile__label">Folder Proyek</span>
+                                <span className="pcm-tile__label">Total Projects</span>
                                 <strong className="pcm-tile__value">
                                     {folderList.length}
-                                    <span className="pcm-tile__unit">folder</span>
+                                    <span className="pcm-tile__unit">projects</span>
                                 </strong>
                             </div>
                         </div>
                         <div className="col-6 col-lg-3">
                             <div className="pcm-tile">
-                                <span className="pcm-tile__label">Client Aktif</span>
+                                <span className="pcm-tile__label">Active Clients</span>
                                 <strong className="pcm-tile__value">
                                     {clientOptions.length}
-                                    <span className="pcm-tile__unit">perusahaan</span>
+                                    <span className="pcm-tile__unit">clients</span>
                                 </strong>
                             </div>
                         </div>
                         <div className="col-6 col-lg-3">
                             <div className="pcm-tile">
-                                <span className="pcm-tile__label">Total Drawing</span>
+                                <span className="pcm-tile__label">Total Drawings</span>
                                 <strong className="pcm-tile__value pcm-tile__value--primary">
                                     {drawings.length}
-                                    <span className="pcm-tile__unit">drawing</span>
+                                    <span className="pcm-tile__unit">drawings</span>
                                 </strong>
                             </div>
                         </div>
                         <div className="col-6 col-lg-3">
                             <div className="pcm-tile">
-                                <span className="pcm-tile__label">Belum Diplot</span>
+                                <span className="pcm-tile__label">Unassigned</span>
                                 <strong
                                     className={`pcm-tile__value${unassignedDrawings.length > 0 ? ' pcm-tile__value--warning' : ''}`}
                                 >
                                     {unassignedDrawings.length}
-                                    <span className="pcm-tile__unit">berkas</span>
+                                    <span className="pcm-tile__unit">files</span>
                                 </strong>
                             </div>
                         </div>
@@ -759,10 +839,13 @@ export function EngineeringTab({
                             <input
                                 type="text"
                                 className="form-control form-control-sm pcm-filter-input w-100"
-                                placeholder="Cari nama folder proyek, client, job no..."
-                                aria-label="Cari folder proyek"
+                                placeholder="Search project name, client, job no..."
+                                aria-label="Search project list"
                                 value={searchFolder}
-                                onChange={(e) => setSearchFolder(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchFolder(e.target.value);
+                                    setProjectListPage(1);
+                                }}
                             />
                         </div>
                     </div>
@@ -770,108 +853,187 @@ export function EngineeringTab({
                     {loading && folderList.length === 0 && (
                         <div className="pcm-state" role="status" aria-live="polite">
                             <span className="spinner-border spinner-border-sm text-primary mb-2" aria-hidden="true" />
-                            <p className="pcm-state__title">Memuat data folder proyek</p>
-                            <p className="pcm-state__text">Mengambil daftar folder proyek dan register drawing dari server.</p>
+                            <p className="pcm-state__title">Loading project list</p>
+                            <p className="pcm-state__text">Fetching projects and drawing registers from server.</p>
                         </div>
                     )}
 
                     {showDirectoryEmpty && (
                         <div className="pcm-state">
-                            <span className="pcm-state__icon"><IconFolder size="lg" /></span>
-                            <h2 className="pcm-state__title">Belum ada folder proyek client</h2>
+                            <span className="pcm-state__icon"><IconFile size="lg" /></span>
+                            <h2 className="pcm-state__title">No projects registered yet</h2>
                             <p className="pcm-state__text">
-                                Belum ada folder proyek yang terdaftar. Folder proyek dibuat dan dikelola melalui modul Project Manager atau Admin.
+                                Projects are created and managed via Project Manager or Admin modules.
                             </p>
                         </div>
                     )}
 
-                    {(filteredFolders.length > 0 || unassignedDrawings.length > 0) && (
-                        <div className="row g-3">
-                            {filteredFolders.map((folder) => (
-                                <div className="col-12 col-sm-6 col-lg-4 col-xl-3 d-flex" key={folder.id}>
-                                    <button
-                                        type="button"
-                                        className="pcm-folder-square-card h-100 w-100"
-                                        onClick={() => {
-                                            setSelectedProjectId(folder.id);
-                                            if (onSelectTab) onSelectTab('engineering');
-                                        }}
-                                    >
-                                        <div className="d-flex align-items-center justify-content-between mb-3 w-100">
-                                            <span className="pcm-folder-square-card__icon">
-                                                <IconFolder size="sm" />
-                                            </span>
-                                            <span className="pcm-folder-square-card__arrow text-muted">
-                                                <IconChevronRight size="sm" />
-                                            </span>
-                                        </div>
+                    {!showDirectoryEmpty && (!loading || folderList.length > 0) && (
+                        <div className="pcm-card">
+                            <div className="table-responsive">
+                                <table className="table table-hover align-middle pcm-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" className="text-center" style={{ width: '140px' }}>
+                                                <span className="pcm-th-title">Job No</span>
+                                            </th>
+                                            <th scope="col" className="text-start ps-3" style={{ minWidth: '260px' }}>
+                                                <span className="pcm-th-title">Project Name</span>
+                                            </th>
+                                            <th scope="col" className="text-start ps-3" style={{ minWidth: '200px' }}>
+                                                <span className="pcm-th-title">Client</span>
+                                            </th>
+                                            <th scope="col" className="text-center" style={{ width: '115px' }}>
+                                                <span className="pcm-th-title">Drawings</span>
+                                            </th>
+                                            <th scope="col" className="text-center" style={{ width: '105px' }}>
+                                                <span className="pcm-th-title">Joints</span>
+                                            </th>
+                                            <th scope="col" className="text-center" style={{ width: '125px' }}>
+                                                <span className="pcm-th-title">Action</span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedProjectRows.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="py-5 text-center">
+                                                    <div className="pcm-state border-0 bg-transparent py-3">
+                                                        <p className="pcm-state__title">No projects match your filter</p>
+                                                        <p className="pcm-state__text mb-3">
+                                                            Try adjusting or clearing your search query.
+                                                        </p>
+                                                        {searchFolder && (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-secondary"
+                                                                onClick={() => {
+                                                                    setSearchFolder('');
+                                                                    setProjectListPage(1);
+                                                                }}
+                                                            >
+                                                                Clear Search
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            paginatedProjectRows.map((row) => (
+                                                <tr
+                                                    key={row.id}
+                                                    onClick={() => {
+                                                        setSelectedProjectId(row.id);
+                                                        if (onSelectTab) onSelectTab('engineering');
+                                                    }}
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        backgroundColor: row._isUnassigned ? '#fffdfa' : undefined
+                                                    }}
+                                                >
+                                                    <td className="text-center">
+                                                        <span
+                                                            className={`pcm-chip ${row._isUnassigned ? 'pcm-chip--warning' : 'pcm-chip--neutral'} pcm-code`}
+                                                            style={{ fontSize: '0.75rem', padding: '0.18rem 0.55rem' }}
+                                                        >
+                                                            {row.job_no || 'NO JOB'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-start ps-3">
+                                                        <div
+                                                            className="fw-bold"
+                                                            style={{ fontSize: '0.9rem', color: '#0f172a' }}
+                                                        >
+                                                            {row.name}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-start ps-3">
+                                                        <span className="fw-semibold" style={{ fontSize: '0.84rem', color: '#334155' }}>
+                                                            {row.client || 'General Client'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <span className="fw-bold pcm-code" style={{ color: '#0f172a' }}>
+                                                            {row.drawings_count || 0}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <span className="fw-bold pcm-code" style={{ color: '#0f172a' }}>
+                                                            {row.total_joints || 0}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm fw-bold px-3 py-1 d-inline-flex align-items-center gap-1"
+                                                            style={{
+                                                                backgroundColor: '#1e40af',
+                                                                borderColor: '#1d4ed8',
+                                                                color: '#ffffff',
+                                                                fontSize: '0.78rem'
+                                                            }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedProjectId(row.id);
+                                                                if (onSelectTab) onSelectTab('engineering');
+                                                            }}
+                                                        >
+                                                            <span>Open</span>
+                                                            <IconChevronRight size="sm" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
 
-                                        <div className="flex-grow-1 d-flex flex-column justify-content-center min-w-0 w-100 my-1">
-                                            <h3 className="pcm-folder-square-card__name text-truncate mb-2" title={folder.name}>
-                                                {folder.name}
-                                            </h3>
-                                            <div className="d-flex align-items-center gap-1.5 text-truncate">
-                                                <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem' }}>
-                                                    {folder.job_no || 'NO JOB'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="pcm-folder-square-card__footer mt-3 pt-2 w-100 border-top">
-                                            <span className="fw-bold small text-truncate d-block" style={{ color: '#0f172a' }} title={folder.client || 'General Client'}>
-                                                {folder.client || 'General Client'}
-                                            </span>
-                                        </div>
-                                    </button>
-                                </div>
-                            ))}
-
-                            {unassignedDrawings.length > 0 && (
-                                <div className="col-12 col-sm-6 col-lg-4 col-xl-3 d-flex">
-                                    <button
-                                        type="button"
-                                        className="pcm-folder-square-card pcm-folder-square-card--warning h-100 w-100"
-                                        onClick={() => {
-                                            setSelectedProjectId('unassigned');
-                                            if (onSelectTab) onSelectTab('engineering');
-                                        }}
-                                    >
-                                        <div className="d-flex align-items-center justify-content-between mb-3 w-100">
-                                            <span className="pcm-folder-square-card__icon">
-                                                <IconFolder size="sm" />
-                                            </span>
-                                            <span className="pcm-folder-square-card__arrow text-muted">
-                                                <IconChevronRight size="sm" />
-                                            </span>
-                                        </div>
-
-                                        <div className="flex-grow-1 d-flex flex-column justify-content-center min-w-0 w-100 my-1">
-                                            <h3 className="pcm-folder-square-card__name text-truncate mb-2">
-                                                Drawing Tanpa Folder
-                                            </h3>
-                                            <div>
-                                                <span className="pcm-chip pcm-chip--warning" style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem' }}>
-                                                    BELUM DIPLOT
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="pcm-folder-square-card__footer mt-3 pt-2 w-100 border-top">
-                                            <span className="text-muted small">
-                                                {unassignedDrawings.length} berkas drawing
-                                            </span>
-                                        </div>
-                                    </button>
+                            {projectListRows.length > projectListPageSize && (
+                                <div
+                                    className="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-top bg-white"
+                                    style={{
+                                        borderBottomLeftRadius: 'var(--pcm-radius-card)',
+                                        borderBottomRightRadius: 'var(--pcm-radius-card)'
+                                    }}
+                                >
+                                    <div className="pcm-cell-sub" style={{ fontSize: '0.8125rem', color: '#1e293b' }}>
+                                        Showing <strong>{(safeProjectPage - 1) * projectListPageSize + 1}</strong> &ndash;{' '}
+                                        <strong>{Math.min(safeProjectPage * projectListPageSize, projectListRows.length)}</strong> of{' '}
+                                        <strong>{projectListRows.length}</strong> projects
+                                        <span className="ms-2 text-muted fw-normal">
+                                            (Page <strong>{safeProjectPage}</strong> of <strong>{totalProjectPages}</strong>)
+                                        </span>
+                                    </div>
+                                    <div className="d-flex align-items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            className="pcm-page-nav-btn d-inline-flex align-items-center justify-content-center"
+                                            disabled={safeProjectPage <= 1}
+                                            onClick={() => setProjectListPage(Math.max(1, safeProjectPage - 1))}
+                                            title="Previous page"
+                                            aria-label="Previous page"
+                                        >
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#000000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                <polyline points="15 18 9 12 15 6" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="pcm-page-nav-btn d-inline-flex align-items-center justify-content-center"
+                                            disabled={safeProjectPage >= totalProjectPages}
+                                            onClick={() => setProjectListPage(Math.min(totalProjectPages, safeProjectPage + 1))}
+                                            title="Next page"
+                                            aria-label="Next page"
+                                        >
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#000000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                <polyline points="9 18 15 12 9 6" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
-                    )}
-
-                    {!loading && filteredFolders.length === 0 && unassignedDrawings.length > 0 && (
-                        <p className="pcm-count mt-3 mb-0">
-                            Tidak ada folder proyek yang cocok dengan filter. Drawing tanpa folder tetap
-                            ditampilkan di atas.
-                        </p>
                     )}
                 </div>
             )}
@@ -893,8 +1055,8 @@ export function EngineeringTab({
                                             setSelectedProjectId(null);
                                             if (onSelectTab) onSelectTab('project_list');
                                         }}
-                                        title="Kembali ke Direktori List Project"
-                                        aria-label="Kembali ke Direktori List Project"
+                                        title="Back to Project List Directory"
+                                        aria-label="Back to Project List Directory"
                                     >
                                         <svg
                                             viewBox="0 0 24 24"
@@ -950,7 +1112,7 @@ export function EngineeringTab({
                                         Isometric Drawing Register
                                     </h1>
                                     <p className="text-muted small mb-0">
-                                        Menampilkan seluruh gambar isometrik. Pilih proyek di menu <strong>List Project</strong> atau dropdown untuk mengunci ke mode kerja ketat (*strict mode*).
+                                        Displaying all isometric drawings. Select a project in <strong>Project List</strong> or dropdown to lock into strict project mode.
                                     </p>
                                 </div>
                                 <div className="d-flex align-items-center gap-2">
@@ -960,14 +1122,14 @@ export function EngineeringTab({
                                         style={{ borderRadius: '6px' }}
                                         onClick={() => { if (onSelectTab) onSelectTab('project_list'); }}
                                     >
-                                        Buka List Project
+                                        Open Project List
                                     </button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Toolbar: Search, Kunci Proyek (jika belum strict), dan Tambah Drawing */}
+                    {/* Toolbar: Search, Lock Project (if not strict), and Add Drawing */}
                     <div className="d-flex flex-wrap align-items-center gap-3 mb-4">
                         <div className="flex-grow-1 min-w-0" style={{ minWidth: '220px' }}>
                             <div className="pcm-search w-100" style={{ maxWidth: '100%' }}>
@@ -975,8 +1137,8 @@ export function EngineeringTab({
                                 <input
                                     type="text"
                                     className="form-control form-control-sm pcm-filter-input w-100"
-                                    placeholder="Cari nomor drawing, line no, area, judul..."
-                                    aria-label="Cari drawing"
+                                    placeholder="Search drawing number, line no, area, title..."
+                                    aria-label="Search drawing"
                                     value={searchDrawing}
                                     onChange={(e) => setSearchDrawing(e.target.value)}
                                 />
@@ -993,9 +1155,9 @@ export function EngineeringTab({
                                     }
                                 }}
                                 style={{ width: 'auto', minWidth: '220px' }}
-                                aria-label="Kunci Proyek"
+                                aria-label="Lock to Project"
                             >
-                                <option value="">-- Kunci ke Proyek Tertentu --</option>
+                                <option value="">-- Lock to Specific Project --</option>
                                 {projects.map((p) => (
                                     <option key={p.id} value={p.id}>
                                         {p.client ? `[${p.client}] ` : ''}{p.name} ({p.job_no || 'NO JOB'})
@@ -1012,7 +1174,7 @@ export function EngineeringTab({
                                 onClick={() => handleOpenCreateDrawing(selectedProjectId)}
                             >
                                 <IconPlus size="sm" />
-                                <span>+ Tambah Drawing</span>
+                                <span>+ Add Drawing</span>
                             </button>
                         )}
                     </div>
@@ -1115,7 +1277,7 @@ export function EngineeringTab({
                                                             className="btn btn-outline-secondary btn-sm px-2.5 py-1"
                                                             style={{ fontSize: '0.75rem', borderRadius: '4px' }}
                                                             onClick={() => handleOpenFitupModal(d)}
-                                                            title="Kelola Fit-Up Specifications untuk drawing ini"
+                                                            title="Manage Fit-Up Specifications for this drawing"
                                                         >
                                                             {specCount > 0 ? `${specCount} Specs` : '+ Input Fit-Up'}
                                                         </button>
@@ -1250,13 +1412,13 @@ export function EngineeringTab({
                             <div className="modal-header py-3 px-4">
                                 <div>
                                     <h2 className="h4 fw-bold text-dark mb-0" id="pcm-drawing-modal-title">
-                                        {editingDrawing ? 'Edit Isometric Drawing' : 'Tambah Isometric Drawing Baru'}
+                                        {editingDrawing ? 'Edit Isometric Drawing' : 'Add New Isometric Drawing'}
                                     </h2>
                                 </div>
                                 <button
                                     type="button"
                                     className="btn-close"
-                                    aria-label="Tutup"
+                                    aria-label="Close"
                                     onClick={() => setShowDrawingModal(false)}
                                 />
                             </div>
@@ -1293,9 +1455,9 @@ export function EngineeringTab({
                                                     });
                                                 }}
                                                 options={lineServiceOptions}
-                                                placeholder="Cari & pilih Line Service..."
+                                                placeholder="Search & select Line Service..."
                                                 allowCustom={false}
-                                                ariaLabel="Line Service Master Acuan"
+                                                ariaLabel="Line Service Master Reference"
                                             />
                                         </div>
 
@@ -1308,7 +1470,7 @@ export function EngineeringTab({
                                                 type="text"
                                                 required
                                                 className="form-control form-control-sm pcm-code"
-                                                placeholder="Pilih dari Master Line Service di atas atau ketik manual"
+                                                placeholder="Select from Master Line Service above or enter manually"
                                                 value={drawingForm.line_no}
                                                 onChange={(e) => setDrawingForm({ ...drawingForm, line_no: e.target.value })}
                                             />
@@ -1318,7 +1480,7 @@ export function EngineeringTab({
 
                                 {/* Bagian 2: Identitas Gambar & Distribusi (3 Kolom x 2 Baris) */}
                                 <div className="pcm-form-section mb-4">
-                                    <div className="pcm-form-section__title mb-2">2. Identitas Drawing &amp; Area</div>
+                                    <div className="pcm-form-section__title mb-2">2. Drawing Identity &amp; Area</div>
                                     <div className="row g-3">
                                         <div className="col-12 col-md-4">
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-no">
@@ -1329,7 +1491,7 @@ export function EngineeringTab({
                                                 type="text"
                                                 required
                                                 className="form-control form-control-sm pcm-code"
-                                                placeholder="Contoh: 2428-M-15-MPP-AB-SHT1"
+                                                placeholder="e.g. 2428-M-15-MPP-AB-SHT1"
                                                 value={drawingForm.drawing_no}
                                                 onChange={(e) => setDrawingForm({ ...drawingForm, drawing_no: e.target.value })}
                                             />
@@ -1383,7 +1545,7 @@ export function EngineeringTab({
                                                         onChange={(e) => setAutoGenerateRemainingSheets(e.target.checked)}
                                                     />
                                                     <label className="form-check-label small fw-bold text-dark cursor-pointer text-nowrap" htmlFor="pcm-auto-gen-sheets">
-                                                        Terbitkan otomatis Sheet 2 s/d {drawingForm.sheet_total} (Draft)
+                                                        Auto-generate Sheet 2 through {drawingForm.sheet_total} (Draft)
                                                     </label>
                                                 </div>
                                             )}
@@ -1395,7 +1557,6 @@ export function EngineeringTab({
                                             </label>
                                             <PcmSelect
                                                 id="pcm-dwg-rev"
-                                                
                                                 value={drawingForm.rev}
                                                 onChange={(e) => setDrawingForm({ ...drawingForm, rev: e.target.value })}
                                             >
@@ -1409,14 +1570,14 @@ export function EngineeringTab({
 
                                         <div className="col-12 col-md-4">
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-title">
-                                                Judul / Title <span className="text-danger">*</span>
+                                                Drawing Title <span className="text-danger">*</span>
                                             </label>
                                             <input
                                                 id="pcm-dwg-title"
                                                 type="text"
                                                 required
                                                 className="form-control form-control-sm"
-                                                placeholder="Contoh: Process Piping Main Header"
+                                                placeholder="e.g. Process Piping Main Header"
                                                 value={drawingForm.title}
                                                 onChange={(e) => setDrawingForm({ ...drawingForm, title: e.target.value })}
                                             />
@@ -1430,7 +1591,7 @@ export function EngineeringTab({
                                                 value={drawingForm.area || ''}
                                                 onChange={(val) => setDrawingForm({ ...drawingForm, area: val })}
                                                 options={plantAreaOptions}
-                                                placeholder="Pilih Plant Area..."
+                                                placeholder="Select Plant Area..."
                                                 allowCustom
                                                 ariaLabel="Plant Area"
                                             />
@@ -1438,15 +1599,15 @@ export function EngineeringTab({
 
                                         <div className="col-12 col-md-4">
                                             <label className="form-label pcm-form-label" htmlFor="pcm-dwg-dist">
-                                                Target Distribusi
+                                                Distribution Target
                                             </label>
                                             <SearchSelect
                                                 value={drawingForm.distributed_to || ''}
                                                 onChange={(val) => setDrawingForm({ ...drawingForm, distributed_to: val })}
                                                 options={distributionTargetOptions}
-                                                placeholder="Pilih Target Distribusi..."
+                                                placeholder="Select Distribution Target..."
                                                 allowCustom
-                                                ariaLabel="Target Distribusi"
+                                                ariaLabel="Distribution Target"
                                             />
                                         </div>
                                     </div>
@@ -1455,7 +1616,7 @@ export function EngineeringTab({
                                 {/* Bagian 3: Estimasi Spool, Joint & Berkas CAD/PDF */}
                                 <div className="pcm-form-section mb-4">
                                     <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                                        <div className="pcm-form-section__title mb-0">3. Estimasi Spool, Joint &amp; Berkas CAD/PDF</div>
+                                        <div className="pcm-form-section__title mb-0">3. Estimated Spools, Joints &amp; CAD/PDF File</div>
                                         <div className="d-flex align-items-center gap-2">
                                             <span className="badge bg-light text-dark border pcm-code" style={{ fontSize: '0.75rem' }}>
                                                 Total: {drawingForm.spool_data?.length || 1} Spool &bull; {drawingForm.total_joints || 0} Joint
@@ -1477,7 +1638,7 @@ export function EngineeringTab({
                                                     });
                                                 }}
                                             >
-                                                + Tambah Spool
+                                                + Add Spool
                                             </button>
                                         </div>
                                     </div>
@@ -1507,15 +1668,15 @@ export function EngineeringTab({
                                                                             total_joints: sumJoints
                                                                         });
                                                                     }}
-                                                                    title="Hapus Spool Ini"
+                                                                    title="Delete this spool"
                                                                 >
-                                                                    Hapus
+                                                                    Delete
                                                                 </button>
                                                             )}
                                                         </div>
                                                         <div className="row g-1.5">
                                                             <div className="col-6">
-                                                                <label className="form-label small text-muted mb-0" style={{ fontSize: '0.6875rem' }}>No Spool</label>
+                                                                <label className="form-label small text-muted mb-0" style={{ fontSize: '0.6875rem' }}>Spool No</label>
                                                                 <input
                                                                     type="text"
                                                                     className="form-control form-control-sm pcm-code fw-bold text-dark"
@@ -1530,7 +1691,7 @@ export function EngineeringTab({
                                                                 />
                                                             </div>
                                                             <div className="col-6">
-                                                                <label className="form-label small text-muted mb-0" style={{ fontSize: '0.6875rem' }}>Estimasi Joint</label>
+                                                                <label className="form-label small text-muted mb-0" style={{ fontSize: '0.6875rem' }}>Estimated Joints</label>
                                                                 <input
                                                                     type="number"
                                                                     min="1"
@@ -1570,7 +1731,7 @@ export function EngineeringTab({
                                         />
                                         {editingDrawing && editingDrawing.scan_path && (
                                             <small className="text-muted d-block mt-1 text-truncate">
-                                                File aktif: <strong>{editingDrawing.scan_path.split('/').pop()}</strong>
+                                                Active file: <strong>{editingDrawing.scan_path.split('/').pop()}</strong>
                                             </small>
                                         )}
                                     </div>
@@ -1579,28 +1740,48 @@ export function EngineeringTab({
                                 {/* Bagian 4: Spesifikasi Pipa & Fit-Up Specs (Terhubung Langsung ke Master Material & Master Diameter) */}
                                 <div className="pcm-form-section">
                                     <div className="d-flex align-items-center justify-content-between mb-2">
-                                        <div className="pcm-form-section__title mb-0">4. Spesifikasi Material &amp; Diameter Pipa</div>
+                                        <div className="pcm-form-section__title mb-0">4. Material Specification &amp; Pipe Diameter</div>
                                         <span className="badge" style={{ backgroundColor: '#1e40af', color: '#ffffff' }}>
-                                            {(drawingForm.fitup_specs || []).length} Spec Terpilih
+                                            {(drawingForm.fitup_specs || []).length} Specs Selected
                                         </span>
                                     </div>
 
                                     {/* Picker Master Data */}
                                     <div className="p-3 border rounded bg-light mb-3">
-                                        <div className="row g-2 align-items-end">
-                                            <div className="col-12 col-md-5">
-                                                <label className="form-label small fw-bold mb-1">Spesifikasi Material (ASTM)</label>
+                                        <div className="row g-2 align-items-end flex-nowrap" style={{ minWidth: '780px' }}>
+                                            <div style={{ flex: '1 1 24%', minWidth: '170px' }}>
+                                                <label className="form-label small fw-bold mb-1 text-nowrap">Component Type (Master)</label>
                                                 <SearchSelect
-                                                    value={quickMatSpec}
-                                                    onChange={(val) => setQuickMatSpec(val)}
-                                                    options={materialSpecOptions}
-                                                    placeholder="Pilih spesifikasi ASTM..."
-                                                    allowCustom
-                                                    ariaLabel="Spesifikasi Material ASTM"
+                                                    value={quickCompType}
+                                                    onChange={(val) => {
+                                                        setQuickCompType(val || 'Pipe');
+                                                        setQuickMatSpec('');
+                                                        setQuickNps('');
+                                                        setQuickSchedule('');
+                                                    }}
+                                                    options={componentTypeOptions}
+                                                    placeholder="Select type..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Component Type"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-3">
-                                                <label className="form-label small fw-bold mb-1">Nominal Size (NPS)</label>
+                                            <div style={{ flex: '1 1 26%', minWidth: '180px' }}>
+                                                <label className="form-label small fw-bold mb-1 text-nowrap">Material Specification</label>
+                                                <SearchSelect
+                                                    value={quickMatSpec}
+                                                    onChange={(val) => {
+                                                        setQuickMatSpec(val);
+                                                        setQuickNps('');
+                                                        setQuickSchedule('');
+                                                    }}
+                                                    options={materialSpecOptions}
+                                                    placeholder="Select specification..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Material Specification"
+                                                />
+                                            </div>
+                                            <div style={{ flex: '1 1 18%', minWidth: '130px' }}>
+                                                <label className="form-label small fw-bold mb-1 text-nowrap">Size (NPS)</label>
                                                 <SearchSelect
                                                     value={quickNps}
                                                     onChange={(val) => {
@@ -1608,31 +1789,31 @@ export function EngineeringTab({
                                                         setQuickSchedule('');
                                                     }}
                                                     options={npsSelectOptions}
-                                                    placeholder="Cari NPS..."
-                                                    allowCustom
+                                                    placeholder="Select size..."
+                                                    allowCustom={false}
                                                     ariaLabel="Nominal Size NPS"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-2">
-                                                <label className="form-label small fw-bold mb-1">Schedule</label>
+                                            <div style={{ flex: '1 1 20%', minWidth: '140px' }}>
+                                                <label className="form-label small fw-bold mb-1 text-nowrap">Schedule / Rating</label>
                                                 <SearchSelect
                                                     value={quickSchedule}
                                                     onChange={(val) => setQuickSchedule(val)}
-                                                    options={availableSchedulesFor(quickNps)}
-                                                    placeholder="Cari schedule..."
-                                                    allowCustom
-                                                    ariaLabel="Schedule Pipa"
+                                                    options={availableSchedulesFor(quickNps, quickCompType, quickMatSpec)}
+                                                    placeholder="Select schedule..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Pipe Schedule"
                                                 />
                                             </div>
-                                            <div className="col-12 col-md-2">
+                                            <div style={{ flex: '0 0 auto', width: '105px' }}>
                                                 <button
                                                     type="button"
-                                                    className="btn btn-primary btn-sm fw-bold w-100"
+                                                    className="btn btn-primary btn-sm fw-bold w-100 text-nowrap"
                                                     style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                                                     onClick={handleAddQuickSpec}
                                                     disabled={!quickNps && !quickMatSpec}
                                                 >
-                                                    + Tambah
+                                                    + Add
                                                 </button>
                                             </div>
                                         </div>
@@ -1644,16 +1825,25 @@ export function EngineeringTab({
                                             <table className="table table-sm align-middle pcm-table mb-0">
                                                 <thead>
                                                     <tr>
-                                                        <th className="ps-3 text-start">Spesifikasi Material</th>
-                                                        <th className="text-center" style={{ width: '130px' }}>Size (NPS)</th>
-                                                        <th className="text-center" style={{ width: '140px' }}>Schedule</th>
-                                                        <th className="text-center" style={{ width: '80px' }}>Aksi</th>
+                                                        <th className="ps-3 text-start" style={{ width: '140px' }}>Type</th>
+                                                        <th className="text-start">Material Specification</th>
+                                                        <th className="text-center" style={{ width: '110px' }}>Size (NPS)</th>
+                                                        <th className="text-center" style={{ width: '120px' }}>Schedule</th>
+                                                        <th className="text-center" style={{ width: '70px' }}>Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {(drawingForm.fitup_specs || []).map((spec, idx) => (
                                                         <tr key={idx}>
-                                                            <td className="ps-2 fw-semibold pcm-code text-dark">{spec.material_spec || '—'}</td>
+                                                            <td className="ps-3">
+                                                                <span
+                                                                    className="pcm-chip fw-bold border"
+                                                                    style={{ ...getComponentBadgeStyle(spec.component_type || 'Pipe'), fontSize: '0.6875rem', padding: '0.15rem 0.5rem' }}
+                                                                >
+                                                                    {spec.component_type || 'Pipe'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="fw-semibold pcm-code text-dark">{spec.material_spec || '—'}</td>
                                                             <td className="text-center pcm-code fw-bold text-dark">{spec.size || '—'}</td>
                                                             <td className="text-center pcm-code text-dark">{spec.schedule || '—'}</td>
                                                             <td className="text-center">
@@ -1661,7 +1851,7 @@ export function EngineeringTab({
                                                                     type="button"
                                                                     className="btn btn-link text-danger p-0 fw-bold fs-6"
                                                                     onClick={() => handleRemoveQuickSpec(idx)}
-                                                                    title="Hapus spec ini"
+                                                                    title="Delete this spec"
                                                                 >
                                                                     &times;
                                                                 </button>
@@ -1682,7 +1872,7 @@ export function EngineeringTab({
                                     style={{ backgroundColor: '#475569', borderColor: '#334155', color: '#ffffff' }}
                                     onClick={() => setShowDrawingModal(false)}
                                 >
-                                    Batal
+                                    Cancel
                                 </button>
                                 <button
                                     type="submit"
@@ -1690,7 +1880,7 @@ export function EngineeringTab({
                                     style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                                     disabled={drawingLoading}
                                 >
-                                    {drawingLoading ? 'Menyimpan...' : (editingDrawing ? 'Perbarui Drawing' : 'Simpan Drawing')}
+                                    {drawingLoading ? 'Saving...' : (editingDrawing ? 'Update Drawing' : 'Save Drawing')}
                                 </button>
                             </div>
                         </form>
@@ -1716,7 +1906,7 @@ export function EngineeringTab({
                             <div className="modal-header">
                                 <div>
                                     <h4 className="modal-title fw-bold text-dark mb-0">
-                                        Kelola Fit-Up Specs — <span className="pcm-code text-dark">{fitupModalDrawing.drawing_no}</span>
+                                        Manage Fit-Up Specs — <span className="pcm-code text-dark">{fitupModalDrawing.drawing_no}</span>
                                     </h4>
                                     <span className="pcm-modal__sub">
                                         Line No: <strong>{fitupModalDrawing.line_no || '-'}</strong> • Sheet: <strong>{fitupModalDrawing.sheet || 'Sheet 1 of 1'}</strong>
@@ -1725,7 +1915,7 @@ export function EngineeringTab({
                                 <button
                                     type="button"
                                     className="btn-close"
-                                    aria-label="Tutup"
+                                    aria-label="Close"
                                     onClick={() => setFitupModalDrawing(null)}
                                 />
                             </div>
@@ -1739,14 +1929,14 @@ export function EngineeringTab({
                                 <div className="mb-4">
                                     <div className="d-flex align-items-center justify-content-between mb-2">
                                         <span className="fw-bold small text-uppercase" style={{ color: '#0f172a' }}>
-                                            Daftar Spesifikasi Pipa Terdaftar ({fitupList.length})
+                                            Registered Pipe Specifications ({fitupList.length})
                                         </span>
                                     </div>
 
                                     {fitupList.length === 0 ? (
                                         <div className="p-4 text-center border rounded bg-light">
                                             <p className="pcm-cell-sub mb-0">
-                                                Belum ada fit-up spec untuk drawing ini. Silakan input spesifikasi material pipa di formulir bawah ini.
+                                                No fit-up specs for this drawing yet. Please input piping component specifications in the form below.
                                             </p>
                                         </div>
                                     ) : (
@@ -1754,17 +1944,26 @@ export function EngineeringTab({
                                             <table className="table table-sm align-middle pcm-table mb-0">
                                                 <thead>
                                                     <tr>
-                                                        <th className="text-center" style={{ width: '50px' }}>No</th>
-                                                        <th>Spec Material Pipa</th>
-                                                        <th className="text-center" style={{ width: '130px' }}>Size (NPS)</th>
-                                                        <th className="text-center" style={{ width: '150px' }}>Schedule / Rating</th>
-                                                        <th className="text-center" style={{ width: '80px' }}>Hapus</th>
+                                                        <th className="text-center" style={{ width: '45px' }}>No</th>
+                                                        <th style={{ width: '130px' }}>Type</th>
+                                                        <th>Material Spec</th>
+                                                        <th className="text-center" style={{ width: '120px' }}>Size (NPS)</th>
+                                                        <th className="text-center" style={{ width: '130px' }}>Schedule / Rating</th>
+                                                        <th className="text-center" style={{ width: '70px' }}>Delete</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {fitupList.map((sp, idx) => (
                                                         <tr key={idx}>
                                                             <td className="text-center pcm-cell-sub">{idx + 1}</td>
+                                                            <td>
+                                                                <span
+                                                                    className="pcm-chip fw-bold border"
+                                                                    style={{ ...getComponentBadgeStyle(sp.component_type || 'Pipe'), fontSize: '0.6875rem', padding: '0.15rem 0.5rem' }}
+                                                                >
+                                                                    {sp.component_type || 'Pipe'}
+                                                                </span>
+                                                            </td>
                                                             <td className="pcm-cell-strong">{sp.material_spec || '-'}</td>
                                                             <td className="text-center pcm-code fw-bold text-dark">{sp.size}</td>
                                                             <td className="text-center pcm-code">{sp.schedule}</td>
@@ -1773,7 +1972,7 @@ export function EngineeringTab({
                                                                     type="button"
                                                                     className="btn btn-outline-danger btn-sm p-1"
                                                                     onClick={() => handleRemoveFitupRow(idx)}
-                                                                    title="Hapus baris spesifikasi ini"
+                                                                    title="Delete this specification row"
                                                                 >
                                                                     &times;
                                                                 </button>
@@ -1789,50 +1988,79 @@ export function EngineeringTab({
                                 {/* Form Input Tambah Fit-Up Spec Baru */}
                                 <div className="p-3 border rounded bg-light">
                                     <h6 className="fw-bold small text-uppercase mb-2" style={{ color: '#0f172a' }}>
-                                        + Tambah Spesifikasi Pipa Baru (Master Data)
+                                        + Add Component Specification (Master Data)
                                     </h6>
                                     <form onSubmit={handleAddFitupRow}>
-                                        <div className="row g-2 align-items-end">
-                                            <div className="col-12 col-md-5">
-                                                <label className="form-label small fw-bold">Spesifikasi Material (ASTM) *</label>
+                                        <div className="row g-2 align-items-end flex-nowrap" style={{ overflowX: 'auto' }}>
+                                            <div style={{ flex: '1 1 24%', minWidth: '150px' }}>
+                                                <label className="form-label small fw-bold text-nowrap">Component Type *</label>
                                                 <SearchSelect
-                                                    value={fitupForm.material_spec}
-                                                    onChange={(val) => setFitupForm({ ...fitupForm, material_spec: val })}
-                                                    options={materialSpecOptions}
-                                                    placeholder="Pilih spesifikasi ASTM..."
-                                                    allowCustom
-                                                    ariaLabel="Spesifikasi Material ASTM"
+                                                    value={fitupForm.component_type}
+                                                    onChange={(val) => {
+                                                        setFitupForm({
+                                                            ...fitupForm,
+                                                            component_type: val || 'Pipe',
+                                                            material_spec: '',
+                                                            size: '',
+                                                            schedule: ''
+                                                        });
+                                                    }}
+                                                    options={componentTypeOptions}
+                                                    placeholder="Select type..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Component Type"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-3">
-                                                <label className="form-label small fw-bold">Size (NPS) *</label>
+                                            <div style={{ flex: '1 1 28%', minWidth: '170px' }}>
+                                                <label className="form-label small fw-bold text-nowrap">Material Specification *</label>
+                                                <SearchSelect
+                                                    value={fitupForm.material_spec}
+                                                    onChange={(val) => {
+                                                        setFitupForm({
+                                                            ...fitupForm,
+                                                            material_spec: val,
+                                                            size: '',
+                                                            schedule: ''
+                                                        });
+                                                    }}
+                                                    options={materialStandards
+                                                        .filter((std) => !fitupForm.component_type || strcasecmp_clean(std.category) === strcasecmp_clean(fitupForm.component_type))
+                                                        .map((std) => ({ value: std.specification || std.code, label: std.specification || std.code }))
+                                                    }
+                                                    placeholder="Select specification..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Material Specification"
+                                                />
+                                            </div>
+                                            <div style={{ flex: '1 1 16%', minWidth: '115px' }}>
+                                                <label className="form-label small fw-bold text-nowrap">Size (NPS) *</label>
                                                 <SearchSelect
                                                     value={fitupForm.size}
                                                     onChange={(val) => setFitupForm({ ...fitupForm, size: val, schedule: '' })}
                                                     options={npsSelectOptions}
-                                                    placeholder="Cari NPS..."
-                                                    allowCustom
+                                                    placeholder="Select size..."
+                                                    allowCustom={false}
                                                     ariaLabel="Size NPS"
                                                 />
                                             </div>
-                                            <div className="col-6 col-md-2">
-                                                <label className="form-label small fw-bold">Schedule *</label>
+                                            <div style={{ flex: '1 1 20%', minWidth: '135px' }}>
+                                                <label className="form-label small fw-bold text-nowrap">Schedule / Rating *</label>
                                                 <SearchSelect
                                                     value={fitupForm.schedule}
                                                     onChange={(val) => setFitupForm({ ...fitupForm, schedule: val })}
-                                                    options={availableSchedulesFor(fitupForm.size)}
-                                                    placeholder="Cari schedule..."
-                                                    allowCustom
-                                                    ariaLabel="Schedule Pipa"
+                                                    options={availableSchedulesFor(fitupForm.size, fitupForm.component_type, fitupForm.material_spec)}
+                                                    placeholder="Select schedule..."
+                                                    allowCustom={false}
+                                                    ariaLabel="Pipe Schedule"
                                                 />
                                             </div>
-                                            <div className="col-12 col-md-2">
+                                            <div style={{ flex: '0 0 auto', width: '95px' }}>
                                                 <button
                                                     type="submit"
-                                                    className="btn btn-primary btn-sm fw-bold w-100"
+                                                    className="btn btn-primary btn-sm fw-bold w-100 text-nowrap"
                                                     style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                                                 >
-                                                    + Tambah
+                                                    + Add
                                                 </button>
                                             </div>
                                         </div>
@@ -1847,7 +2075,7 @@ export function EngineeringTab({
                                     style={{ backgroundColor: '#475569', borderColor: '#334155', color: '#ffffff' }}
                                     onClick={() => setFitupModalDrawing(null)}
                                 >
-                                    Batal
+                                    Cancel
                                 </button>
                                 <button
                                     type="button"
@@ -1856,7 +2084,7 @@ export function EngineeringTab({
                                     onClick={handleSaveFitupModal}
                                     disabled={fitupSaving}
                                 >
-                                    {fitupSaving ? 'Menyimpan...' : 'Simpan Fit-Up Specs'}
+                                    {fitupSaving ? 'Saving...' : 'Save Fit-Up Specs'}
                                 </button>
                             </div>
                         </div>
@@ -1982,7 +2210,7 @@ export function EngineeringTab({
                                                             handleOpenFitupModal(d);
                                                         }}
                                                     >
-                                                        + Kelola Fit-Up Specs
+                                                        + Manage Fit-Up Specs
                                                     </button>
                                                 )}
                                             </div>

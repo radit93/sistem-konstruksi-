@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\DocumentControl;
 use App\Models\Drawing;
 use App\Models\EngineeringBoq;
+use App\Models\FittingCatalog;
 use App\Models\FittingStandard;
 use App\Models\HseLog;
 use App\Models\Inspection;
@@ -112,6 +113,11 @@ class CrudController extends Controller
             'delete' => 'drawing.write',
         ]],
         'material-standards' => [MaterialStandard::class, [
+            'create' => 'drawing.write',
+            'update' => 'drawing.write',
+            'delete' => 'drawing.write',
+        ]],
+        'fitting-catalogs' => [FittingCatalog::class, [
             'create' => 'drawing.write',
             'update' => 'drawing.write',
             'delete' => 'drawing.write',
@@ -419,6 +425,14 @@ class CrudController extends Controller
                         ->orWhereHas('materialStandard', fn ($standard) => $standard->where('code', 'like', "%{$s}%"));
                 });
             }
+        } elseif ($res === 'engineering-boqs') {
+            $q->with('drawing');
+            if ($request->filled('project_id')) {
+                $q->where('project_id', $request->project_id);
+            }
+            if ($request->filled('drawing_id')) {
+                $q->where('drawing_id', $request->drawing_id);
+            }
         } elseif ($res === 'material-receivings') {
             $q->with(['storing', 'inspections', 'materialStandard', 'documents']);
             if ($request->filled('search')) {
@@ -611,6 +625,35 @@ class CrudController extends Controller
             $data['project_id'] = $data['project_id'] ?? $receiving->project_id;
         }
 
+        // QA-QC: Auto-update joint status when inspection passes or fails
+        if ($res === 'inspections') {
+            $inspection = DB::transaction(function () use ($model, $data) {
+                $inspection = $model::create($data);
+                $jointId = $inspection->joint_id;
+
+                $inspections = Inspection::where('joint_id', $jointId)->get();
+                $newStatus = null;
+                if ($inspection->result === 'FAIL') {
+                    $newStatus = 'REPAIR';
+                } elseif ($inspection->result === 'PASS' && $inspection->kind === 'VISUAL') {
+                    $newStatus = 'VISUAL_OK';
+                } elseif ($inspection->result === 'PASS' && in_array($inspection->kind, ['RT', 'PT', 'UT'], true)) {
+                    $hasVisualPass = $inspections->contains(fn ($item) => $item->kind === 'VISUAL' && $item->result === 'PASS');
+                    if ($hasVisualPass) {
+                        $newStatus = 'NDT_OK';
+                    }
+                }
+
+                if ($newStatus !== null) {
+                    Joint::whereKey($jointId)->update(['status' => $newStatus]);
+                }
+
+                return $inspection->fresh();
+            });
+
+            return response()->json($inspection, 201);
+        }
+
         if ($res === 'material-issuings') {
             $obj = $this->materialFlow->createIssuing($data, $request->user());
 
@@ -626,6 +669,15 @@ class CrudController extends Controller
             });
 
             return response()->json($obj, 201);
+        }
+
+        if ($res === 'drawings') {
+            if (isset($data['fitup_specs']) && is_string($data['fitup_specs'])) {
+                $data['fitup_specs'] = json_decode($data['fitup_specs'], true);
+            }
+            if (isset($data['spool_data']) && is_string($data['spool_data'])) {
+                $data['spool_data'] = json_decode($data['spool_data'], true);
+            }
         }
 
         if ($res === 'material-inspections') {
@@ -650,6 +702,8 @@ class CrudController extends Controller
             $obj->load('inspections');
         } elseif ($res === 'welding-maps') {
             $this->syncWeldingMapToJoint($obj);
+        } elseif ($res === 'drawings') {
+            $this->syncFitupSpecsToBom($obj);
         }
 
         return response()->json($obj, 201);
@@ -663,6 +717,9 @@ class CrudController extends Controller
         $obj = $this->scope($request, $model::query(), $res)->findOrFail($id);
 
         $data = $request->all();
+        if ($res === 'joints' && array_key_exists('status', $data)) {
+            $this->validateJointStatusTransition($obj, (string) $data['status'], $request->user());
+        }
         if ($res === 'drawings' && $request->hasFile('file')) {
             $path = $request->file('file')->store('drawings', 'public');
             $data['scan_path'] = '/storage/'.$path;
@@ -788,9 +845,111 @@ class CrudController extends Controller
         $obj->update($data);
         if ($res === 'welding-maps') {
             $this->syncWeldingMapToJoint($obj->fresh());
+        } elseif ($res === 'drawings' && isset($data['fitup_specs'])) {
+            $this->syncFitupSpecsToBom($obj->fresh());
         }
 
         return response()->json($obj);
+    }
+
+    private function syncFitupSpecsToBom(Drawing $drawing): void
+    {
+        $specs = $drawing->fitup_specs;
+        if (is_string($specs)) {
+            $specs = json_decode($specs, true);
+        }
+        if (! is_array($specs) || empty($specs)) {
+            return;
+        }
+
+        $standards = MaterialStandard::all();
+        $pipeStandards = PipeStandard::all();
+        $itemNo = (int) BillOfMaterial::where('drawing_id', $drawing->id)->count();
+
+        foreach ($specs as $index => $spec) {
+            $size = trim((string) ($spec['size'] ?? ''));
+            $schedule = trim((string) ($spec['schedule'] ?? ''));
+            $materialSpec = trim((string) ($spec['material_spec'] ?? ''));
+            $compType = ! empty($spec['component_type']) ? trim((string) $spec['component_type']) : 'Pipe';
+
+            if ($size === '' && $schedule === '') {
+                continue;
+            }
+
+            // Normalisasi pencocokan: format size seperti 4" atau 4
+            $normSize = rtrim($size, '"');
+
+            // Cek apakah item serupa sudah ada di BOM drawing ini (berdasarkan tipe, size, dan schedule)
+            $existing = BillOfMaterial::where('drawing_id', $drawing->id)
+                ->where('component_type', $compType)
+                ->where(function ($q) use ($size, $normSize) {
+                    $q->where('size', $size)
+                      ->orWhere('size', $normSize)
+                      ->orWhere('size', $normSize.'"');
+                })
+                ->where('rating_sch', $schedule)
+                ->first();
+
+            if ($existing) {
+                // Perbarui jika ada perubahan spesifikasi material
+                if ($materialSpec && empty($existing->material_spec)) {
+                    $existing->update(['material_spec' => $materialSpec]);
+                }
+                continue;
+            }
+
+            $itemNo++;
+            $qty = ! empty($spec['qty']) ? (float) $spec['qty'] : (stripos($compType, 'pipe') !== false ? 6.0 : 1.0);
+            $unit = ! empty($spec['unit']) ? $spec['unit'] : (stripos($compType, 'pipe') !== false ? 'meter' : 'buah');
+
+            // Cari estimasi harga satuan
+            $unitPrice = match (true) {
+                stripos($compType, 'pipe') !== false => 320000,
+                stripos($compType, 'elbow') !== false => 185000,
+                stripos($compType, 'flange') !== false => 295000,
+                stripos($compType, 'valve') !== false => 1850000,
+                stripos($compType, 'gasket') !== false => 75000,
+                stripos($compType, 'bolt') !== false => 45000,
+                default => 150000,
+            };
+
+            // Cocokkan ke MaterialStandard
+            $matchedStd = $standards->first(function (MaterialStandard $std) use ($materialSpec, $compType) {
+                if ($materialSpec && stripos($std->specification, $materialSpec) !== false) {
+                    return true;
+                }
+                return strcasecmp($std->category, $compType) === 0;
+            });
+
+            $desc = ! empty($spec['description'])
+                ? $spec['description']
+                : "{$compType} {$size} {$schedule} {$materialSpec}";
+
+            $bomData = [
+                'project_id' => $drawing->project_id,
+                'drawing_id' => $drawing->id,
+                'material_standard_id' => $matchedStd?->id,
+                'spool_no' => $spec['spool_no'] ?? 'SP-01',
+                'item_no' => (string) $itemNo,
+                'component_type' => $compType,
+                'description' => trim($desc),
+                'size' => $size,
+                'rating_sch' => $schedule,
+                'material_spec' => $materialSpec ?: ($matchedStd?->specification ?? 'ASTM A106 Gr. B'),
+                'qty' => $qty,
+                'unit' => $unit,
+                'unit_price' => $unitPrice,
+                'total_price' => round($qty * $unitPrice, 2),
+                'tag_number' => $spec['tag_number'] ?? null,
+                'department_id' => $drawing->department_id,
+                'source' => 'FITUP_AUTO',
+            ];
+
+            $bomData = PipeSchedule::enrichBom($bomData);
+            $bomData = FittingStandard::enrichBom($bomData);
+
+            BillOfMaterial::create($bomData);
+        }
     }
 
     public function destroy(Request $request, string $res, int $id)
@@ -854,6 +1013,49 @@ class CrudController extends Controller
         $obj->delete();
 
         return response()->json(['message' => 'OK']);
+    }
+
+    private function validateJointStatusTransition(Joint $joint, string $nextStatus, $user): void
+    {
+        $current = strtoupper((string) ($joint->status ?: 'PLANNED'));
+        $next = strtoupper($nextStatus);
+        if ($current === $next) {
+            return;
+        }
+
+        $constructionStatuses = ['PLANNED', 'RECEIVED', 'ISSUED', 'FITUP_OK', 'WELDED', 'TESTED'];
+        $qaqcStatuses = ['VISUAL_OK', 'NDT_OK', 'REPAIR'];
+        $allStatuses = array_merge($constructionStatuses, $qaqcStatuses);
+        if (! in_array($next, $allStatuses, true)) {
+            throw ValidationException::withMessages(['status' => 'Status joint tidak dikenal.']);
+        }
+
+        if (in_array($next, ['VISUAL_OK', 'NDT_OK'], true) && ! $user->hasPermission('inspection.write')) {
+            throw ValidationException::withMessages(['status' => 'Status Visual/NDT hanya boleh diubah lewat Inspection.']);
+        }
+        if ($next === 'REPAIR' && ! $user->hasPermission('joint.write')) {
+            throw ValidationException::withMessages(['status' => 'Status REPAIR hanya boleh diubah oleh Construction.']);
+        }
+        if ($next === 'TESTED' && ! $user->hasPermission('testpackage.write')) {
+            throw ValidationException::withMessages(['status' => 'Status TESTED hanya boleh diubah oleh Test Package.']);
+        }
+
+        $allowed = [
+            'PLANNED' => ['RECEIVED'],
+            'RECEIVED' => ['ISSUED'],
+            'ISSUED' => ['FITUP_OK'],
+            'FITUP_OK' => ['WELDED'],
+            'WELDED' => ['TESTED'],
+            'VISUAL_OK' => ['NDT_OK', 'REPAIR'],
+            'NDT_OK' => ['TESTED', 'REPAIR'],
+            'REPAIR' => ['WELDED', 'VISUAL_OK', 'NDT_OK'],
+            'TESTED' => [],
+        ];
+        if (! in_array($next, $allowed[$current] ?? [], true)) {
+            throw ValidationException::withMessages([
+                'status' => "Transisi status {$current} ke {$next} tidak valid.",
+            ]);
+        }
     }
 
     private function syncWeldingMapToJoint(WeldingMap $map): void

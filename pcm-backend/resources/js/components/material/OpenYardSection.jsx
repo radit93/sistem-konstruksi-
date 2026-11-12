@@ -2,8 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { can } from '../../auth';
 import { MaterialReportModal } from './MaterialReportModal';
+import { scopeRows } from '../engineering/projectScope';
 
-export function OpenYardSection({ user, onToast }) {
+export function OpenYardSection({
+    user,
+    onToast,
+    activeProjectId = '',
+    filterProject = 'ALL',
+}) {
     const [storings, setStorings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -31,24 +37,29 @@ export function OpenYardSection({ user, onToast }) {
         loadData();
     }, [loadData]);
 
+    const scoped = useMemo(
+        () => scopeRows(storings, activeProjectId, filterProject),
+        [storings, activeProjectId, filterProject]
+    );
+
     const stats = useMemo(() => {
-        const total = storings.length;
-        const totalMeterIn = storings.reduce((acc, s) => acc + (parseFloat(s.stock_in) || 0), 0);
-        const totalMeterOut = storings.reduce((acc, s) => acc + (parseFloat(s.stock_out) || 0), 0);
-        const totalMeterBalance = storings.reduce((acc, s) => acc + (parseFloat(s.balance) || 0), 0);
+        const total = scoped.length;
+        const totalMeterIn = scoped.reduce((acc, s) => acc + (parseFloat(s.stock_in) || 0), 0);
+        const totalMeterOut = scoped.reduce((acc, s) => acc + (parseFloat(s.stock_out) || 0), 0);
+        const totalMeterBalance = scoped.reduce((acc, s) => acc + (parseFloat(s.balance) || 0), 0);
         return { total, totalMeterIn, totalMeterOut, totalMeterBalance };
-    }, [storings]);
+    }, [scoped]);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return storings.filter(item => {
+        return scoped.filter(item => {
             return !q ||
                 (item.item_code || '').toLowerCase().includes(q) ||
                 (item.item_name || '').toLowerCase().includes(q) ||
                 (item.specification || '').toLowerCase().includes(q) ||
                 (item.location_detail || '').toLowerCase().includes(q);
         });
-    }, [storings, search]);
+    }, [scoped, search]);
 
     return (
         <div className="section-openyard">
@@ -175,7 +186,7 @@ export function OpenYardSection({ user, onToast }) {
                             />
                         </div>
                         <div className="col-12 col-md-4 text-md-end text-muted small">
-                            {filtered.length} dari {storings.length} jenis pipa outdoor
+                            {filtered.length} dari {scoped.length} jenis pipa outdoor
                         </div>
                     </div>
                 </div>

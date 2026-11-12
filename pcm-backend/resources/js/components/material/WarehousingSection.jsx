@@ -3,8 +3,14 @@ import { api } from '../../api';
 import { can } from '../../auth';
 import { MaterialReportModal } from './MaterialReportModal';
 import { PcmSelect } from '../SearchSelect';
+import { scopeRows } from '../engineering/projectScope';
 
-export function WarehousingSection({ user, onToast }) {
+export function WarehousingSection({
+    user,
+    onToast,
+    activeProjectId = '',
+    filterProject = 'ALL',
+}) {
     const [storings, setStorings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -33,17 +39,22 @@ export function WarehousingSection({ user, onToast }) {
         loadData();
     }, [loadData]);
 
+    const scoped = useMemo(
+        () => scopeRows(storings, activeProjectId, filterProject),
+        [storings, activeProjectId, filterProject]
+    );
+
     const stats = useMemo(() => {
-        const total = storings.length;
-        const valves = storings.filter(s => s.category === 'VALVE').length;
-        const fittingsFlanges = storings.filter(s => s.category === 'FITTING' || s.category === 'FLANGE').length;
-        const fastenersGaskets = storings.filter(s => s.category === 'FASTENER' || s.category === 'GASKET').length;
+        const total = scoped.length;
+        const valves = scoped.filter(s => s.category === 'VALVE').length;
+        const fittingsFlanges = scoped.filter(s => s.category === 'FITTING' || s.category === 'FLANGE').length;
+        const fastenersGaskets = scoped.filter(s => s.category === 'FASTENER' || s.category === 'GASKET').length;
         return { total, valves, fittingsFlanges, fastenersGaskets };
-    }, [storings]);
+    }, [scoped]);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return storings.filter(item => {
+        return scoped.filter(item => {
             const matchSearch = !q ||
                 (item.item_code || '').toLowerCase().includes(q) ||
                 (item.item_name || '').toLowerCase().includes(q) ||
@@ -53,7 +64,7 @@ export function WarehousingSection({ user, onToast }) {
             const matchCat = filterCategory === 'ALL' || item.category === filterCategory;
             return matchSearch && matchCat;
         });
-    }, [storings, search, filterCategory]);
+    }, [scoped, search, filterCategory]);
 
     return (
         <div className="section-warehousing">
@@ -198,7 +209,7 @@ export function WarehousingSection({ user, onToast }) {
                             </PcmSelect>
                         </div>
                         <div className="col-6 col-md-2 text-md-end text-muted small">
-                            {filtered.length} dari {storings.length} item
+                            {filtered.length} dari {scoped.length} item
                         </div>
                     </div>
                 </div>

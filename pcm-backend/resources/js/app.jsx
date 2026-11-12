@@ -15,6 +15,7 @@ import { EngineeringTab } from './components/EngineeringTab';
 import { MaterialTab } from './components/MaterialTab';
 import { FabricationTab } from './components/FabricationTab';
 import { FieldErectionTab } from './components/FieldErectionTab';
+import { ConstructionLayout } from './components/ConstructionLayout';
 import { QaqcTab } from './components/QaqcTab';
 import { TestPackageTab } from './components/TestPackageTab';
 import { HseTab } from './components/HseTab';
@@ -27,7 +28,7 @@ const ROLE_DEFAULT_TABS = {
     project_manager: 'overview',
     engineer: 'engineering',
     material: 'material',
-    construction: 'fabrication',
+    construction: 'construction',
     qaqc: 'qaqc',
     testpackage: 'testpackage',
     hse: 'hse'
@@ -117,26 +118,21 @@ function App() {
         if (!api.getToken()) return;
         setDataLoading(true);
         try {
-            const [
-                ovRes,
-                dwRes,
-                jtRes,
-                smRes,
-                inRes,
-                tpRes,
-                hsRes,
-                scRes,
-                pjRes
-            ] = await Promise.all([
+            // Hindari lonjakan 9 request paralel serentak yang memicu ERR_CONNECTION_CLOSED
+            const [ovRes, dwRes, jtRes] = await Promise.all([
                 api.get('/overview'),
                 api.get('/drawings'),
                 api.get('/joints'),
+            ]);
+            const [smRes, inRes, tpRes] = await Promise.all([
                 api.get('/stock'),
                 api.get('/inspections'),
                 api.get('/test-packages'),
+            ]);
+            const [hsRes, scRes, pjRes] = await Promise.all([
                 api.get('/hse'),
                 api.get('/scopes'),
-                api.get('/projects')
+                api.get('/projects'),
             ]);
 
             setOverview(ovRes);
@@ -411,6 +407,10 @@ function App() {
                         <MaterialTab
                             currentSection={activeTab}
                             stockMoves={stockMoves}
+                            projects={projects}
+                            activeProject={activeProject}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
                             user={user}
                             onReload={() => {
                                 loadData();
@@ -430,11 +430,23 @@ function App() {
                     )}
                     {activeTab === 'erection' && (
                         <FieldErectionTab
+                            projects={projects}
                             joints={joints}
                             user={user}
                             onReload={() => {
                                 loadData();
                                 showToast('Status Field Erection diperbarui');
+                            }}
+                        />
+                    )}
+                    {activeTab === 'construction' && (
+                        <ConstructionLayout
+                            projects={projects}
+                            joints={joints}
+                            user={user}
+                            onReload={() => {
+                                loadData();
+                                showToast('Status Konstruksi diperbarui');
                             }}
                         />
                     )}
@@ -514,7 +526,7 @@ function App() {
                             <div className="col-sm-6 d-none d-sm-block text-end">
                                 <ul className="breadcrumb pt-0 pe-0 mb-0 float-end">
                                     <li className="breadcrumb-item mb-0 text-medium">
-                                        <span className="badge bg-outline-primary me-2">MariaDB 3307</span>
+                                        <span className="badge bg-outline-primary me-2">MySQL 3306</span>
                                     </li>
                                     <li className="breadcrumb-item mb-0 text-medium">
                                         <span className="badge bg-outline-success">Sanctum Token</span>

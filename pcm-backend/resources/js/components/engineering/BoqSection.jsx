@@ -40,14 +40,19 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.get('/engineering-boqs');
+            const params = new URLSearchParams();
+            if (activeProjectId && activeProjectId !== 'ALL') {
+                params.append('project_id', activeProjectId);
+            }
+            const url = params.toString() ? `/engineering-boqs?${params.toString()}` : '/engineering-boqs';
+            const data = await api.get(url);
             setBoqList(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to load engineering BOQ:', err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeProjectId]);
 
     useEffect(() => {
         loadData();
@@ -76,7 +81,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
     const handleSyncFromWeldingMap = async () => {
         const targetProjId = defaultProjectId(activeProjectId, filterProject, projects);
         if (!targetProjId) {
-            alert('Pilih proyek terlebih dahulu untuk melakukan sinkronisasi BOQ.');
+            alert('Please select a project first to synchronize BOQ.');
             return;
         }
 
@@ -85,10 +90,10 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
             const res = await api.post('/engineering-boqs/sync-from-welding-map', {
                 project_id: targetProjId,
             });
-            if (onToast) onToast(res.message || 'BOQ berhasil disinkronkan dari Welding Map.');
+            if (onToast) onToast(res.message || 'BOQ successfully synchronized from Welding Map.');
             loadData();
         } catch (err) {
-            alert(err.message || 'Gagal menyinkronkan BOQ dari data pengelasan.');
+            alert(err.message || 'Failed to synchronize BOQ from welding data.');
         } finally {
             setSyncing(false);
         }
@@ -152,7 +157,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
         e.preventDefault();
         setFormError('');
         if (!form.item_code.trim() || !form.work_scope.trim()) {
-            setFormError('Item Code dan Work Scope wajib diisi.');
+            setFormError('Item Code and Work Scope are required.');
             return;
         }
 
@@ -160,29 +165,29 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
         try {
             if (editingItem) {
                 await api.put(`/engineering-boqs/${editingItem.id}`, form);
-                if (onToast) onToast('Item BOQ Engineering berhasil diperbarui.');
+                if (onToast) onToast('Engineering BOQ item successfully updated.');
             } else {
                 await api.post('/engineering-boqs', form);
-                if (onToast) onToast('Item BOQ Engineering baru berhasil ditambahkan.');
+                if (onToast) onToast('New Engineering BOQ item successfully added.');
             }
             setShowModal(false);
             loadData();
         } catch (err) {
-            setFormError(err.message || 'Gagal menyimpan data BOQ.');
+            setFormError(err.message || 'Failed to save BOQ data.');
         } finally {
             setFormLoading(false);
         }
     };
 
     const handleDelete = async (id) => {
-        if (!(await confirmDelete('Yakin ingin menghapus item BOQ ini?'))) return;
+        if (!(await confirmDelete('Are you sure you want to delete this BOQ item?'))) return;
         setDeleteError('');
         try {
             await api.delete(`/engineering-boqs/${id}`);
-            if (onToast) onToast('Item BOQ berhasil dihapus.');
+            if (onToast) onToast('BOQ item successfully deleted.');
             loadData();
         } catch (err) {
-            setDeleteError(err.message || 'Gagal menghapus data.');
+            setDeleteError(err.message || 'Failed to delete data.');
         }
     };
 
@@ -191,9 +196,9 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
             {/* Header & Action Toolbar */}
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                 <div>
-                    <h2 className="h4 fw-bold text-dark mb-1">Bill of Quantity (BOQ) Engineering</h2>
+                    <h2 className="h4 fw-bold text-dark mb-1">Bill of Quantities (BOQ) Engineering</h2>
                     <p className="pcm-cell-sub mb-0">
-                        Perhitungan kuantitas teknis per lingkup pekerjaan: volume diameter-inch (DI), bobot tonase, serta estimasi biaya konstruksi &amp; elektroda las.
+                        Technical quantities calculation per work scope: Diameter-Inch (DI) volume, tonnage weight, and estimated construction &amp; electrode welding costs.
                     </p>
                 </div>
                 {canEdit && (
@@ -205,19 +210,19 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                             disabled={syncing}
                             title="Hitung ulang otomatis volume DI, joint, bobot, dan biaya las dari titik pengelasan ISO aktif"
                         >
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={syncing ? 'pcm-spin' : ''}>
                                 <polyline points="23 4 23 10 17 10" />
                                 <polyline points="1 20 1 14 7 14" />
                                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                             </svg>
-                            {syncing ? 'Menyinkronkan...' : 'Sinkronkan dari Welding Map'}
+                            {syncing ? 'Syncing...' : 'Sync from Welding Map'}
                         </button>
                         <button
                             type="button"
                             className="btn btn-primary btn-sm fw-bold px-3 py-2"
                             onClick={() => handleOpenModal()}
                         >
-                            + Tambah Item BOQ
+                            + Add BOQ Item
                         </button>
                     </div>
                 )}
@@ -238,37 +243,37 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                 </div>
                 <div className="col-6 col-md-2">
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Sambungan</span>
+                        <span className="pcm-tile__label">Total Joints</span>
                         <strong className="pcm-tile__value text-success">{stats.totalJoints}</strong>
                         <span className="pcm-tile__unit">joints</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-2">
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Spool</span>
+                        <span className="pcm-tile__label">Total Spools</span>
                         <strong className="pcm-tile__value">{stats.totalSpools}</strong>
                         <span className="pcm-tile__unit">spools</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-2">
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Bobot</span>
+                        <span className="pcm-tile__label">Total Weight</span>
                         <strong className="pcm-tile__value text-dark">{stats.totalWeight.toFixed(0)}</strong>
                         <span className="pcm-tile__unit">kg</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-2">
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Biaya Elektroda</span>
+                        <span className="pcm-tile__label">Electrode Cost</span>
                         <strong className="pcm-tile__value text-success">{formatRupiah(stats.totalWeldingCost)}</strong>
                         <span className="pcm-tile__unit">consumables</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-2">
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Nilai BOQ</span>
+                        <span className="pcm-tile__label">Total BOQ Value</span>
                         <strong className="pcm-tile__value text-primary">{formatRupiah(stats.totalAmount)}</strong>
-                        <span className="pcm-tile__unit">jasa + elektroda</span>
+                        <span className="pcm-tile__unit">labor + electrodes</span>
                     </div>
                 </div>
             </div>
@@ -279,19 +284,18 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                     <input
                         type="text"
                         className="form-control form-control-sm"
-                        placeholder="Cari Item Code, Lingkup Pekerjaan, Material Group..."
+                        placeholder="Search Item Code, Work Scope, Material Group..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
                 {!isProjectLocked(activeProjectId) && (
                     <PcmSelect
-                        
                         value={filterProject}
                         onChange={(e) => setFilterProject(e.target.value)}
                         style={{ width: 'auto' }}
                     >
-                        <option value="ALL">Semua Proyek ({projects.length})</option>
+                        <option value="ALL">All Projects ({projects.length})</option>
                         {projects.map((p) => (
                             <option key={p.id} value={p.id}>
                                 {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
@@ -304,77 +308,103 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
             {/* Table */}
             <div className="pcm-card">
                 <div className="table-responsive">
-                    <table className="table table-hover align-middle pcm-table">
+                    <table className="table table-hover align-middle pcm-table mb-0" style={{ minWidth: '820px' }}>
                         <thead>
                             <tr>
-                                <th className="ps-3">Item Code</th>
-                                <th>Lingkup Pekerjaan</th>
-                                <th>Material Group</th>
-                                <th>Volume (DI)</th>
-                                <th>Tarif / DI</th>
-                                <th>Joints</th>
-                                <th>Spools</th>
-                                <th>Weight (Kg)</th>
-                                <th>Biaya Elektroda</th>
-                                <th>Total Nilai (Rp)</th>
-                                <th>Status</th>
-                                {canEdit && <th className="text-end pe-3">Aksi</th>}
+                                <th className="ps-3 py-3" style={{ width: '22%' }}>Item &amp; Scope</th>
+                                <th className="py-3" style={{ width: '15%' }}>Material &amp; Status</th>
+                                <th className="py-3" style={{ width: '16%' }}>Technical Volume</th>
+                                <th className="py-3" style={{ width: '14%' }}>Material Weight</th>
+                                <th className="py-3" style={{ width: '21%' }}>Contract Value</th>
+                                {canEdit && <th className="text-end pe-3 py-3" style={{ width: '12%' }}>Action</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 pcm-cell-sub">
-                                        Memuat data BOQ Engineering...
+                                    <td colSpan={canEdit ? 6 : 5} className="text-center py-4 pcm-cell-sub">
+                                        Loading Engineering BOQ data...
                                     </td>
                                 </tr>
                             ) : filteredBoq.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 12 : 11} className="text-center py-4 pcm-cell-sub">
-                                        Tidak ada item BOQ yang sesuai. Klik "Sinkronkan dari Welding Map" untuk menghitung otomatis dari titik pengelasan ISO aktif.
+                                    <td colSpan={canEdit ? 6 : 5} className="text-center py-4 pcm-cell-sub">
+                                        No matching BOQ items found. Click "Sync from Welding Map" to auto-calculate from active ISO welding joints.
                                     </td>
                                 </tr>
                             ) : (
                                 filteredBoq.map((b) => (
                                     <tr key={b.id}>
-                                        <td className="ps-3 fw-bold pcm-code text-dark">{b.item_code}</td>
-                                        <td className="pcm-cell-strong">{b.work_scope}</td>
-                                        <td><span className="pcm-chip pcm-chip--neutral">{b.material_group}</span></td>
-                                        <td className="fw-bold pcm-code">{parseFloat(b.dia_inch_total).toFixed(1)} DI</td>
-                                        <td className="pcm-code text-muted">
-                                            {b.rate_per_di ? formatRupiah(b.rate_per_di) : '—'}
-                                        </td>
-                                        <td>{b.joints_count} joints</td>
-                                        <td>{b.spools_count} spools</td>
-                                        <td className="pcm-code">{parseFloat(b.weight_kg).toFixed(1)} kg</td>
-                                        <td className="pcm-code text-success fw-semibold">
-                                            {b.welding_cost_total ? formatRupiah(b.welding_cost_total) : '—'}
-                                        </td>
-                                        <td className="pcm-code text-primary fw-bold" style={{ fontSize: '0.9rem' }}>
-                                            {b.total_amount ? formatRupiah(b.total_amount) : '—'}
+                                        <td className="ps-3">
+                                            <div className="fw-bold pcm-code text-dark" style={{ fontSize: '0.875rem' }}>
+                                                {b.item_code}
+                                            </div>
+                                            <div className="pcm-cell-sub text-truncate" style={{ maxWidth: '240px' }} title={b.work_scope}>
+                                                {b.work_scope}
+                                            </div>
+                                            {b.line_no && (
+                                                <span className="badge bg-light text-muted border font-monospace mt-0.5" style={{ fontSize: '0.6875rem' }}>
+                                                    Line: {b.line_no}
+                                                </span>
+                                            )}
                                         </td>
                                         <td>
-                                            <span className={`pcm-chip ${b.status === 'APPROVED' ? 'pcm-chip--success' : 'pcm-chip--warning'}`}>
-                                                {b.status}
-                                            </span>
+                                            <div>
+                                                <span className="pcm-chip pcm-chip--neutral me-1" style={{ fontSize: '0.75rem' }}>
+                                                    {b.material_group}
+                                                </span>
+                                            </div>
+                                            <div className="mt-1">
+                                                <span className={`pcm-chip ${b.status === 'APPROVED' ? 'pcm-chip--success' : 'pcm-chip--warning'}`} style={{ fontSize: '0.6875rem' }}>
+                                                    {b.status}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="fw-bold pcm-code text-dark" style={{ fontSize: '0.9375rem' }}>
+                                                {parseFloat(b.dia_inch_total).toFixed(1)} DI
+                                            </div>
+                                            <div className="pcm-cell-sub small">
+                                                {b.joints_count} joints · {b.spools_count} spools
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="pcm-code fw-semibold text-dark">
+                                                {parseFloat(b.weight_kg).toFixed(1)} kg
+                                            </div>
+                                            <div className="pcm-cell-sub small">
+                                                {(parseFloat(b.weight_kg) / 1000).toFixed(2)} ton
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="pcm-code fw-bold text-primary" style={{ fontSize: '0.9375rem' }}>
+                                                {b.total_amount ? formatRupiah(b.total_amount) : '—'}
+                                            </div>
+                                            <div className="pcm-cell-sub small">
+                                                Rate: {b.rate_per_di ? formatRupiah(b.rate_per_di) : '—'}/DI
+                                                {b.welding_cost_total > 0 && ` · Las: ${formatRupiah(b.welding_cost_total)}`}
+                                            </div>
                                         </td>
                                         {canEdit && (
                                             <td className="text-end pe-3 text-nowrap">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-primary btn-sm me-1 px-2.5 py-1 fw-bold"
-                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
-                                                    onClick={() => handleOpenModal(b)}
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
-                                                    onClick={() => handleDelete(b.id)}
-                                                >
-                                                    Hapus
-                                                </button>
+                                                <div className="d-inline-flex gap-1 justify-content-end">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary btn-sm px-2.5 py-1 fw-bold"
+                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.75rem' }}
+                                                        onClick={() => handleOpenModal(b)}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
+                                                        style={{ fontSize: '0.75rem' }}
+                                                        onClick={() => handleDelete(b.id)}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         )}
                                     </tr>
@@ -393,7 +423,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                             <form onSubmit={handleSave}>
                                 <div className="modal-header">
                                     <h5 className="modal-title fw-bold">
-                                        {editingItem ? 'Edit Item BOQ Engineering' : 'Tambah Item BOQ Baru'}
+                                        {editingItem ? 'Edit Engineering BOQ Item' : 'Add New BOQ Item'}
                                     </h5>
                                     <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                                 </div>
@@ -413,7 +443,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                             />
                                         </div>
                                         <div className="col-12 col-md-8">
-                                            <label className="form-label small fw-bold">Lingkup Pekerjaan (Work Scope) *</label>
+                                            <label className="form-label small fw-bold">Work Scope *</label>
                                             <input
                                                 type="text"
                                                 className="form-control"
@@ -425,7 +455,6 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Material Group</label>
                                             <PcmSelect
-                                                
                                                 value={form.material_group}
                                                 onChange={(e) => setForm({ ...form, material_group: e.target.value })}
                                             >
@@ -474,7 +503,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Tarif Jasa per DI (Rp)</label>
+                                            <label className="form-label small fw-bold">Rate per DI (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="1000"
@@ -492,7 +521,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Biaya Elektroda (Rp)</label>
+                                            <label className="form-label small fw-bold">Electrode Cost (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="100"
@@ -510,7 +539,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                             />
                                         </div>
                                         <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Total Nilai Pekerjaan (Rp)</label>
+                                            <label className="form-label small fw-bold">Total Work Value (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="100"
@@ -522,7 +551,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                         <div className="col-12">
                                             <div className="p-2.5 rounded d-flex align-items-center justify-content-between" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                                                 <div className="small text-muted">
-                                                    Kalkulasi: <span className="font-monospace fw-semibold">{form.dia_inch_total || 0} DI × {formatRupiah(form.rate_per_di || 0)}</span> + Biaya Elektroda <span className="font-monospace fw-semibold">{formatRupiah(form.welding_cost_total || 0)}</span>
+                                                    Calculation: <span className="font-monospace fw-semibold">{form.dia_inch_total || 0} DI × {formatRupiah(form.rate_per_di || 0)}</span> + Electrode Cost <span className="font-monospace fw-semibold">{formatRupiah(form.welding_cost_total || 0)}</span>
                                                 </div>
                                                 <span className="fw-bolder pcm-code text-primary" style={{ fontSize: '0.95rem' }}>
                                                     = {formatRupiah(form.total_amount || (((form.dia_inch_total || 0) * (form.rate_per_di || 0)) + (form.welding_cost_total || 0)))}
@@ -530,9 +559,8 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                             </div>
                                         </div>
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Status Estimasi</label>
+                                            <label className="form-label small fw-bold">Estimate Status</label>
                                             <PcmSelect
-                                                
                                                 value={form.status}
                                                 onChange={(e) => setForm({ ...form, status: e.target.value })}
                                             >
@@ -542,7 +570,7 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                             </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Line Number Terkait</label>
+                                            <label className="form-label small fw-bold">Related Line Number</label>
                                             <input
                                                 type="text"
                                                 className="form-control"
@@ -554,10 +582,10 @@ export function BoqSection({ user, projects = [], drawings = [], activeProjectId
                                 </div>
                                 <div className="modal-footer">
                                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowModal(false)}>
-                                        Batal
+                                        Cancel
                                     </button>
                                     <button type="submit" className="btn btn-primary btn-sm fw-bold" disabled={formLoading}>
-                                        {formLoading ? 'Menyimpan...' : 'Simpan BOQ'}
+                                        {formLoading ? 'Saving...' : 'Save BOQ'}
                                     </button>
                                 </div>
                             </form>

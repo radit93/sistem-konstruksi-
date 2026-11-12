@@ -12,6 +12,7 @@ class BillOfMaterial extends Model
         'project_id',
         'drawing_id',
         'material_standard_id',
+        'fitting_catalog_id',
         'spool_no',
         'item_no',
         'component_type',
@@ -75,6 +76,11 @@ class BillOfMaterial extends Model
     public function materialStandard(): BelongsTo
     {
         return $this->belongsTo(MaterialStandard::class);
+    }
+
+    public function fittingCatalog(): BelongsTo
+    {
+        return $this->belongsTo(FittingCatalog::class);
     }
 
     public function issuings(): HasMany

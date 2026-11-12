@@ -2,12 +2,20 @@ import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { PcmSelect } from './SearchSelect';
+import {
+    ConstructionChecklistSection,
+    ConstructionKpiCards,
+    downloadConstructionCsv,
+    emptyConstructionFields,
+    formatJointSpec,
+    pickConstructionFields
+} from './ConstructionChecklist';
 
 // Kolom nyata joints: drawing_no, line_no, spool_no, seq, item_a, spec_a, item_b, spec_b,
 // size_in, shop_field ('Shop'/'Field'), joint_type, method, wps, welder, fit_date, weld_date, visual, status.
 const isShop = j => (j.shop_field || '').toLowerCase() === 'shop';
 export const jointLabel = j => j.spool_no || `#${j.seq ?? j.id}`;
-const specLabel = j => [j.spec_a || j.spec_b, j.size_in ? `${j.size_in}"` : ''].filter(Boolean).join(' ');
+const specLabel = formatJointSpec;
 
 export function FabricationTab({ joints, user, onReload }) {
     const [search, setSearch] = useState('');
@@ -22,6 +30,13 @@ export function FabricationTab({ joints, user, onReload }) {
     const [error, setError] = useState('');
 
     const canEdit = can(user, 'joint.write');
+    const canQcEdit = can(user, 'inspection.write');
+    const canTestEdit = can(user, 'testpackage.write');
+    const editableStatus = (status) => {
+        if (['VISUAL_OK', 'NDT_OK'].includes(status)) return canQcEdit;
+        if (status === 'TESTED') return canTestEdit;
+        return canEdit;
+    };
 
     const shopJoints = (joints || []).filter(isShop);
 
@@ -41,6 +56,8 @@ export function FabricationTab({ joints, user, onReload }) {
             welder: j.welder || 'W-005',
             fit_date: j.fit_date || new Date().toISOString().split('T')[0],
             weld_date: j.weld_date || new Date().toISOString().split('T')[0],
+            ...emptyConstructionFields,
+            ...pickConstructionFields(j)
         });
     };
 
@@ -92,43 +109,7 @@ export function FabricationTab({ joints, user, onReload }) {
                 </div>
             </div>
 
-            {/* Metrics */}
-            <div className="row g-3 mb-4">
-                <div className="col-md-3">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">TOTAL SHOP JOINTS</small>
-                        <h3 className="fw-bold text-primary mb-0">{shopJoints.length}</h3>
-                        <small className="text-muted mt-1">Target spool bengkel</small>
-                    </div>
-                </div>
-                <div className="col-md-3">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">FIT-UP VERIFIED</small>
-                        <h3 className="fw-bold text-info mb-0">
-                            {shopJoints.filter(j => ['FITUP_OK', 'WELDED', 'VISUAL_OK', 'NDT_OK'].includes(j.status)).length}
-                        </h3>
-                        <small className="text-muted mt-1">Lolos pengecekan celah & bevel</small>
-                    </div>
-                </div>
-                <div className="col-md-3">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">SELESAI PENGELASAN</small>
-                        <h3 className="fw-bold text-warning mb-0">
-                            {shopJoints.filter(j => ['WELDED', 'VISUAL_OK', 'NDT_OK'].includes(j.status)).length}
-                        </h3>
-                        <small className="text-muted mt-1">Welder W-005</small>
-                    </div>
-                </div>
-                <div className="col-md-3">
-                    <div className="card p-3 shadow-sm border-0 bg-white">
-                        <small className="text-muted fw-bold">LOLOS QC / NDT</small>
-                        <h3 className="fw-bold text-success mb-0">
-                            {shopJoints.filter(j => ['VISUAL_OK', 'NDT_OK'].includes(j.status)).length}
-                        </h3>
-                        <small className="text-muted mt-1">Siap kirim ke field</small>
-                    </div>
-                </div>
-            </div>
+            <ConstructionKpiCards items={shopJoints} readyLabel="Siap kirim ke field" />
 
             {/* Filter Search */}
             <div className="card shadow-sm border-0 mb-4 bg-white p-3">
@@ -145,8 +126,15 @@ export function FabricationTab({ joints, user, onReload }) {
                             />
                         </div>
                     </div>
-                    <div className="col-md-6 text-md-end text-muted small">
-                        Menampilkan <strong>{filtered.length}</strong> shop joints
+                    <div className="col-md-6 text-md-end text-muted small d-flex justify-content-end align-items-center gap-3">
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-success"
+                            onClick={() => downloadConstructionCsv(filtered, 'construction-shop.csv', 'Data Construction Shop')}
+                        >
+                            <i className="cs-document me-1"></i>Export CSV
+                        </button>
+                        <span>Menampilkan <strong>{filtered.length}</strong> shop joints</span>
                     </div>
                 </div>
             </div>
@@ -167,6 +155,7 @@ export function FabricationTab({ joints, user, onReload }) {
                                 <th>Tgl Fit-up</th>
                                 <th>Tgl Weld</th>
                                 <th>Status</th>
+                                <th>Repair</th>
                                 <th className="text-end">Aksi</th>
                             </tr>
                         </thead>
@@ -189,6 +178,7 @@ export function FabricationTab({ joints, user, onReload }) {
                                     <td className="text-muted">{j.fit_date || '-'}</td>
                                     <td className="text-muted">{j.weld_date || '-'}</td>
                                     <td>{statusBadge(j.status)}</td>
+                                    <td>{j.repair_no ? <span className={`badge ${j.repair_status === 'CLOSED' ? 'bg-success' : 'bg-warning text-dark'}`}>{j.repair_no} · {j.repair_status || 'OPEN'}</span> : <span className="text-muted">-</span>}</td>
                                     <td className="text-end">
                                         {canEdit ? (
                                             <button
@@ -214,7 +204,7 @@ export function FabricationTab({ joints, user, onReload }) {
             {/* Modal Update Joint */}
             {selectedJoint && (
                 <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-dialog modal-lg modal-dialog-centered">
                         <div className="modal-content border-0 shadow">
                             <form onSubmit={handleUpdate}>
                                 <div className="modal-header bg-primary text-white">
@@ -226,17 +216,25 @@ export function FabricationTab({ joints, user, onReload }) {
                                     <div className="mb-3">
                                         <label className="form-label small fw-semibold">Status Tahapan Joint</label>
                                         <PcmSelect
-                                            
                                             value={editData.status}
                                             onChange={e => setEditData({ ...editData, status: e.target.value })}
+                                            disabled={!editableStatus(selectedJoint.status)}
                                         >
-                                            <option value="RECEIVED">RECEIVED (Material Diterima)</option>
-                                            <option value="ISSUED">ISSUED (Dikeluarkan ke Fabrikasi)</option>
-                                            <option value="FITUP_OK">FITUP_OK (Fit-up Selesai & Disetujui)</option>
-                                            <option value="WELDED">WELDED (Pengelasan Selesai)</option>
-                                            <option value="VISUAL_OK">VISUAL_OK (Visual QC Lolos)</option>
-                                            <option value="NDT_OK">NDT_OK (Radiography / PT Lolos)</option>
-                                            <option value="TESTED">TESTED (Telah Hydrotest)</option>
+                                            <option value="PLANNED" disabled={selectedJoint.status !== 'PLANNED'}>PLANNED (Terdaftar dari Engineering)</option>
+                                            <option value="RECEIVED" disabled={!canEdit}>RECEIVED (Material Diterima)</option>
+                                            <option value="ISSUED" disabled={!canEdit}>ISSUED (Dikeluarkan ke Fabrikasi)</option>
+                                            <option value="FITUP_OK" disabled={!canEdit}>FITUP_OK (Fit-up Selesai & Disetujui)</option>
+                                            <option value="WELDED" disabled={!canEdit}>WELDED (Pengelasan Selesai)</option>
+                                            <option value="REPAIR" disabled={!canEdit}>REPAIR (Perbaikan Defect)</option>
+                                            {(canQcEdit || editData.status === 'VISUAL_OK') && (
+                                                <option value="VISUAL_OK" disabled={!canQcEdit}>VISUAL_OK (Visual QC Lolos)</option>
+                                            )}
+                                            {(canQcEdit || editData.status === 'NDT_OK') && (
+                                                <option value="NDT_OK" disabled={!canQcEdit}>NDT_OK (Radiography / PT Lolos)</option>
+                                            )}
+                                            {(canTestEdit || editData.status === 'TESTED') && (
+                                                <option value="TESTED" disabled={!canTestEdit}>TESTED (Telah Hydrotest)</option>
+                                            )}
                                         </PcmSelect>
                                     </div>
                                     <div className="mb-3">
@@ -268,6 +266,8 @@ export function FabricationTab({ joints, user, onReload }) {
                                             />
                                         </div>
                                     </div>
+
+                                    <ConstructionChecklistSection editData={editData} setEditData={setEditData} />
                                 </div>
                                 <div className="modal-footer bg-light">
                                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelectedJoint(null)}>Batal</button>

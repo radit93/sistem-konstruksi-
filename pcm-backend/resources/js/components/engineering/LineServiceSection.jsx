@@ -166,7 +166,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
         e.preventDefault();
         setFormError('');
         if (!form.line_no.trim() || !form.service_name.trim()) {
-            setFormError('Nomor Line dan Nama Service wajib diisi.');
+            setFormError('Line Number and Service Name are required.');
             return;
         }
 
@@ -189,28 +189,28 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
         try {
             if (editingItem) {
                 await api.put(`/line-services/${editingItem.id}`, payload);
-                if (onToast) onToast('Line Service berhasil diperbarui.');
+                if (onToast) onToast('Line Service successfully updated.');
             } else {
                 await api.post('/line-services', payload);
-                if (onToast) onToast('Line Service baru berhasil ditambahkan.');
+                if (onToast) onToast('New Line Service successfully added.');
             }
             setShowModal(false);
             loadData();
         } catch (err) {
-            setFormError(err.message || 'Gagal menyimpan Line Service.');
+            setFormError(err.message || 'Failed to save Line Service.');
         } finally {
             setFormLoading(false);
         }
     };
 
     const handleDelete = async (id) => {
-        if (!(await confirmDelete('Yakin ingin menghapus Line Service ini?'))) return;
+        if (!(await confirmDelete('Are you sure you want to delete this Line Service?'))) return;
         try {
             await api.delete(`/line-services/${id}`);
-            if (onToast) onToast('Line Service berhasil dihapus.');
+            if (onToast) onToast('Line Service successfully deleted.');
             loadData();
         } catch (err) {
-            alert(err.message || 'Gagal menghapus Line Service.');
+            alert(err.message || 'Failed to delete Line Service.');
         }
     };
 
@@ -223,7 +223,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                 </h2>
             </div>
 
-            {/* Toolbar Bersih: Search di Kiri & Tambah Line Service di Kanan Sejajar */}
+            {/* Toolbar: Search & Add Line Service */}
             <div className="d-flex align-items-center gap-3 mb-4">
                 <div className="flex-grow-1 min-w-0">
                     <div className="pcm-search w-100" style={{ maxWidth: '100%' }}>
@@ -233,7 +233,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                         <input
                             type="text"
                             className="form-control form-control-sm pcm-filter-input w-100"
-                            placeholder="Cari Line No, Service, Fluid, Piping Class..."
+                            placeholder="Search Line No, Service, Fluid, Piping Class..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -246,7 +246,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                         style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
                         onClick={() => handleOpenModal()}
                     >
-                        <span>+ Tambah Line Service</span>
+                        <span>+ Add Line Service</span>
                     </button>
                 )}
             </div>
@@ -283,7 +283,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                 </th>
                                 {canEdit && (
                                     <th className="text-center" style={{ width: '160px' }}>
-                                        <span className="pcm-th-title">Aksi</span>
+                                        <span className="pcm-th-title">Action</span>
                                     </th>
                                 )}
                             </tr>
@@ -292,13 +292,13 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                             {loading ? (
                                 <tr>
                                     <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
-                                        Memuat data Line Service...
+                                        Loading Line Service data...
                                     </td>
                                 </tr>
                             ) : filteredLines.length === 0 ? (
                                 <tr>
                                     <td colSpan={canEdit ? 9 : 8} className="text-center py-4 pcm-cell-sub">
-                                        Tidak ada data Line Service yang sesuai dengan filter.
+                                        No Line Service data matches the current filter.
                                     </td>
                                 </tr>
                             ) : (
@@ -348,7 +348,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                                             className="btn btn-danger btn-sm px-3 py-1.5 fw-bold"
                                                             onClick={() => handleDelete(l.id)}
                                                         >
-                                                            Hapus
+                                                            Delete
                                                         </button>
                                                     </div>
                                                 </td>
@@ -370,7 +370,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                             <form onSubmit={handleSave}>
                                 <div className="modal-header">
                                     <h5 className="modal-title fw-bold">
-                                        {editingItem ? 'Edit Line Service' : 'Tambah Line Service Baru'}
+                                        {editingItem ? 'Edit Line Service' : 'Add New Line Service'}
                                     </h5>
                                     <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                                 </div>
@@ -379,7 +379,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                         <div className="alert alert-danger py-2 small mb-3">{formError}</div>
                                     )}
                                     <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">Identitas Jalur (Standard Line Service)</span>
+                                        <span className="pcm-form-section__title">Line Identification (Standard Line Service)</span>
                                         <div className="row g-3">
                                             <div className="col-12 col-md-6">
                                                 <label className="form-label small fw-bold" htmlFor="ls-line-no">Line Number *</label>
@@ -387,31 +387,31 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                                     id="ls-line-no"
                                                     type="text"
                                                     className="form-control form-control-sm pcm-code text-uppercase"
-                                                    placeholder="Contoh: 15-MPP-1001"
+                                                    placeholder="e.g. 15-MPP-1001"
                                                     value={form.line_no}
                                                     onChange={(e) => setForm({ ...form, line_no: e.target.value.toUpperCase() })}
                                                     required
                                                 />
                                             </div>
                                             <div className="col-12 col-md-6">
-                                                <label className="form-label small fw-bold" htmlFor="ls-service">Nama Service *</label>
+                                                <label className="form-label small fw-bold" htmlFor="ls-service">Service Name *</label>
                                                 <input
                                                     id="ls-service"
                                                     type="text"
                                                     className="form-control form-control-sm"
-                                                    placeholder="Contoh: Main Process Piping (Crude Oil)"
+                                                    placeholder="e.g. Main Process Piping (Crude Oil)"
                                                     value={form.service_name}
                                                     onChange={(e) => setForm({ ...form, service_name: e.target.value })}
                                                     required
                                                 />
                                             </div>
                                             <div className="col-12 col-md-4">
-                                                <label className="form-label small fw-bold" htmlFor="ls-fluid">Kode Fluida</label>
+                                                <label className="form-label small fw-bold" htmlFor="ls-fluid">Fluid Code</label>
                                                 <input
                                                     id="ls-fluid"
                                                     type="text"
                                                     className="form-control form-control-sm pcm-code text-uppercase"
-                                                    placeholder="Contoh: MPP, FG, CW, IA, ST"
+                                                    placeholder="e.g. MPP, FG, CW, IA, ST"
                                                     value={form.fluid_code}
                                                     onChange={(e) => setForm({ ...form, fluid_code: e.target.value.toUpperCase() })}
                                                 />
@@ -496,7 +496,7 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                     </div>
 
                                     <div className="pcm-form-section">
-                                        <span className="pcm-form-section__title">Pengujian</span>
+                                        <span className="pcm-form-section__title">Testing &amp; Inspection</span>
                                         <div className="row g-3">
                                             <div className="col-12 col-md-6">
                                                 <QtyField
@@ -526,10 +526,10 @@ export function LineServiceSection({ user, projects = [], activeProject = null, 
                                 </div>
                                 <div className="modal-footer">
                                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowModal(false)}>
-                                        Batal
+                                        Cancel
                                     </button>
                                     <button type="submit" className="btn btn-primary btn-sm fw-bold" disabled={formLoading}>
-                                        {formLoading ? 'Menyimpan...' : 'Simpan Line Service'}
+                                        {formLoading ? 'Saving...' : 'Save Line Service'}
                                     </button>
                                 </div>
                             </form>

@@ -5,8 +5,15 @@ import { confirmDelete } from '../../confirm';
 import { MaterialDocumentsModal } from './MaterialDocumentsModal';
 import { MaterialReportModal } from './MaterialReportModal';
 import { PcmSelect } from '../SearchSelect';
+import { defaultProjectId, scopeRows } from '../engineering/projectScope';
 
-export function MaterialIssuingSection({ user, onToast }) {
+export function MaterialIssuingSection({
+    user,
+    onToast,
+    projects = [],
+    activeProjectId = '',
+    filterProject = 'ALL',
+}) {
     const [issuings, setIssuings] = useState([]);
     const [storings, setStorings] = useState([]);
     const [standards, setStandards] = useState([]);
@@ -75,21 +82,40 @@ export function MaterialIssuingSection({ user, onToast }) {
         loadData();
     }, [loadData]);
 
+    const scopedIssuings = useMemo(
+        () => scopeRows(issuings, activeProjectId, filterProject),
+        [issuings, activeProjectId, filterProject]
+    );
+
+    const scopedStorings = useMemo(
+        () => scopeRows(storings, activeProjectId, filterProject),
+        [storings, activeProjectId, filterProject]
+    );
+
+    // Opsi stok mengikuti project terpilih; baris yang sedang diedit tetap
+    // ditampilkan walau berada di luar scope supaya nilai dropdown tidak hilang.
+    const stockOptions = useMemo(() => {
+        if (!form.material_storing_id) return scopedStorings;
+        const current = storings.find(s => String(s.id) === String(form.material_storing_id));
+        if (!current || scopedStorings.some(s => String(s.id) === String(current.id))) return scopedStorings;
+        return [current, ...scopedStorings];
+    }, [scopedStorings, storings, form.material_storing_id]);
+
     const stats = useMemo(() => {
-        const totalSlips = issuings.length;
-        const totalSpoolsTargeted = new Set(issuings.map(i => i.target_spool_no).filter(Boolean)).size;
-        const totalPipesIssued = issuings
+        const totalSlips = scopedIssuings.length;
+        const totalSpoolsTargeted = new Set(scopedIssuings.map(i => i.target_spool_no).filter(Boolean)).size;
+        const totalPipesIssued = scopedIssuings
             .filter(i => i.unit === 'meter')
             .reduce((acc, i) => acc + (parseFloat(i.qty) || 0), 0);
-        const totalFittingsIssued = issuings
+        const totalFittingsIssued = scopedIssuings
             .filter(i => i.unit === 'pcs')
             .reduce((acc, i) => acc + (parseFloat(i.qty) || 0), 0);
         return { totalSlips, totalSpoolsTargeted, totalPipesIssued, totalFittingsIssued };
-    }, [issuings]);
+    }, [scopedIssuings]);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return issuings.filter(item => {
+        return scopedIssuings.filter(item => {
             return !q ||
                 (item.issue_no || '').toLowerCase().includes(q) ||
                 (item.requestor || '').toLowerCase().includes(q) ||
@@ -100,7 +126,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                 (item.material_standard?.code || '').toLowerCase().includes(q) ||
                 (item.heat_no || '').toLowerCase().includes(q);
         });
-    }, [issuings, search]);
+    }, [scopedIssuings, search]);
 
     const bomOptions = useMemo(() => {
         if (!form.drawing_id) return boms;
@@ -284,6 +310,11 @@ export function MaterialIssuingSection({ user, onToast }) {
             material_standard_id: form.material_standard_id || null,
         };
 
+        if (!editingItem) {
+            const projectId = defaultProjectId(activeProjectId, filterProject, projects);
+            if (projectId) payload.project_id = projectId;
+        }
+
         if (!editingItem && selectedStock
             && (parseFloat(form.qty) || 0) > (parseFloat(selectedStock.balance) || 0)) {
             setFormError(`Stok tidak cukup. Sisa ${selectedStock.balance} ${selectedStock.unit}.`);
@@ -413,7 +444,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                             />
                         </div>
                         <div className="col-12 col-md-4 text-md-end text-muted small">
-                            {filtered.length} dari {issuings.length} slip pengeluaran
+                            {filtered.length} dari {scopedIssuings.length} slip pengeluaran
                         </div>
                     </div>
                 </div>
@@ -669,7 +700,7 @@ export function MaterialIssuingSection({ user, onToast }) {
                                                 onChange={(e) => handleSelectStock(e.target.value)}
                                             >
                                                 <option value="">-- Isi Manual atau Pilih dari Stok --</option>
-                                                {storings.map(s => (
+                                                {stockOptions.map(s => (
                                                     <option key={s.id} value={s.id}>
                                                         {s.item_code} - {s.item_name} (Sisa: {s.balance} {s.unit})
                                                         {s.material_standard?.code ? ` | ${s.material_standard.code}` : ''}

@@ -6,12 +6,40 @@ import { formatRupiah } from '../../currency';
 import { defaultProjectId, isProjectLocked, scopeRows, useProjectFilter } from './projectScope';
 import { PcmSelect } from '../SearchSelect';
 
+/* Palet warna solid master komponen perpipaan standar industri (R-01, R-29) */
+export const getComponentBadgeStyle = (compType) => {
+    const t = String(compType || '').toLowerCase();
+    if (t.includes('pipe')) {
+        return { backgroundColor: '#1e40af', borderColor: '#1e3a8a', color: '#ffffff' }; // Deep Navy Blue
+    }
+    if (t.includes('elbow') || t.includes('tee') || t.includes('reducer') || t.includes('fitting') || t.includes('olet') || t.includes('cap')) {
+        return { backgroundColor: '#b45309', borderColor: '#92400e', color: '#ffffff' }; // Warm Amber Gold
+    }
+    if (t.includes('flange')) {
+        return { backgroundColor: '#0f766e', borderColor: '#115e59', color: '#ffffff' }; // Deep Teal Ocean
+    }
+    if (t.includes('valve')) {
+        return { backgroundColor: '#15803d', borderColor: '#166534', color: '#ffffff' }; // Forest Green
+    }
+    if (t.includes('gasket')) {
+        return { backgroundColor: '#6b21a8', borderColor: '#581c87', color: '#ffffff' }; // Rich Purple
+    }
+    if (t.includes('bolt') || t.includes('nut') || t.includes('fastener') || t.includes('stud')) {
+        return { backgroundColor: '#475569', borderColor: '#334155', color: '#ffffff' }; // Steel Slate Gray
+    }
+    if (t.includes('instrument') || t.includes('gauge') || t.includes('meter')) {
+        return { backgroundColor: '#0369a1', borderColor: '#075985', color: '#ffffff' }; // Ocean Blue
+    }
+    return { backgroundColor: '#334155', borderColor: '#1e293b', color: '#ffffff' }; // Neutral Dark Slate
+};
+
 export function BomSection({ user, projects = [], drawings = [], activeProjectId = '', onToast }) {
     const [bomList, setBomList] = useState([]);
     const [standards, setStandards] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterProject, setFilterProject] = useProjectFilter(activeProjectId);
+    const [filterDrawing, setFilterDrawing] = useState('ALL');
     const [filterSpool, setFilterSpool] = useState('ALL');
     const [filterType, setFilterType] = useState('ALL');
     const [showModal, setShowModal] = useState(false);
@@ -62,23 +90,33 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.get('/bill-of-materials');
+            const params = new URLSearchParams();
+            if (activeProjectId && activeProjectId !== 'ALL') {
+                params.append('project_id', activeProjectId);
+            }
+            const url = params.toString() ? `/bill-of-materials?${params.toString()}` : '/bill-of-materials';
+            const data = await api.get(url);
             setBomList(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to load BOM:', err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeProjectId]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
     useEffect(() => {
+        setFilterDrawing('ALL');
         setFilterSpool('ALL');
         setFilterType('ALL');
     }, [activeProjectId]);
+
+    useEffect(() => {
+        setFilterSpool('ALL');
+    }, [filterDrawing]);
 
     useEffect(() => {
         let active = true;
@@ -147,13 +185,36 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
         [drawings, activeProjectId, filterProject]
     );
 
+    const drawingOptions = useMemo(() => {
+        const map = new Map();
+        scopedBom.forEach((b) => {
+            if (b.drawing_id && b.drawing) {
+                map.set(String(b.drawing_id), b.drawing);
+            }
+        });
+        scopedDrawings.forEach((d) => {
+            if (d.id && !map.has(String(d.id))) {
+                map.set(String(d.id), d);
+            }
+        });
+        return Array.from(map.values()).sort((a, b) =>
+            String(a.drawing_no || '').localeCompare(String(b.drawing_no || ''), undefined, { numeric: true })
+        );
+    }, [scopedBom, scopedDrawings]);
+
     const spoolOptions = useMemo(() => {
-        return Array.from(new Set(scopedBom.map(b => b.spool_no).filter(Boolean))).sort();
-    }, [scopedBom]);
+        const source = filterDrawing === 'ALL'
+            ? scopedBom
+            : scopedBom.filter(b => String(b.drawing_id) === String(filterDrawing));
+        return Array.from(new Set(source.map(b => b.spool_no).filter(Boolean))).sort();
+    }, [scopedBom, filterDrawing]);
 
     const typeOptions = useMemo(() => {
-        return Array.from(new Set(scopedBom.map(b => b.component_type).filter(Boolean))).sort();
-    }, [scopedBom]);
+        const source = filterDrawing === 'ALL'
+            ? scopedBom
+            : scopedBom.filter(b => String(b.drawing_id) === String(filterDrawing));
+        return Array.from(new Set(source.map(b => b.component_type).filter(Boolean))).sort();
+    }, [scopedBom, filterDrawing]);
 
     const bomDrawingOptions = useMemo(() => {
         if (!form.project_id) return drawings;
@@ -178,11 +239,11 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
 
     const exportCsvMto = () => {
         if (scopedBom.length === 0) {
-            alert('Tidak ada data BOM untuk diekspor.');
+            alert('No BOM data available to export.');
             return;
         }
 
-        const headers = ['No', 'Spool', 'Tipe', 'Deskripsi Komponen', 'Size', 'Sch/Rating', 'Material Spec', 'Kode Std', 'Qty', 'Unit', 'Berat (kg)', 'Harga Satuan (Rp)', 'Total Biaya (Rp)', 'Tag No'];
+        const headers = ['No', 'Spool', 'Type', 'Component Description', 'Size', 'Sch/Rating', 'Material Spec', 'Std Code', 'Qty', 'Unit', 'Weight (kg)', 'Unit Price (IDR)', 'Total Amount (IDR)', 'Tag No'];
         const rows = scopedBom.map((b) => [
             b.item_no || '',
             b.spool_no || '',
@@ -214,6 +275,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
     const filteredBom = useMemo(() => {
         const q = search.toLowerCase();
         return scopedBom.filter(b => {
+            const matchDrawing = filterDrawing === 'ALL' || String(b.drawing_id) === String(filterDrawing);
             const matchSpool = filterSpool === 'ALL' || b.spool_no === filterSpool;
             const matchType = filterType === 'ALL' || b.component_type === filterType;
             const matchSearch = !q ||
@@ -222,10 +284,11 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                 (b.material_spec || '').toLowerCase().includes(q) ||
                 (b.material_standard?.code || '').toLowerCase().includes(q) ||
                 (b.spool_no || '').toLowerCase().includes(q) ||
+                (b.drawing?.drawing_no || '').toLowerCase().includes(q) ||
                 (b.tag_number || '').toLowerCase().includes(q);
-            return matchSpool && matchType && matchSearch;
+            return matchDrawing && matchSpool && matchType && matchSearch;
         });
-    }, [scopedBom, search, filterSpool, filterType]);
+    }, [scopedBom, search, filterDrawing, filterSpool, filterType]);
 
     const handleOpenModal = (item = null) => {
         setFormError('');
@@ -293,7 +356,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
         e.preventDefault();
         setFormError('');
         if (!form.description.trim() || !form.component_type.trim()) {
-            setFormError('Deskripsi komponen dan Tipe komponen wajib diisi.');
+            setFormError('Component description and Component type are required.');
             return;
         }
 
@@ -308,46 +371,46 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
         try {
             if (editingItem) {
                 await api.put(`/bill-of-materials/${editingItem.id}`, payload);
-                if (onToast) onToast('Item BOM / MTO berhasil diperbarui.');
+                if (onToast) onToast('BOM / MTO item successfully updated.');
             } else {
                 await api.post('/bill-of-materials', payload);
-                if (onToast) onToast('Item BOM / MTO baru berhasil ditambahkan.');
+                if (onToast) onToast('New BOM / MTO item successfully added.');
             }
             setShowModal(false);
             loadData();
         } catch (err) {
-            setFormError(err.message || 'Gagal menyimpan data BOM.');
+            setFormError(err.message || 'Failed to save BOM data.');
         } finally {
             setFormLoading(false);
         }
     };
 
     const handleDelete = async (id) => {
-        if (!(await confirmDelete('Yakin ingin menghapus item material ini dari BOM?'))) return;
+        if (!(await confirmDelete('Are you sure you want to delete this material item from the BOM?'))) return;
         setDeleteError('');
         try {
             await api.del(`/bill-of-materials/${id}`);
-            if (onToast) onToast('Item BOM berhasil dihapus.');
+            if (onToast) onToast('BOM item successfully deleted.');
             loadData();
         } catch (err) {
-            setDeleteError(err.message || 'Gagal menghapus data.');
+            setDeleteError(err.message || 'Failed to delete data.');
         }
     };
 
     const handleGenerateBom = async (e) => {
         e.preventDefault();
         if (!selectedGenDrawingId) {
-            alert('Pilih isometrik drawing terlebih dahulu.');
+            alert('Please select an isometric drawing first.');
             return;
         }
         setGenerating(true);
         try {
             const res = await api.post(`/drawings/${selectedGenDrawingId}/generate-bom`, {});
-            if (onToast) onToast(res.message || 'BOM berhasil digenerate otomatis.');
+            if (onToast) onToast(res.message || 'BOM successfully generated automatically.');
             setShowGenModal(false);
             loadData();
         } catch (err) {
-            alert(err.message || 'Gagal generate BOM otomatis.');
+            alert(err.message || 'Failed to auto-generate BOM.');
         } finally {
             setGenerating(false);
         }
@@ -370,7 +433,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
         setTemplateError('');
 
         if (!templateForm.piping_class.trim() || !templateForm.component_type.trim() || !templateForm.description.trim()) {
-            setTemplateError('Piping class, tipe komponen, dan deskripsi wajib diisi.');
+            setTemplateError('Piping class, component type, and description are required.');
             return;
         }
 
@@ -380,22 +443,22 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                 material_standard_id: templateForm.material_standard_id || null,
                 ratio_formula: parseFloat(templateForm.ratio_formula) || 0,
             });
-            if (onToast) onToast('Template komponen piping class berhasil ditambahkan.');
+            if (onToast) onToast('Piping class component template successfully added.');
             setTemplateForm((prev) => ({ ...prev, description: '', material_spec: '', default_rating_sch: '' }));
             loadTemplates();
         } catch (err) {
-            setTemplateError(err.message || 'Gagal menyimpan template komponen.');
+            setTemplateError(err.message || 'Failed to save component template.');
         }
     };
 
     const handleDeleteTemplate = async (id) => {
-        if (!window.confirm('Hapus template komponen ini dari piping class?')) return;
+        if (!window.confirm('Delete this component template from piping class?')) return;
         try {
             await api.del(`/piping-class-templates/${id}`);
-            if (onToast) onToast('Template komponen berhasil dihapus.');
+            if (onToast) onToast('Component template successfully deleted.');
             loadTemplates();
         } catch (err) {
-            alert(err.message || 'Gagal menghapus template komponen.');
+            alert(err.message || 'Failed to delete component template.');
         }
     };
 
@@ -430,7 +493,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                             className="btn btn-outline-secondary btn-sm fw-bold px-3 py-2 d-inline-flex align-items-center gap-1.5"
                             style={{ borderRadius: '6px' }}
                             onClick={exportCsvMto}
-                            title="Export daftar kebutuhan material ke file CSV untuk tim Purchasing"
+                            title="Export material requirements list to CSV file for Purchasing"
                         >
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -441,22 +504,11 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                         </button>
                         <button
                             type="button"
-                            className="btn btn-outline-success btn-sm fw-bold px-3 py-2"
-                            style={{ borderRadius: '6px' }}
-                            onClick={() => {
-                                setSelectedGenDrawingId(scopedDrawings[0]?.id || drawings[0]?.id || '');
-                                setShowGenModal(true);
-                            }}
-                        >
-                            ⚡ Generate BOM Otomatis
-                        </button>
-                        <button
-                            type="button"
                             className="btn btn-primary btn-sm fw-bold px-3 py-2"
                             style={{ borderRadius: '6px' }}
                             onClick={() => handleOpenModal()}
                         >
-                            + Tambah Item BOM
+                            + Add BOM Item
                         </button>
                     </div>
                 )}
@@ -470,37 +522,37 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
             <div className="row g-3 mb-4">
                 <div className="col-6 col-md-2" style={{ flex: '1 1 20%' }}>
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Part BOM</span>
+                        <span className="pcm-tile__label">Total BOM Parts</span>
                         <strong className="pcm-tile__value pcm-tile__value--primary">{stats.totalItems}</strong>
-                        <span className="pcm-tile__unit">item terdaftar</span>
+                        <span className="pcm-tile__unit">registered items</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-2" style={{ flex: '1 1 20%' }}>
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Panjang Pipa</span>
+                        <span className="pcm-tile__label">Total Pipe Length</span>
                         <strong className="pcm-tile__value text-success">{stats.totalPipe.toFixed(1)}</strong>
-                        <span className="pcm-tile__unit">meter</span>
+                        <span className="pcm-tile__unit">meters</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-2" style={{ flex: '1 1 20%' }}>
                     <div className="pcm-tile">
                         <span className="pcm-tile__label">Fitting &amp; Flange</span>
                         <strong className="pcm-tile__value">{stats.totalFittings}</strong>
-                        <span className="pcm-tile__unit">buah</span>
+                        <span className="pcm-tile__unit">pcs</span>
                     </div>
                 </div>
                 <div className="col-6 col-md-2" style={{ flex: '1 1 20%' }}>
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Valve &amp; Aksesoris</span>
+                        <span className="pcm-tile__label">Valve &amp; Accessories</span>
                         <strong className="pcm-tile__value text-dark">{stats.totalValves}</strong>
-                        <span className="pcm-tile__unit">unit</span>
+                        <span className="pcm-tile__unit">units</span>
                     </div>
                 </div>
                 <div className="col-12 col-md-3" style={{ flex: '1 1 20%' }}>
                     <div className="pcm-tile">
-                        <span className="pcm-tile__label">Total Nilai Material</span>
+                        <span className="pcm-tile__label">Total Material Cost</span>
                         <strong className="pcm-tile__value text-primary">{formatRupiah(stats.totalAmount)}</strong>
-                        <span className="pcm-tile__unit">estimasi MTO</span>
+                        <span className="pcm-tile__unit">MTO estimate</span>
                     </div>
                 </div>
             </div>
@@ -511,19 +563,19 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                     <input
                         type="text"
                         className="form-control form-control-sm"
-                        placeholder="Cari Komponen, Deskripsi, Spesifikasi, Tag Number..."
+                        placeholder="Search Component, Description, Specification, Tag Number..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
                 {!isProjectLocked(activeProjectId) && (
                     <PcmSelect
-                        
                         value={filterProject}
                         onChange={(e) => setFilterProject(e.target.value)}
                         style={{ width: 'auto' }}
+                        searchable={false}
                     >
-                        <option value="ALL">Semua Proyek ({projects.length})</option>
+                        <option value="ALL">Project</option>
                         {projects.map((p) => (
                             <option key={p.id} value={p.id}>
                                 {p.client ? `[${p.client}] ` : ''}{p.name} (JOB: {p.job_no || '-'})
@@ -531,22 +583,48 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                         ))}
                     </PcmSelect>
                 )}
+                {/* Filter Isometric Drawing & Sheet */}
                 <PcmSelect
-                    
+                    value={filterDrawing}
+                    onChange={(e) => setFilterDrawing(e.target.value)}
+                    style={{ width: 'auto' }}
+                    aria-label="Filter Isometric Drawing & Sheet"
+                    searchable={false}
+                    menuAlign="right"
+                    menuWidth={320}
+                >
+                    <option value="ALL">Isometric Drawing</option>
+                    {drawingOptions.map((d) => {
+                        const total = d.sheet_total || (d.sheet ? (d.sheet.match(/of\s+(\d+)/i) ? d.sheet.match(/of\s+(\d+)/i)[1] : '') : '') || '1';
+                        const current = d.sheet_num || (d.sheet ? (d.sheet.match(/(?:sheet\s*)?(\d+)/i) ? d.sheet.match(/(?:sheet\s*)?(\d+)/i)[1] : '1') : '1');
+                        const sheetLabel = `(${current} of ${total})`;
+                        return (
+                            <option key={d.id} value={d.id}>
+                                {d.drawing_no} {sheetLabel}
+                            </option>
+                        );
+                    })}
+                </PcmSelect>
+                {/* Filter Spool */}
+                <PcmSelect
                     value={filterSpool}
                     onChange={(e) => setFilterSpool(e.target.value)}
                     style={{ width: 'auto' }}
+                    aria-label="Filter Spool"
+                    searchable={false}
                 >
-                    <option value="ALL">Semua Spool ({spoolOptions.length})</option>
+                    <option value="ALL">Spool</option>
                     {spoolOptions.map(s => <option key={s} value={s}>{s}</option>)}
                 </PcmSelect>
+                {/* Filter Component Type */}
                 <PcmSelect
-                    
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
                     style={{ width: 'auto' }}
+                    aria-label="Filter Component Type"
+                    searchable={false}
                 >
-                    <option value="ALL">Semua Jenis Komponen ({typeOptions.length})</option>
+                    <option value="ALL">Component Type</option>
                     {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
                 </PcmSelect>
             </div>
@@ -554,106 +632,148 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
             {/* Table */}
             <div className="pcm-card">
                 <div className="table-responsive">
-                    <table className="table table-hover align-middle pcm-table">
+                    <table className="table table-hover align-middle pcm-table mb-0" style={{ minWidth: '940px' }}>
                         <thead>
                             <tr>
-                                <th className="ps-3 py-3">No</th>
-                                <th className="py-3">Spool</th>
-                                <th className="py-3">Tipe</th>
-                                <th className="py-3">Deskripsi Komponen</th>
-                                <th className="py-3">Size</th>
-                                <th className="py-3">Sch / Rating</th>
-                                <th className="py-3">Material Spec</th>
-                                <th className="py-3">Kode Std</th>
-                                <th className="py-3">Qty</th>
-                                <th className="py-3">Berat</th>
-                                <th className="py-3">Harga Satuan</th>
-                                <th className="py-3">Total Biaya</th>
-                                <th className="py-3">Tag No</th>
-                                {canEdit && <th className="text-end pe-3 py-3">Aksi</th>}
+                                <th className="ps-3 py-3" style={{ width: '13%' }}>Part &amp; Spool</th>
+                                <th className="py-3" style={{ width: '27%' }}>Component &amp; Description</th>
+                                <th className="py-3" style={{ width: '13%' }}>Dimension (Size/Sch)</th>
+                                <th className="py-3" style={{ width: '15%' }}>Material Spec</th>
+                                <th className="py-3" style={{ width: '14%' }}>Quantity &amp; Weight</th>
+                                <th className="py-3" style={{ width: '18%' }}>Estimated Cost</th>
+                                {canEdit && <th className="text-end pe-3 py-3" style={{ width: '10%' }}>Action</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 14 : 13} className="text-center py-4 text-muted">
-                                        Memuat data Bill of Material...
+                                    <td colSpan={canEdit ? 7 : 6} className="text-center py-4 text-muted">
+                                        Loading Bill of Materials data...
                                     </td>
                                 </tr>
                             ) : filteredBom.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 14 : 13} className="text-center py-4 text-muted">
-                                        Tidak ada item BOM yang sesuai.
+                                    <td colSpan={canEdit ? 7 : 6} className="text-center py-4 text-muted">
+                                        No matching BOM items found.
                                     </td>
                                 </tr>
                             ) : (
                                 filteredBom.map((b) => (
                                     <tr key={b.id}>
-                                        <td className="ps-3 font-monospace text-muted">{b.item_no}</td>
-                                        <td>
-                                            <span className="badge bg-light text-dark border font-monospace">{b.spool_no || '—'}</span>
+                                        <td className="ps-3">
+                                            <div className="d-flex align-items-center gap-1.5">
+                                                <span className="font-monospace fw-bold text-dark" style={{ fontSize: '0.875rem' }}>
+                                                    #{b.item_no}
+                                                </span>
+                                                <span className="badge bg-light text-dark border font-monospace" style={{ fontSize: '0.6875rem' }}>
+                                                    {b.spool_no || 'SP-01'}
+                                                </span>
+                                            </div>
                                             {b.drawing?.drawing_no && (
-                                                <div className="text-muted small font-monospace mt-1">{b.drawing.drawing_no}</div>
+                                                <div className="text-muted small font-monospace mt-0.5 text-truncate" style={{ maxWidth: '140px' }} title={b.drawing.drawing_no}>
+                                                    {(() => {
+                                                        const d = b.drawing;
+                                                        const total = d.sheet_total || (d.sheet ? (d.sheet.match(/of\s+(\d+)/i) ? d.sheet.match(/of\s+(\d+)/i)[1] : '') : '') || '1';
+                                                        const current = d.sheet_num || (d.sheet ? (d.sheet.match(/(?:sheet\s*)?(\d+)/i) ? d.sheet.match(/(?:sheet\s*)?(\d+)/i)[1] : '1') : '1');
+                                                        return `${d.drawing_no} (${current} of ${total})`;
+                                                    })()}
+                                                </div>
                                             )}
                                         </td>
                                         <td>
-                                            <span className="badge bg-secondary">{b.component_type}</span>
-                                            {b.source === 'GENERATED' && (
-                                                <span className="badge bg-info text-dark ms-1" title="Dihasilkan otomatis dari piping class">
-                                                    Auto
+                                            <div className="fw-semibold text-dark text-truncate" style={{ maxWidth: '280px' }} title={b.description}>
+                                                {b.description}
+                                            </div>
+                                            <div className="d-flex align-items-center gap-1.5 mt-0.5">
+                                                <span
+                                                    className="pcm-chip fw-bold border"
+                                                    style={{ ...getComponentBadgeStyle(b.component_type), fontSize: '0.6875rem', padding: '0.15rem 0.5rem' }}
+                                                >
+                                                    {b.component_type}
+                                                </span>
+                                                {b.source === 'FITUP_AUTO' ? (
+                                                    <span
+                                                        className="pcm-chip fw-semibold border"
+                                                        style={{ backgroundColor: '#ecfdf5', borderColor: '#6ee7b7', color: '#065f46', fontSize: '0.6875rem', padding: '0.12rem 0.45rem' }}
+                                                        title="Otomatis sinkron dari Fit-Up Drawing"
+                                                    >
+                                                        Fit-Up
+                                                    </span>
+                                                ) : b.source === 'GENERATED' ? (
+                                                    <span
+                                                        className="pcm-chip fw-semibold border"
+                                                        style={{ backgroundColor: '#f1f5f9', borderColor: '#cbd5e1', color: '#334155', fontSize: '0.6875rem', padding: '0.12rem 0.45rem' }}
+                                                        title="Dihasilkan otomatis dari piping class"
+                                                    >
+                                                        Auto
+                                                    </span>
+                                                ) : null}
+                                                {b.tag_number && (
+                                                    <span className="text-muted small font-monospace">
+                                                        Tag: {b.tag_number}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="font-monospace fw-bold text-dark" style={{ fontSize: '0.875rem' }}>
+                                                {b.size}
+                                            </div>
+                                            <div className="pcm-cell-sub small">
+                                                {b.rating_sch || '—'}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="small fw-semibold text-dark text-truncate" style={{ maxWidth: '160px' }} title={b.material_spec}>
+                                                {b.material_spec}
+                                            </div>
+                                            {b.material_standard?.code && (
+                                                <span className="badge bg-light text-muted border font-monospace mt-0.5" style={{ fontSize: '0.6875rem' }}>
+                                                    {b.material_standard.code}
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="fw-semibold">{b.description}</td>
-                                        <td className="font-monospace">{b.size}</td>
-                                        <td>{b.rating_sch || '—'}</td>
-                                        <td className="small pcm-cell-sub">{b.material_spec}</td>
                                         <td>
-                                            {b.material_standard?.code ? (
-                                                <span className="badge bg-light text-dark border font-monospace">{b.material_standard.code}</span>
-                                            ) : (
-                                                <span className="text-muted small">—</span>
+                                            <div className="fw-bold text-dark pcm-code" style={{ fontSize: '0.875rem' }}>
+                                                {parseFloat(b.qty).toFixed(1)} {b.unit}
+                                            </div>
+                                            {b.weight_kg != null && (
+                                                <div className="pcm-cell-sub small">
+                                                    {parseFloat(b.weight_kg).toFixed(1)} kg
+                                                    {b.od_mm != null && b.wall_mm != null && ` (Ø${b.od_mm})`}
+                                                </div>
                                             )}
                                         </td>
-                                        <td className="fw-bold text-dark pcm-code">{parseFloat(b.qty).toFixed(1)} {b.unit}</td>
-                                        <td className="text-nowrap">
-                                            {b.weight_kg != null ? (
-                                                <>
-                                                    <span className="fw-semibold text-dark pcm-code">{parseFloat(b.weight_kg).toFixed(2)} kg</span>
-                                                    {b.od_mm != null && b.wall_mm != null && (
-                                                        <div className="text-muted small font-monospace">
-                                                            Ø{b.od_mm} × {b.wall_mm} mm
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <span className="text-muted small">—</span>
+                                        <td>
+                                            <div className="pcm-code fw-bold text-primary" style={{ fontSize: '0.875rem' }}>
+                                                {b.total_price ? formatRupiah(b.total_price) : (b.unit_price ? formatRupiah(parseFloat(b.qty || 1) * parseFloat(b.unit_price)) : '—')}
+                                            </div>
+                                            {b.unit_price > 0 && (
+                                                <div className="pcm-cell-sub small">
+                                                    @{formatRupiah(b.unit_price)}/{b.unit}
+                                                </div>
                                             )}
                                         </td>
-                                        <td className="pcm-code text-muted text-nowrap">
-                                            {b.unit_price ? formatRupiah(b.unit_price) : '—'}
-                                        </td>
-                                        <td className="pcm-code fw-bold text-primary text-nowrap">
-                                            {b.total_price ? formatRupiah(b.total_price) : (b.unit_price ? formatRupiah(parseFloat(b.qty || 1) * parseFloat(b.unit_price)) : '—')}
-                                        </td>
-                                        <td className="pcm-code small">{b.tag_number || '—'}</td>
                                         {canEdit && (
-                                            <td className="text-end pe-3">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-primary btn-sm me-1 px-2.5 py-1 fw-bold"
-                                                    style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff' }}
-                                                    onClick={() => handleOpenModal(b)}
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-danger btn-sm px-2.5 py-1 fw-bold"
-                                                    onClick={() => handleDelete(b.id)}
-                                                >
-                                                    Hapus
-                                                </button>
+                                            <td className="text-end pe-3 text-nowrap">
+                                                <div className="d-inline-flex gap-1 justify-content-end">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary btn-sm px-2 py-0.5 fw-bold"
+                                                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8', color: '#ffffff', fontSize: '0.72rem' }}
+                                                        onClick={() => handleOpenModal(b)}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-danger btn-sm px-2 py-0.5 fw-bold"
+                                                        style={{ fontSize: '0.72rem' }}
+                                                        onClick={() => handleDelete(b.id)}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         )}
                                     </tr>
@@ -696,7 +816,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                         />
                                     </div>
                                     <div className="col-6 col-md-3">
-                                        <label className="form-label small fw-bold mb-1">Tipe Komponen *</label>
+                                        <label className="form-label small fw-bold mb-1">Component Type *</label>
                                         <input
                                             type="text"
                                             className="form-control form-control-sm"
@@ -707,7 +827,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                         />
                                     </div>
                                     <div className="col-12 col-md-4">
-                                        <label className="form-label small fw-bold mb-1">Deskripsi *</label>
+                                        <label className="form-label small fw-bold mb-1">Description *</label>
                                         <input
                                             type="text"
                                             className="form-control form-control-sm"
@@ -738,13 +858,12 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                         />
                                     </div>
                                     <div className="col-12 col-md-3">
-                                        <label className="form-label small fw-bold mb-1">Kode Standar Material</label>
+                                        <label className="form-label small fw-bold mb-1">Material Standard Code</label>
                                         <PcmSelect
-                                            
                                             value={templateForm.material_standard_id}
                                             onChange={(e) => setTemplateForm({ ...templateForm, material_standard_id: e.target.value })}
                                         >
-                                            <option value="">Tanpa kode standar</option>
+                                            <option value="">No standard code</option>
                                             {standards.map((standard) => (
                                                 <option key={standard.id} value={standard.id}>
                                                     {standard.code}
@@ -753,22 +872,20 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                         </PcmSelect>
                                     </div>
                                     <div className="col-6 col-md-2">
-                                        <label className="form-label small fw-bold mb-1">Satuan</label>
+                                        <label className="form-label small fw-bold mb-1">Unit</label>
                                         <PcmSelect
-                                            
                                             value={templateForm.unit}
                                             onChange={(e) => setTemplateForm({ ...templateForm, unit: e.target.value })}
                                         >
                                             <option value="meter">meter</option>
-                                            <option value="buah">buah</option>
+                                            <option value="pcs">pcs</option>
                                             <option value="set">set</option>
                                             <option value="kg">kg</option>
                                         </PcmSelect>
                                     </div>
                                     <div className="col-6 col-md-2">
-                                        <label className="form-label small fw-bold mb-1">Basis Hitung</label>
+                                        <label className="form-label small fw-bold mb-1">Calculation Basis</label>
                                         <PcmSelect
-                                            
                                             value={templateForm.basis}
                                             onChange={(e) => setTemplateForm({ ...templateForm, basis: e.target.value })}
                                         >
@@ -778,7 +895,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                         </PcmSelect>
                                     </div>
                                     <div className="col-6 col-md-2">
-                                        <label className="form-label small fw-bold mb-1">Rasio</label>
+                                        <label className="form-label small fw-bold mb-1">Ratio</label>
                                         <input
                                             type="number"
                                             step="0.01"
@@ -790,7 +907,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                     </div>
                                     <div className="col-6 col-md-2">
                                         <button type="submit" className="btn btn-primary btn-sm fw-bold w-100">
-                                            + Tambah
+                                            + Add
                                         </button>
                                     </div>
                                 </form>
@@ -800,20 +917,20 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                         <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.7rem' }}>
                                             <tr>
                                                 <th>Class</th>
-                                                <th>Komponen</th>
-                                                <th>Deskripsi</th>
+                                                <th>Component</th>
+                                                <th>Description</th>
                                                 <th>Sch / Rating</th>
                                                 <th>Material</th>
                                                 <th>Unit</th>
                                                 <th>Basis</th>
-                                                <th>Rasio</th>
-                                                <th className="text-end">Aksi</th>
+                                                <th>Ratio</th>
+                                                <th className="text-end">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {templateLoading ? (
                                                 <tr>
-                                                    <td colSpan={9} className="text-center py-3 text-muted">Memuat template...</td>
+                                                    <td colSpan={9} className="text-center py-3 text-muted">Loading templates...</td>
                                                 </tr>
                                             ) : templates.length === 0 ? (
                                                 <tr>
@@ -967,7 +1084,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             />
                                         </div>
                                         <div className="col-12 col-md-3">
-                                            <label className="form-label small fw-bold">Nomor Spool</label>
+                                            <label className="form-label small fw-bold">Spool No</label>
                                             <input
                                                 type="text"
                                                 className="form-control"
@@ -977,27 +1094,31 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             />
                                         </div>
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Tipe Komponen *</label>
+                                            <label className="form-label small fw-bold">Component Type *</label>
                                             <PcmSelect
-                                                
                                                 value={form.component_type}
                                                 onChange={(e) => setForm({ ...form, component_type: e.target.value })}
                                             >
-                                                <option value="Pipe">Pipe (Pipa Lurus)</option>
+                                                <option value="Pipe">Pipe</option>
                                                 <option value="Elbow 90 LR">Elbow 90° LR</option>
-                                                <option value="Elbow 45">Elbow 45°</option>
-                                                <option value="Tee Straight">Tee Straight</option>
-                                                <option value="Reducer Con">Reducer Concentric</option>
-                                                <option value="Flange WN">Flange Weld Neck</option>
-                                                <option value="Flange SO">Flange Slip-On</option>
+                                                <option value="Elbow 45 LR">Elbow 45° LR</option>
+                                                <option value="Elbow 90 SR">Elbow 90° SR</option>
+                                                <option value="Tee Straight">Tee Straight / Equal</option>
+                                                <option value="Tee Reducing">Tee Reducing</option>
+                                                <option value="Reducer Concentric">Reducer Concentric</option>
+                                                <option value="Reducer Eccentric">Reducer Eccentric</option>
+                                                <option value="Flange WN">Flange WN</option>
+                                                <option value="Flange SO">Flange SO</option>
                                                 <option value="Gate Valve">Gate Valve</option>
+                                                <option value="Globe Valve">Globe Valve</option>
                                                 <option value="Check Valve">Check Valve</option>
-                                                <option value="Gasket">Gasket (Spiral Wound)</option>
-                                                <option value="Stud Bolt">Stud Bolt &amp; Nuts</option>
+                                                <option value="Ball Valve">Ball Valve</option>
+                                                <option value="Gasket">Gasket</option>
+                                                <option value="Stud Bolt">Stud Bolt</option>
                                             </PcmSelect>
                                         </div>
                                         <div className="col-12">
-                                            <label className="form-label small fw-bold">Deskripsi Komponen Lengkap *</label>
+                                            <label className="form-label small fw-bold">Full Component Description *</label>
                                             <input
                                                 type="text"
                                                 className="form-control"
@@ -1053,13 +1174,12 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             </div>
                                         )}
                                         <div className="col-12">
-                                            <label className="form-label small fw-bold">Kode Standar Material</label>
+                                            <label className="form-label small fw-bold">Material Standard Code</label>
                                             <PcmSelect
-                                                
                                                 value={form.material_standard_id}
                                                 onChange={(e) => handleStandardChange(e.target.value)}
                                             >
-                                                <option value="">Tanpa kode standar (cocokkan via teks)</option>
+                                                <option value="">No standard code (match by text)</option>
                                                 {standards.map((standard) => (
                                                     <option key={standard.id} value={standard.id}>
                                                         {standard.code} — {standard.specification}
@@ -1067,7 +1187,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                                 ))}
                                             </PcmSelect>
                                             <div className="form-text">
-                                                Kode ini menghubungkan BOM ke receiving, stok, issuing, dan dashboard kebutuhan material.
+                                                This code connects BOM to receiving, stock, issuing, and material requirements dashboard.
                                             </div>
                                         </div>
                                         <div className="col-6 col-md-4">
@@ -1082,30 +1202,29 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             />
                                         </div>
                                         <div className="col-6 col-md-4">
-                                            <label className="form-label small fw-bold">Satuan (Unit)</label>
+                                            <label className="form-label small fw-bold">Unit</label>
                                             <PcmSelect
-                                                
                                                 value={form.unit}
                                                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
                                             >
                                                 <option value="meter">meter</option>
-                                                <option value="buah">buah (pcs)</option>
+                                                <option value="buah">pcs (buah)</option>
                                                 <option value="set">set</option>
                                                 <option value="kg">kg</option>
                                             </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">
-                                            <label className="form-label small fw-bold">Tag Number (Opsional)</label>
+                                            <label className="form-label small fw-bold">Tag Number (Optional)</label>
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                placeholder="Contoh: V-101"
+                                                placeholder="e.g. V-101"
                                                 value={form.tag_number}
                                                 onChange={(e) => setForm({ ...form, tag_number: e.target.value })}
                                             />
                                         </div>
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Harga Satuan Material (Rp)</label>
+                                            <label className="form-label small fw-bold">Unit Price (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="1000"
@@ -1123,7 +1242,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             />
                                         </div>
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Total Biaya Material (Rp)</label>
+                                            <label className="form-label small fw-bold">Total Material Cost (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="100"
@@ -1136,7 +1255,7 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                             <div className="col-12">
                                                 <div className="p-2.5 rounded d-flex align-items-center justify-content-between" style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                                                     <div className="small text-muted">
-                                                        Kalkulasi: <span className="font-monospace fw-semibold">{form.qty || 0} {form.unit} × {formatRupiah(form.unit_price || 0)}</span>
+                                                        Calculation: <span className="font-monospace fw-semibold">{form.qty || 0} {form.unit} × {formatRupiah(form.unit_price || 0)}</span>
                                                     </div>
                                                     <span className="fw-bolder pcm-code text-success" style={{ fontSize: '0.95rem' }}>
                                                         = {formatRupiah(form.total_price || ((form.qty || 0) * (form.unit_price || 0)))}
@@ -1148,10 +1267,10 @@ export function BomSection({ user, projects = [], drawings = [], activeProjectId
                                 </div>
                                 <div className="modal-footer">
                                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowModal(false)}>
-                                        Batal
+                                        Cancel
                                     </button>
                                     <button type="submit" className="btn btn-primary btn-sm fw-bold" disabled={formLoading}>
-                                        {formLoading ? 'Menyimpan...' : 'Simpan Item BOM'}
+                                        {formLoading ? 'Saving...' : 'Save BOM Item'}
                                     </button>
                                 </div>
                             </form>

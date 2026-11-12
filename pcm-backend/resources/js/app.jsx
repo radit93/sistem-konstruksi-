@@ -489,6 +489,7 @@ function App() {
                             activeProjectId={activeProjectId}
                             onSetActiveProject={handleSetActiveProject}
                             onSelectTab={setActiveTab}
+                            loading={dataLoading}
                             drawings={drawings}
                             scopes={scopes}
                             joints={joints}

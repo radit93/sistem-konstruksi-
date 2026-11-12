@@ -101,6 +101,7 @@ export function ProjectManagerTab({
     activeProjectId = '',
     onSetActiveProject,
     onSelectTab,
+    loading = false,
     drawings = [],
     scopes = [],
     joints = [],
@@ -444,9 +445,17 @@ export function ProjectManagerTab({
             )}
 
             {/* ============================================================
-                EMPTY STATE JIKA BELUM ADA PROYEK SAMA SEKALI DI DATABASE
+                LOADING / EMPTY STATE JIKA PROYEK BELUM SIAP
                 ============================================================ */}
-            {currentSection !== 'pm_projects' && !activeProject && (
+            {currentSection !== 'pm_projects' && !activeProject && loading && (
+                <div className="pcm-state" role="status" aria-live="polite">
+                    <span className="spinner-border spinner-border-sm text-primary mb-2" aria-hidden="true" />
+                    <p className="pcm-state__title">Memuat data proyek</p>
+                    <p className="pcm-state__text">Mengambil daftar proyek dan baseline kontrak dari server.</p>
+                </div>
+            )}
+
+            {currentSection !== 'pm_projects' && !activeProject && !loading && (
                 <div className="pcm-state">
                     <span className="pcm-state__icon"><IconFolder size="lg" /></span>
                     <h2 className="pcm-state__title">Belum ada proyek terdaftar</h2>

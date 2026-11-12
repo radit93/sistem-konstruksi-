@@ -104,8 +104,20 @@ class MaterialFlowService
     public function createIssuing(array $data, User $user): MaterialIssuing
     {
         return DB::transaction(function () use ($data, $user): MaterialIssuing {
+            if (empty($data['project_id'])) {
+                throw ValidationException::withMessages([
+                    'project_id' => 'Project wajib dipilih untuk issuing material.',
+                ]);
+            }
+
             $data = $this->resolveIssuingLinks($data);
             $stock = $this->resolveStockForIssuing($data);
+
+            if (! $stock) {
+                throw ValidationException::withMessages([
+                    'material_storing_id' => 'Lot stok tersedia untuk project ini tidak ditemukan.',
+                ]);
+            }
 
             if ($stock) {
                 $stock = MaterialStoring::query()->lockForUpdate()->findOrFail($stock->id);
@@ -120,6 +132,12 @@ class MaterialFlowService
                     && (int) $data['project_id'] !== (int) $stock->project_id) {
                     throw ValidationException::withMessages([
                         'project_id' => 'Stok berasal dari project yang berbeda.',
+                    ]);
+                }
+
+                if (! $stock->project_id || (int) $stock->project_id !== (int) $data['project_id']) {
+                    throw ValidationException::withMessages([
+                        'project_id' => 'Lot stok harus memiliki project yang sama dengan issuing.',
                     ]);
                 }
 
@@ -542,6 +560,12 @@ class MaterialFlowService
                 ]);
             }
 
+            if (! empty($data['project_id']) && (int) $data['project_id'] !== (int) $drawing->project_id) {
+                throw ValidationException::withMessages([
+                    'drawing_id' => 'Drawing berasal dari project yang berbeda.',
+                ]);
+            }
+
             $data['drawing_no'] = $data['drawing_no'] ?? $drawing->drawing_no;
             $data['project_id'] = $data['project_id'] ?? $drawing->project_id;
 
@@ -553,6 +577,12 @@ class MaterialFlowService
         if (! $bom) {
             throw ValidationException::withMessages([
                 'bom_id' => 'Baris BOM tidak ditemukan.',
+            ]);
+        }
+
+        if (! empty($data['project_id']) && (int) $data['project_id'] !== (int) $bom->project_id) {
+            throw ValidationException::withMessages([
+                'project_id' => 'BOM berasal dari project yang berbeda.',
             ]);
         }
 

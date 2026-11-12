@@ -22,6 +22,7 @@ import { HseTab } from './components/HseTab';
 import { AdminTab } from './components/AdminTab';
 import { ProjectManagerTab } from './components/ProjectManagerTab';
 import { ProjectListSection as ConstructionProjectListSection } from './components/construction/ProjectListSection';
+import { QaqcProjectListSection } from './components/qaqc/ProjectListSection';
 
 // Pemetaan role pengguna ke tab awal saat pertama login (Global Dashboard belum bisa dibuka)
 const ROLE_DEFAULT_TABS = {
@@ -475,6 +476,17 @@ function App() {
                             }}
                         />
                     )}
+                    {activeTab === 'qaqc_project_list' && (
+                        <QaqcProjectListSection
+                            projects={projects}
+                            activeProjectId={activeProjectId}
+                            loading={dataLoading}
+                            onSelectProject={(id) => {
+                                handleSetActiveProject(id);
+                                setActiveTab('qaqc');
+                            }}
+                        />
+                    )}
                     {activeTab === 'qaqc' && (
                         <QaqcTab
                             projects={projects}
@@ -484,6 +496,7 @@ function App() {
                             user={user}
                             activeProjectId={activeProjectId}
                             onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
                             onReload={() => {
                                 loadData();
                                 showToast('Laporan QC & Joint Status diperbarui');

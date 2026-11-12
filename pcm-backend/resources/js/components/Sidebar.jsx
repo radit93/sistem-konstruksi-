@@ -32,6 +32,7 @@ export const OPERATIONAL_MENU_IDS = [
     'erection',
     'construction',
     'construction_project_list',
+    'qaqc_project_list',
     'qaqc',
     'testpackage',
     'hse',
@@ -72,7 +73,7 @@ export const DEPARTMENT_MENUS = {
         , 'mat_inventory'
     ],
     CONS: ['construction_project_list', 'construction', 'erection'],
-    QAQC: ['material_standard', 'master_pipe', 'qaqc', 'testpackage', 'mat_inspection'],
+    QAQC: ['material_standard', 'master_pipe', 'qaqc_project_list', 'qaqc', 'testpackage', 'mat_inspection'],
     HSE: ['hse']
 };
 
@@ -260,15 +261,24 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Pemasangan spool dan monitoring joint di lapangan per project'
     },
     {
+        id: 'qaqc_project_list',
+        label: 'Project List',
+        perm: 'inspection.view',
+        group: 'QA-QC Inspection',
+        desc: 'Pilih project untuk membuka data inspeksi QC'
+    },
+    {
         id: 'qaqc',
         label: 'QA-QC Inspection',
         perm: 'inspection.view',
+        group: 'QA-QC Inspection',
         desc: 'Inspeksi Visual & NDT'
     },
     {
         id: 'testpackage',
         label: 'Test Package',
         perm: 'testpackage.view',
+        group: 'QA-QC Inspection',
         desc: 'Hydrotest & Blinds Limits'
     },
     {

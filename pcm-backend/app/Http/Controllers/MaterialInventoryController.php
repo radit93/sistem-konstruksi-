@@ -49,4 +49,32 @@ class MaterialInventoryController extends Controller
         $adjustment = $this->flow->requestAdjustment($stock, $data, $request->user());
         return response()->json($adjustment, 201);
     }
+
+    public function indexReturns(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('stock.view'), 403);
+        $projectId = $request->validate(['project_id' => ['required', 'integer', 'exists:projects,id']])['project_id'];
+        return response()->json(MaterialReturn::query()->with(['issuing', 'storing'])
+            ->where('project_id', $projectId)->latest()->get());
+    }
+
+    public function indexAdjustments(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('stock.view'), 403);
+        $projectId = $request->validate(['project_id' => ['required', 'integer', 'exists:projects,id']])['project_id'];
+        return response()->json(MaterialAdjustment::query()->with('storing')->where('project_id', $projectId)->latest()->get());
+    }
+
+    public function approveAdjustment(Request $request, MaterialAdjustment $adjustment): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('stock.write'), 403);
+        return response()->json($this->flow->approveAdjustment($adjustment, $request->user()));
+    }
+
+    public function rejectAdjustment(Request $request, MaterialAdjustment $adjustment): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('stock.write'), 403);
+        $adjustment->update(['status' => 'REJECTED', 'approved_by' => $request->user()->id, 'approved_at' => now()]);
+        return response()->json($adjustment->fresh());
+    }
 }

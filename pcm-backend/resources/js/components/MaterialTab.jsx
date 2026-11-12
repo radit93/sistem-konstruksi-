@@ -8,6 +8,7 @@ import { MaterialStoringSection } from './material/MaterialStoringSection';
 import { WarehousingSection } from './material/WarehousingSection';
 import { OpenYardSection } from './material/OpenYardSection';
 import { MaterialIssuingSection } from './material/MaterialIssuingSection';
+import { MaterialInventorySection } from './material/MaterialInventorySection';
 
 const SECTION_LABELS = {
     material: 'Material Storing',
@@ -18,6 +19,7 @@ const SECTION_LABELS = {
     mat_warehouse: 'Warehousing (Indoor)',
     mat_openyard: 'Open Yard Storage',
     mat_issuing: 'Material Issuing',
+    mat_inventory: 'Return & Stock Adjustment',
 };
 
 export function MaterialTab({
@@ -136,6 +138,9 @@ export function MaterialTab({
             )}
             {currentSection === 'mat_issuing' && (
                 <MaterialIssuingSection {...sectionProps} />
+            )}
+            {currentSection === 'mat_inventory' && (
+                <MaterialInventorySection {...sectionProps} />
             )}
         </div>
     );

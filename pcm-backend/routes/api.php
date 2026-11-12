@@ -67,6 +67,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);
     Route::post('/material-returns', [MaterialInventoryController::class, 'storeReturn']);
     Route::post('/material-adjustments', [MaterialInventoryController::class, 'storeAdjustment']);
+    Route::get('/material-returns', [MaterialInventoryController::class, 'indexReturns']);
+    Route::get('/material-adjustments', [MaterialInventoryController::class, 'indexAdjustments']);
+    Route::post('/material-adjustments/{adjustment}/approve', [MaterialInventoryController::class, 'approveAdjustment']);
+    Route::post('/material-adjustments/{adjustment}/reject', [MaterialInventoryController::class, 'rejectAdjustment']);
     Route::get('/fitting-standards/lookup', [CrudController::class, 'lookupFitting']);
     Route::get('/{res}', [CrudController::class, 'index'])->where('res', $resRegex);
     Route::get('/{res}/{id}', [CrudController::class, 'show'])->where('res', $resRegex);

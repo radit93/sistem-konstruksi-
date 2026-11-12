@@ -58,6 +58,25 @@ class MaterialFlowService
             'status' => 'PENDING', 'requested_by' => $user->id,
         ]);
     }
+
+    public function approveAdjustment(MaterialAdjustment $adjustment, User $user): MaterialAdjustment
+    {
+        return DB::transaction(function () use ($adjustment, $user): MaterialAdjustment {
+            $locked = MaterialAdjustment::query()->lockForUpdate()->findOrFail($adjustment->id);
+            if ($locked->status !== 'PENDING') {
+                throw ValidationException::withMessages(['status' => 'Adjustment ini sudah diproses.']);
+            }
+            $stock = MaterialStoring::query()->lockForUpdate()->findOrFail($locked->material_storing_id);
+            $balance = (float) $stock->balance + (float) $locked->qty_delta;
+            if ($balance < -0.0001) {
+                throw ValidationException::withMessages(['qty_delta' => 'Adjustment membuat saldo stok negatif.']);
+            }
+            $stock->update(['balance' => $balance, 'status' => $balance > 0 ? 'AVAILABLE' : 'DEPLETED', 'last_movement_at' => now()]);
+            $locked->update(['status' => 'APPROVED', 'balance_after' => $balance, 'approved_by' => $user->id, 'approved_at' => now()]);
+            $this->recordMovement($stock, 'ADJUSTMENT', abs((float) $locked->qty_delta), $stock->unit, $balance, 'adjustment', $locked->id, $user, $locked->reason);
+            return $locked->fresh();
+        });
+    }
     public function requestInspection(MaterialReceiving $receiving, User $user): MaterialReceiving
     {
         return DB::transaction(function () use ($receiving): MaterialReceiving {

@@ -27,6 +27,7 @@ export const OPERATIONAL_MENU_IDS = [
     'mat_warehouse',
     'mat_openyard',
     'mat_issuing',
+    'mat_inventory',
     'fabrication',
     'erection',
     'construction',
@@ -68,6 +69,7 @@ export const DEPARTMENT_MENUS = {
         'mat_warehouse',
         'mat_openyard',
         'mat_issuing'
+        , 'mat_inventory'
     ],
     CONS: ['construction_project_list', 'construction', 'erection'],
     QAQC: ['material_standard', 'master_pipe', 'qaqc', 'testpackage', 'mat_inspection'],
@@ -222,6 +224,13 @@ export const ROLE_SIDEBAR_MENUS = [
         perm: 'stock.view',
         group: 'Material Control',
         desc: 'Penyimpanan Terbuka: Pipa Batangan CS/SS & Spool'
+    },
+    {
+        id: 'mat_inventory',
+        label: 'Return & Adjustment',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Material return dan approval koreksi stok'
     },
     {
         id: 'mat_issuing',

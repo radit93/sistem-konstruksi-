@@ -481,7 +481,6 @@ function App() {
                             joints={joints}
                             inspections={inspections}
                             drawings={drawings}
-                            projects={projects}
                             user={user}
                             activeProjectId={activeProjectId}
                             onSetActiveProject={handleSetActiveProject}

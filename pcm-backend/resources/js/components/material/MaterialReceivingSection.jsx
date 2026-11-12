@@ -77,16 +77,13 @@ export function MaterialReceivingSection({
         let active = true;
 
             Promise.all([
-                api.get('/material-standards'), api.get('/material-masters/vendors'),
-                api.get('/material-masters/categories'), api.get('/material-masters/units'),
-                api.get('/material-masters/locations')
-            ]).then(([standardData, vendorData, categoryData, unitData, locationData]) => {
+                api.get('/material-standards'), api.get('/material-masters/categories'),
+                api.get('/material-masters/units')
+            ]).then(([standardData, categoryData, unitData]) => {
                 if (!active) return;
                 setStandards(Array.isArray(standardData) ? standardData : []);
-                setVendors(Array.isArray(vendorData) ? vendorData : []);
                 setCategories(Array.isArray(categoryData) ? categoryData : []);
                 setUnits(Array.isArray(unitData) ? unitData : []);
-                setLocations(Array.isArray(locationData) ? locationData : []);
             })
             .catch((err) => console.error('Failed to load material standards:', err));
 
@@ -631,7 +628,7 @@ export function MaterialReceivingSection({
                                                 value={form.category}
                                                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                                             >
-                                                {categories.map((category) => <option key={category.id} value={category.code}>{category.name}</option>)}
+                                                {categories.map((category) => <option key={category.code} value={category.name}>{category.name}</option>)}
                                             </PcmSelect>
                                         </div>
 
@@ -751,7 +748,7 @@ export function MaterialReceivingSection({
                                                 value={form.unit}
                                                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
                                             >
-                                                {units.map((unit) => <option key={unit.id} value={unit.name.toLowerCase()}>{unit.name}</option>)}
+                                                {units.map((unit) => <option key={unit.id} value={unit.code}>{unit.name}</option>)}
                                             </PcmSelect>
                                         </div>
 

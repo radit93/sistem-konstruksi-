@@ -6,11 +6,12 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BomGenerationController;
+use App\Http\Controllers\BoqGenerationController;
 use App\Http\Controllers\CrudController;
 use App\Http\Controllers\MaterialDocumentController;
-use App\Http\Controllers\MaterialReportController;
 use App\Http\Controllers\MaterialInventoryController;
 use App\Http\Controllers\MaterialMasterController;
+use App\Http\Controllers\MaterialReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -62,7 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Priority C: Auto-generate BOM/MTO dari isometrik drawing & piping class.
     Route::post('/drawings/{drawing}/generate-bom', [BomGenerationController::class, 'store']);
-    Route::post('/engineering-boqs/sync-from-welding-map', [\App\Http\Controllers\BoqGenerationController::class, 'sync']);
+    Route::post('/engineering-boqs/sync-from-welding-map', [BoqGenerationController::class, 'sync']);
 
     Route::post('/material-receivings/{id}/request-inspection', [CrudController::class, 'requestMaterialInspection']);
     Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);
@@ -73,7 +74,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/material-adjustments/{adjustment}/approve', [MaterialInventoryController::class, 'approveAdjustment']);
     Route::post('/material-adjustments/{adjustment}/reject', [MaterialInventoryController::class, 'rejectAdjustment']);
     Route::get('/material-masters/{type}', [MaterialMasterController::class, 'index']);
-    Route::post('/material-masters/{type}', [MaterialMasterController::class, 'store']);
     Route::get('/fitting-standards/lookup', [CrudController::class, 'lookupFitting']);
     Route::get('/{res}', [CrudController::class, 'index'])->where('res', $resRegex);
     Route::get('/{res}/{id}', [CrudController::class, 'show'])->where('res', $resRegex);

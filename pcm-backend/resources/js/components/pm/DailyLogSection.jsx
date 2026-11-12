@@ -14,7 +14,7 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
     const [form, setForm] = useState({
         prog_date: new Date().toISOString().split('T')[0],
         scope_id: '',
-        qty: 1,
+        qty: 10,
         team: 'project_manager'
     });
 
@@ -140,7 +140,7 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                     <button
                         type="button"
                         className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                        style={{ borderRadius: '6px' }}
+                        style={{ borderRadius: 'var(--pcm-radius-control)', backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                         onClick={handleOpenModal}
                     >
                         + Input Progres Harian
@@ -148,20 +148,24 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                 )}
             </div>
 
-            {/* Metric Summary Tiles */}
+            {/* Metric Summary Tiles (PCM Design Tokens) */}
             <div className="row g-3 mb-4">
                 <div className="col-6 col-md-4">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Total Catatan Jurnal</span>
-                        <strong className="h3 fw-bold text-primary mb-0">{stats.totalLogs}</strong>
-                        <span className="text-muted ms-1 small">entri harian</span>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Total Catatan Jurnal</span>
+                        <strong className="pcm-tile__value pcm-tile__value--primary">
+                            {stats.totalLogs.toLocaleString('id-ID')}
+                            <span className="pcm-tile__unit">entri harian</span>
+                        </strong>
                     </div>
                 </div>
                 <div className="col-6 col-md-4">
-                    <div className="pcm-tile" style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }}>
-                        <span className="text-muted small text-uppercase fw-bold d-block">Volume Terinput / Las Aktual</span>
-                        <strong className="h3 fw-bold text-success mb-0">{stats.totalQtyLogged.toLocaleString()}</strong>
-                        <span className="text-muted ms-1 small">unit &bull; Las: {stats.weldedDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI</span>
+                    <div className="pcm-tile h-100">
+                        <span className="pcm-tile__label">Volume Terinput / Las Aktual</span>
+                        <strong className="pcm-tile__value text-success">
+                            {stats.totalQtyLogged.toLocaleString('id-ID')}
+                            <span className="pcm-tile__unit">unit total &bull; Las: {stats.weldedDI.toLocaleString('id-ID', { maximumFractionDigits: 1 })} DI</span>
+                        </strong>
                     </div>
                 </div>
                 <div className="col-12 col-md-4 d-flex align-items-center">
@@ -171,22 +175,22 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                         placeholder="Cari tanggal, lingkup scope, atau tim..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        style={{ borderRadius: '6px', padding: '0.65rem 0.85rem' }}
+                        style={{ borderRadius: 'var(--pcm-radius-control)', padding: '0.65rem 0.85rem' }}
                     />
                 </div>
             </div>
 
             {/* Table */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="card border-0 shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
                 <div className="table-responsive">
                     <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
                         <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.04em' }}>
                             <tr>
-                                <th className="ps-3 py-3" style={{ width: '120px' }}>Tanggal</th>
+                                <th className="ps-3 py-3" style={{ width: '130px' }}>Tanggal</th>
                                 <th className="py-3">Scope Pekerjaan</th>
-                                <th className="py-3 text-end" style={{ width: '140px' }}>Volume Harian</th>
-                                <th className="py-3" style={{ width: '150px' }}>Tim Pelaksana</th>
-                                <th className="py-3 text-muted" style={{ width: '160px' }}>Waktu Input</th>
+                                <th className="py-3 text-end" style={{ width: '150px' }}>Volume Harian</th>
+                                <th className="py-3" style={{ width: '160px' }}>Tim Pelaksana</th>
+                                <th className="py-3 text-muted" style={{ width: '170px' }}>Waktu Input</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -208,10 +212,10 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                                         <td className="ps-3 font-monospace fw-bold text-dark">{l.prog_date}</td>
                                         <td className="fw-semibold text-primary">{l.scope}</td>
                                         <td className="text-end font-monospace fw-bold text-success">
-                                            +{parseFloat(l.qty).toLocaleString()}
+                                            +{parseFloat(l.qty).toLocaleString('id-ID')}
                                         </td>
                                         <td>
-                                            <span className="badge bg-secondary font-monospace">
+                                            <span className="badge px-2.5 py-1 text-dark border font-monospace" style={{ backgroundColor: '#f1f5f9' }}>
                                                 {l.team || 'PMO'}
                                             </span>
                                         </td>
@@ -227,10 +231,12 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
             </div>
 
             {/* Rekap Output Lapangan Harian (Construction Sync) */}
-            <div className="card border-0 shadow-sm mt-4" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="card border-0 shadow-sm mt-4" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
                 <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
                     <h6 className="fw-bold text-dark mb-0">Rekap Produksi Fit-Up &amp; Welding Harian (Otomatis dari Construction)</h6>
-                    <span className="badge bg-info text-dark">Cross-Dept Sync</span>
+                    <span className="badge px-2.5 py-1 fw-bold" style={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: 'var(--pcm-radius-chip)' }}>
+                        Cross-Dept Sync
+                    </span>
                 </div>
                 <div className="table-responsive">
                     <table className="table table-sm table-hover align-middle mb-0" style={{ fontSize: '0.84rem' }}>
@@ -253,10 +259,10 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                                 jointDailyRecap.map(r => (
                                     <tr key={r.date}>
                                         <td className="ps-3 font-monospace fw-bold text-dark">{r.date}</td>
-                                        <td className="text-end font-monospace">{r.fitCount} joints</td>
-                                        <td className="text-end font-monospace text-primary fw-bold">{r.weldCount} joints</td>
+                                        <td className="text-end font-monospace">{r.fitCount.toLocaleString('id-ID')} joints</td>
+                                        <td className="text-end font-monospace text-primary fw-bold">{r.weldCount.toLocaleString('id-ID')} joints</td>
                                         <td className="pe-3 text-end font-monospace text-success fw-bold">
-                                            {r.weldDI.toLocaleString(undefined, { maximumFractionDigits: 1 })} DI
+                                            {r.weldDI.toLocaleString('id-ID', { maximumFractionDigits: 1 })} DI
                                         </td>
                                     </tr>
                                 ))
@@ -268,15 +274,15 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
 
             {/* Modal Input Progres Harian */}
             {showModal && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(15,23,42,0.6)', zIndex: 1060 }}>
                     <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content border-0 shadow">
+                        <div className="modal-content border-0 shadow" style={{ borderRadius: 'var(--pcm-radius-card)' }}>
                             <form onSubmit={handleSave}>
-                                <div className="modal-header">
-                                    <h5 className="modal-title fw-bold">Input Progres Harian Proyek</h5>
+                                <div className="modal-header border-bottom">
+                                    <h5 className="modal-title fw-bold text-dark">Input Progres Harian Proyek</h5>
                                     <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                                 </div>
-                                <div className="modal-body">
+                                <div className="modal-body p-4">
                                     {formError && (
                                         <div className="alert alert-danger py-2 small mb-3">{formError}</div>
                                     )}
@@ -284,7 +290,7 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                                         <label className="form-label small fw-bold">Tanggal Pelaksanaan *</label>
                                         <input
                                             type="date"
-                                            className="form-control"
+                                            className="form-control font-monospace"
                                             value={form.prog_date}
                                             onChange={(e) => setForm({ ...form, prog_date: e.target.value })}
                                             required
@@ -292,15 +298,14 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label small fw-bold">Pilih Scope Kontrak *</label>
-                                            <PcmSelect
-                                            
+                                        <PcmSelect
                                             value={form.scope_id}
                                             onChange={(e) => setForm({ ...form, scope_id: e.target.value })}
                                             required
                                         >
                                             {scopes.map(s => (
                                                 <option key={s.id} value={s.id}>
-                                                    {s.scope} ({s.unit}) - Kontrak: {s.contract_qty}
+                                                    {s.scope} ({s.unit}) - Kontrak: {parseFloat(s.contract_qty).toLocaleString('id-ID')}
                                                 </option>
                                             ))}
                                         </PcmSelect>
@@ -312,7 +317,7 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                                                 type="number"
                                                 step="0.01"
                                                 min="0.01"
-                                                className="form-control"
+                                                className="form-control font-monospace"
                                                 value={form.qty}
                                                 onChange={(e) => setForm({ ...form, qty: parseFloat(e.target.value) || 0 })}
                                                 required
@@ -321,7 +326,6 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                                         <div className="col-6">
                                             <label className="form-label small fw-bold">Tim Pelaksana</label>
                                             <PcmSelect
-                                                
                                                 value={form.team}
                                                 onChange={(e) => setForm({ ...form, team: e.target.value })}
                                             >
@@ -332,11 +336,11 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
                                         </div>
                                     </div>
                                 </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowModal(false)}>
+                                <div className="modal-footer border-top bg-light">
+                                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setShowModal(false)}>
                                         Batal
                                     </button>
-                                    <button type="submit" className="btn btn-primary btn-sm fw-bold" disabled={formLoading}>
+                                    <button type="submit" className="btn btn-primary btn-sm fw-bold px-3" style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }} disabled={formLoading}>
                                         {formLoading ? 'Menyimpan...' : 'Simpan & Update Kumulatif'}
                                     </button>
                                 </div>

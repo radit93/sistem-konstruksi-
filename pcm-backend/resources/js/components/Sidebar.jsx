@@ -392,6 +392,20 @@ export function Sidebar({
             .filter(Boolean);
 
         displayedMenus = [...baseMenus, ...opMenus];
+    } else if (user?.role === 'project_manager') {
+        // Prioritaskan menu inti Project Management tepat di bawah Global Dashboard,
+        // lalu Administrasi dan Pengawasan Departemen (Read-Only) di bawahnya.
+        const pmOrder = [
+            'overview',
+            'schedule', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report',
+            'project', 'users', 'roles', 'access',
+        ];
+        const pmMenus = pmOrder
+            .map((id) => displayedMenus.find((m) => m.id === id))
+            .filter(Boolean);
+        const pmSet = new Set(pmOrder);
+        const oversightMenus = displayedMenus.filter((m) => !pmSet.has(m.id));
+        displayedMenus = [...pmMenus, ...oversightMenus];
     }
 
     // Scroll otomatis jika daftar menu melebihi tinggi layar.

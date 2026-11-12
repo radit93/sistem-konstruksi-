@@ -16,6 +16,10 @@ export function MaterialReceivingSection({
 }) {
     const [receivings, setReceivings] = useState([]);
     const [standards, setStandards] = useState([]);
+    const [vendors, setVendors] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [units, setUnits] = useState([]);
+    const [locations, setLocations] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('ALL');
@@ -72,9 +76,17 @@ export function MaterialReceivingSection({
     useEffect(() => {
         let active = true;
 
-        api.get('/material-standards')
-            .then((data) => {
-                if (active) setStandards(Array.isArray(data) ? data : []);
+            Promise.all([
+                api.get('/material-standards'), api.get('/material-masters/vendors'),
+                api.get('/material-masters/categories'), api.get('/material-masters/units'),
+                api.get('/material-masters/locations')
+            ]).then(([standardData, vendorData, categoryData, unitData, locationData]) => {
+                if (!active) return;
+                setStandards(Array.isArray(standardData) ? standardData : []);
+                setVendors(Array.isArray(vendorData) ? vendorData : []);
+                setCategories(Array.isArray(categoryData) ? categoryData : []);
+                setUnits(Array.isArray(unitData) ? unitData : []);
+                setLocations(Array.isArray(locationData) ? locationData : []);
             })
             .catch((err) => console.error('Failed to load material standards:', err));
 
@@ -561,14 +573,24 @@ export function MaterialReceivingSection({
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">No. Paket / Surat Jalan (Package No)</label>
+                                            <PcmSelect
+                                                required
+                                                value={form.vendor}
+                                                onChange={(e) => setForm({ ...form, vendor: e.target.value })}
+                                            >
+                                                <option value="">Pilih Vendor</option>
+                                                {vendors.map((vendor) => <option key={vendor.id} value={vendor.name}>{vendor.code} — {vendor.name}</option>)}
+                                            </PcmSelect>
+                                            {/* Vendor master value is stored as a snapshot on the transaction. */}
+                                            {vendors.length === 0 && <div className="form-text">Belum ada vendor aktif di master.</div>}
+                                            {/*
                                             <input
-                                                type="text"
                                                 className="form-control"
                                                 required
                                                 placeholder="SJ-XXXX-001"
                                                 value={form.shipment_no}
                                                 onChange={(e) => setForm({ ...form, shipment_no: e.target.value })}
-                                            />
+                                            /> */}
                                         </div>
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Line No / Item Line</label>
@@ -606,17 +628,10 @@ export function MaterialReceivingSection({
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-semibold text-secondary">Kategori Material</label>
                                             <PcmSelect
-                                                
                                                 value={form.category}
                                                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                                             >
-                                                <option value="PIPE">PIPE</option>
-                                                <option value="FITTING">FITTING</option>
-                                                <option value="FLANGE">FLANGE</option>
-                                                <option value="VALVE">VALVE</option>
-                                                <option value="GASKET">GASKET</option>
-                                                <option value="FASTENER">FASTENER</option>
-                                                <option value="CONSUMABLE">CONSUMABLE</option>
+                                                {categories.map((category) => <option key={category.id} value={category.code}>{category.name}</option>)}
                                             </PcmSelect>
                                         </div>
 
@@ -733,16 +748,10 @@ export function MaterialReceivingSection({
                                         <div className="col-12 col-md-6">
                                             <label className="form-label small fw-semibold text-secondary">Satuan</label>
                                             <PcmSelect
-                                                
                                                 value={form.unit}
                                                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
                                             >
-                                                <option value="meter">meter</option>
-                                                <option value="pcs">pcs</option>
-                                                <option value="set">set</option>
-                                                <option value="kg">kg</option>
-                                                <option value="drum">drum</option>
-                                                <option value="box">box</option>
+                                                {units.map((unit) => <option key={unit.id} value={unit.name.toLowerCase()}>{unit.name}</option>)}
                                             </PcmSelect>
                                         </div>
 

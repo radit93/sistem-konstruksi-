@@ -10,6 +10,7 @@ use App\Http\Controllers\CrudController;
 use App\Http\Controllers\MaterialDocumentController;
 use App\Http\Controllers\MaterialReportController;
 use App\Http\Controllers\MaterialInventoryController;
+use App\Http\Controllers\MaterialMasterController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -71,6 +72,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/material-adjustments', [MaterialInventoryController::class, 'indexAdjustments']);
     Route::post('/material-adjustments/{adjustment}/approve', [MaterialInventoryController::class, 'approveAdjustment']);
     Route::post('/material-adjustments/{adjustment}/reject', [MaterialInventoryController::class, 'rejectAdjustment']);
+    Route::get('/material-masters/{type}', [MaterialMasterController::class, 'index']);
+    Route::post('/material-masters/{type}', [MaterialMasterController::class, 'store']);
     Route::get('/fitting-standards/lookup', [CrudController::class, 'lookupFitting']);
     Route::get('/{res}', [CrudController::class, 'index'])->where('res', $resRegex);
     Route::get('/{res}/{id}', [CrudController::class, 'show'])->where('res', $resRegex);

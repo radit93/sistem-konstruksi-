@@ -480,6 +480,8 @@ function App() {
                             projects={projects}
                             joints={joints}
                             inspections={inspections}
+                            drawings={drawings}
+                            projects={projects}
                             user={user}
                             activeProjectId={activeProjectId}
                             onSetActiveProject={handleSetActiveProject}

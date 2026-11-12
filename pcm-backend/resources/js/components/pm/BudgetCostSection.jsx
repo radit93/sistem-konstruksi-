@@ -245,28 +245,29 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], joints = [
             </div>
 
             {/* Filter Toolbar */}
-            <div className="d-flex flex-wrap gap-2 mb-3">
-                <div className="flex-grow-1" style={{ minWidth: '220px' }}>
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <div style={{ width: '280px', maxWidth: '100%' }}>
                     <input
                         type="text"
                         className="form-control form-control-sm"
                         placeholder="Cari Item Code, Deskripsi Scope..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        style={{ borderRadius: 'var(--pcm-radius-control)', padding: '0.5rem 0.75rem' }}
+                        style={{ borderRadius: 'var(--pcm-radius-control)', height: '38px', padding: '0.375rem 0.75rem', fontSize: '0.85rem' }}
                     />
                 </div>
-                <PcmSelect
-                    searchable={false}
-                    clearable={false}
-                    value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    style={{ width: 'auto', borderRadius: 'var(--pcm-radius-control)' }}
-                >
-                    <option value="ALL">Semua Kategori</option>
-                    <option value="Direct Cost">Direct Cost</option>
-                    <option value="Indirect Cost">Indirect Cost</option>
-                </PcmSelect>
+                <div style={{ width: '220px', maxWidth: '100%' }}>
+                    <PcmSelect
+                        searchable={false}
+                        clearable={false}
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                    >
+                        <option value="ALL">Semua Kategori</option>
+                        <option value="Direct Cost">Direct Cost</option>
+                        <option value="Indirect Cost">Indirect Cost</option>
+                    </PcmSelect>
+                </div>
             </div>
 
             {/* Table dengan Grid Rapi */}

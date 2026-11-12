@@ -922,14 +922,14 @@ export function DailyLogSection({ scopes = [], joints = [], project, user, onRel
             <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
                 <div className="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h6 className="fw-bold text-dark mb-0">Jurnal Volume Progres Harian (Kontrak DI)</h6>
-                    <div style={{ minWidth: '240px' }}>
+                    <div style={{ width: '280px', maxWidth: '100%' }}>
                         <input
                             type="text"
                             className="form-control form-control-sm"
-                            placeholder="Cari tanggal, lingkup scope, atau tim..."
+                            placeholder="Cari tanggal, lingkup scope, tim..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            style={{ borderRadius: 'var(--pcm-radius-control)' }}
+                            style={{ borderRadius: 'var(--pcm-radius-control)', height: '38px', padding: '0.375rem 0.75rem', fontSize: '0.85rem' }}
                         />
                     </div>
                 </div>

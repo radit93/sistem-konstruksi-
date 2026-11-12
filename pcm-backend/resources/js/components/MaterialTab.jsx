@@ -1,6 +1,5 @@
 import React from 'react';
-import { PcmSelect } from './SearchSelect';
-import { isProjectLocked, useProjectFilter } from './engineering/projectScope';
+import { ProjectGuard } from './ProjectGuard';
 import { MaterialRequirementSection } from './material/MaterialRequirementSection';
 import { MaterialReceivingSection } from './material/MaterialReceivingSection';
 import { MaterialInspectionSection } from './material/MaterialInspectionSection';
@@ -9,6 +8,17 @@ import { WarehousingSection } from './material/WarehousingSection';
 import { OpenYardSection } from './material/OpenYardSection';
 import { MaterialIssuingSection } from './material/MaterialIssuingSection';
 
+const SECTION_LABELS = {
+    material: 'Material Storing',
+    mat_storing: 'Material Storing',
+    mat_requirement: 'Kebutuhan Material',
+    mat_receiving: 'Material Receiving',
+    mat_inspection: 'Material Inspection',
+    mat_warehouse: 'Warehousing (Indoor)',
+    mat_openyard: 'Open Yard Storage',
+    mat_issuing: 'Material Issuing',
+};
+
 export function MaterialTab({
     currentSection = 'material',
     stockMoves = [],
@@ -16,30 +26,50 @@ export function MaterialTab({
     activeProject = null,
     activeProjectId = '',
     onSetActiveProject,
+    onSelectTab,
     user,
     onReload,
 }) {
-    // Sama seperti modul Engineering: begitu masuk satu project (workspace),
-    // semua halaman material terkunci ke project itu. Kalau belum masuk,
-    // user memilih project lewat dropdown di bar bawah ini.
-    const [filterProject, setFilterProject] = useProjectFilter(activeProjectId);
-    const projectLocked = isProjectLocked(activeProjectId);
+    /* Material memakai konteks project yang sama dengan Engineering.
+       Tanpa project aktif, data stok/penerimaan/pengeluaran tidak dimuat
+       sama sekali supaya tidak tercampur antar project. */
+    const projectId = activeProjectId ? String(activeProjectId) : '';
+    const hasProject = projectId !== '';
 
     const projectLabel = activeProject
         ? `${activeProject.name || 'Project'}${activeProject.job_no ? ` • JOB ${activeProject.job_no}` : ''}`
         : '';
 
+    if (!hasProject) {
+        return (
+            <div className="container-fluid px-4 py-4">
+                <ProjectGuard
+                    sectionLabel={SECTION_LABELS[currentSection] || 'Material Control'}
+                    projects={projects}
+                    activeProjectId=""
+                    description="Material Control (stok, penerimaan, inspeksi, penyimpanan, dan pengeluaran) hanya menampilkan data dari satu project. Pilih project dulu supaya stok dan pengeluaran tidak tercampur antar project."
+                    onSelectProject={(id) => {
+                        if (onSetActiveProject) onSetActiveProject(id || '');
+                    }}
+                    onOpenProjectList={() => {
+                        if (onSelectTab) onSelectTab('project_list');
+                    }}
+                />
+            </div>
+        );
+    }
+
     const sectionProps = {
         user,
         onToast: onReload,
         projects,
-        activeProjectId,
-        filterProject,
+        activeProjectId: projectId,
+        filterProject: projectId,
     };
 
     return (
         <div className="container-fluid px-4 py-4">
-            {/* Project scope bar: konteks data material selalu terlihat */}
+            {/* Project context bar: selalu terlihat, data terkunci ke project ini */}
             <div className="card border-0 shadow-sm mb-4">
                 <div className="card-body py-2">
                     <div className="d-flex flex-wrap align-items-center gap-2">
@@ -49,47 +79,20 @@ export function MaterialTab({
                         >
                             Project
                         </span>
-
-                        {projectLocked ? (
-                            <>
-                                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
-                                    {projectLabel || 'Project aktif'}
-                                </span>
-                                <span className="text-muted small">
-                                    Data material terkunci ke project ini.
-                                </span>
-                                {onSetActiveProject && (
-                                    <button
-                                        type="button"
-                                        className="btn btn-sm btn-link p-0 ms-1 text-decoration-none"
-                                        onClick={() => onSetActiveProject('')}
-                                    >
-                                        Ganti Project
-                                    </button>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                <PcmSelect
-                                    value={filterProject}
-                                    onChange={(e) => setFilterProject(e.target.value)}
-                                    style={{ width: 'auto', minWidth: '260px' }}
-                                    searchable={false}
-                                    aria-label="Pilih project data material"
-                                >
-                                    <option value="ALL">Semua Project</option>
-                                    {projects.map((project) => (
-                                        <option key={project.id} value={project.id}>
-                                            {project.client ? `[${project.client}] ` : ''}
-                                            {project.name}
-                                            {project.job_no ? ` (JOB: ${project.job_no})` : ''}
-                                        </option>
-                                    ))}
-                                </PcmSelect>
-                                <span className="text-muted small">
-                                    Pilih project untuk memfilter data; data baru mengikuti project yang dipilih.
-                                </span>
-                            </>
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                            {projectLabel || `Project #${projectId}`}
+                        </span>
+                        <span className="text-muted small">
+                            Data material terkunci ke project ini.
+                        </span>
+                        {onSetActiveProject && (
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-link p-0 ms-1 text-decoration-none"
+                                onClick={() => onSetActiveProject('')}
+                            >
+                                Ganti Project
+                            </button>
                         )}
                     </div>
                 </div>

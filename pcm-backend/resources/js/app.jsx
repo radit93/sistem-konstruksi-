@@ -411,6 +411,7 @@ function App() {
                             activeProject={activeProject}
                             activeProjectId={activeProjectId}
                             onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
                             user={user}
                             onReload={() => {
                                 loadData();

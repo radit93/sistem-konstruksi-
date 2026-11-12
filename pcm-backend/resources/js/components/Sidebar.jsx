@@ -12,6 +12,7 @@ export const OPERATIONAL_MENU_IDS = [
     'bom',
     'material_standard',
     'document_control',
+    'pm_projects',
     'schedule',
     'pm_scurve',
     'pm_budget',
@@ -36,6 +37,7 @@ export const OPERATIONAL_MENU_IDS = [
 // Modul yang dimiliki tiap departemen.
 export const DEPARTMENT_MENUS = {
     PMO: [
+        'pm_projects',
         'schedule',
         'pm_scurve',
         'pm_budget',
@@ -250,6 +252,13 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Jam Kerja Aman & Safety Log'
     },
     {
+        id: 'pm_projects',
+        label: 'Project List',
+        perm: 'scope.view',
+        group: 'Project Management',
+        desc: 'Daftar Proyek Kontrak & Pemilihan Job Aktif'
+    },
+    {
         id: 'schedule',
         label: 'Kontrak & BOQ',
         perm: 'scope.view',
@@ -413,7 +422,7 @@ export function Sidebar({
         // lalu Administrasi dan Pengawasan Departemen (Read-Only) di bawahnya.
         const pmOrder = [
             'overview',
-            'schedule', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report',
+            'pm_projects', 'schedule', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report',
             'project', 'users', 'roles', 'access',
         ];
         const pmMenus = pmOrder

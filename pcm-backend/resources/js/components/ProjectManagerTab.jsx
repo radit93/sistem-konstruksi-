@@ -84,6 +84,7 @@ function IconShield({ size }) {
 }
 
 const SECTION_LABELS = {
+    pm_projects: 'Project List',
     schedule: 'Kontrak & BOQ',
     pm_scurve: 'S-Curve & Schedule',
     pm_budget: 'Budget vs Actual',
@@ -99,6 +100,7 @@ export function ProjectManagerTab({
     projects = [],
     activeProjectId = '',
     onSetActiveProject,
+    onSelectTab,
     drawings = [],
     scopes = [],
     joints = [],
@@ -138,40 +140,6 @@ export function ProjectManagerTab({
     const [folderError, setFormError] = useState('');
 
     const canEdit = can(user, 'project.create') || can(user, 'scope.write');
-
-    // Muat data lintas departemen setiap kali proyek aktif dibuka
-    useEffect(() => {
-        if (!selectedProjectId) return undefined;
-        let alive = true;
-        setCrossData((prev) => ({ ...prev, loading: true }));
-
-        Promise.allSettled([
-            api.get('/engineering-boqs'),
-            api.get('/bill-of-materials'),
-            api.get(`/daily-progress?project_id=${selectedProjectId}`),
-            api.get('/material-inspections'),
-            api.get('/inspections'),
-            api.get('/test-packages'),
-            api.get('/hse'),
-        ]).then((results) => {
-            if (!alive) return;
-            const val = (idx) => (results[idx]?.status === 'fulfilled' && Array.isArray(results[idx].value) ? results[idx].value : []);
-            setCrossData({
-                engineeringBoqs: val(0),
-                boms: val(1),
-                dailyLogs: val(2),
-                materialInspections: val(3),
-                inspections: val(4),
-                testPackages: val(5),
-                hseLogs: val(6),
-                loading: false,
-            });
-        });
-
-        return () => {
-            alive = false;
-        };
-    }, [selectedProjectId]);
 
     // Sinkronisasi penyimpanan proyek aktif ke global App & localStorage
     const handleSelectProject = (projId) => {
@@ -220,11 +188,51 @@ export function ProjectManagerTab({
         });
     }, [projects, scopes, drawings]);
 
-    // Proyek yang sedang aktif
+    // Proyek yang sedang aktif (auto-pilih proyek pertama saat membuka modul kerja jika belum ada pilihan)
     const activeProject = useMemo(() => {
-        if (!selectedProjectId) return null;
-        return enrichedProjects.find(p => Number(p.id) === Number(selectedProjectId)) || null;
-    }, [selectedProjectId, enrichedProjects]);
+        if (currentSection === 'pm_projects') return null;
+        if (selectedProjectId) {
+            const found = enrichedProjects.find(p => Number(p.id) === Number(selectedProjectId));
+            if (found) return found;
+        }
+        return enrichedProjects[0] || null;
+    }, [currentSection, selectedProjectId, enrichedProjects]);
+
+    const effectiveProjectId = activeProject?.id || selectedProjectId;
+
+    // Muat data lintas departemen setiap kali proyek aktif dibuka
+    useEffect(() => {
+        if (!effectiveProjectId || currentSection === 'pm_projects') return undefined;
+        let alive = true;
+        setCrossData((prev) => ({ ...prev, loading: true }));
+
+        Promise.allSettled([
+            api.get('/engineering-boqs'),
+            api.get('/bill-of-materials'),
+            api.get(`/daily-progress?project_id=${effectiveProjectId}`),
+            api.get('/material-inspections'),
+            api.get('/inspections'),
+            api.get('/test-packages'),
+            api.get('/hse'),
+        ]).then((results) => {
+            if (!alive) return;
+            const val = (idx) => (results[idx]?.status === 'fulfilled' && Array.isArray(results[idx].value) ? results[idx].value : []);
+            setCrossData({
+                engineeringBoqs: val(0),
+                boms: val(1),
+                dailyLogs: val(2),
+                materialInspections: val(3),
+                inspections: val(4),
+                testPackages: val(5),
+                hseLogs: val(6),
+                loading: false,
+            });
+        });
+
+        return () => {
+            alive = false;
+        };
+    }, [effectiveProjectId, currentSection]);
 
     // Filter folder
     const filteredFolders = useMemo(() => {
@@ -304,100 +312,40 @@ export function ProjectManagerTab({
     return (
         <div className="py-1">
             {/* ============================================================
-                VIEW A: DIREKTORI FOLDER PROYEK CLIENT (PARENTS LEVEL)
+                VIEW A: HALAMAN PROJECT LIST (TAMPILAN LIST / TABEL SAJA)
                 ============================================================ */}
-            {!activeProject && (
+            {currentSection === 'pm_projects' && (
                 <div>
-                    {/* GUARD SCREEN JIKA MENGAKSES SUB-MODUL TANPA MEMILIH PROYEK */}
-                    {currentSection !== 'schedule' && (
-                        <div className="alert alert-warning border-0 shadow-sm mb-4 py-3 px-4 d-flex align-items-center gap-3">
-                            <div className="text-warning" style={{ flexShrink: 0 }}>
-                                <IconShield size="lg" />
-                            </div>
-                            <div>
-                                <h3 className="h6 fw-bold text-dark mb-1">
-                                    Project Guard: Akses Terproteksi Modul {SECTION_LABELS[currentSection] || currentSection}
-                                </h3>
-                                <p className="mb-0 text-secondary small">
-                                    Modul ini memerlukan konteks proyek aktif. Setiap proyek memiliki rincian kontrak, kurva S, anggaran biaya, dan log progres yang terisolasi. Silakan pilih salah satu folder proyek client di bawah ini.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Page Head */}
-                    <div className="pcm-page-head mb-4">
-                        <div className="pcm-page-head__text">
-                            <span className="pcm-eyebrow">Direktori Folder Proyek Client</span>
-                            <h1 className="pcm-page-head__title">Folder Proyek &amp; Manajemen Kontrak Piping</h1>
-                            <p className="pcm-page-head__lede">
-                                Seluruh modul Project Management (Kontrak, Kurva S, Budget Cost, Log Harian, Milestone, dan Laporan Eksekutif) dikelola per folder proyek. Pilih folder proyek aktif untuk memulai.
+                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                        <div>
+                            <h2 className="h4 fw-bold text-dark mb-1">Project List</h2>
+                            <p className="text-muted small mb-0">
+                                Daftar seluruh proyek kontrak piping. Pilih proyek aktif untuk membuka Kontrak &amp; BOQ, S-Curve, Budget, dan Laporan.
                             </p>
                         </div>
-                        <div className="pcm-page-head__aside">
-                            {canEdit && (
-                                <button
-                                    type="button"
-                                    className="btn btn-light btn-sm fw-bold text-primary"
-                                    onClick={() => setShowFolderModal(true)}
-                                >
-                                    <IconPlus size="sm" />
-                                    <span>Buat Proyek Baru</span>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Metric Tiles */}
-                    <div className="row g-3 mb-4">
-                        <div className="col-6 col-lg-3">
-                            <div className="pcm-tile">
-                                <span className="pcm-tile__label">Folder Proyek</span>
-                                <strong className="pcm-tile__value">
-                                    {projects.length}
-                                    <span className="pcm-tile__unit">proyek</span>
-                                </strong>
-                            </div>
-                        </div>
-                        <div className="col-6 col-lg-3">
-                            <div className="pcm-tile">
-                                <span className="pcm-tile__label">Client Aktif</span>
-                                <strong className="pcm-tile__value">
-                                    {clientOptions.length}
-                                    <span className="pcm-tile__unit">perusahaan</span>
-                                </strong>
-                            </div>
-                        </div>
-                        <div className="col-6 col-lg-3">
-                            <div className="pcm-tile">
-                                <span className="pcm-tile__label">Total Scope Kontrak</span>
-                                <strong className="pcm-tile__value pcm-tile__value--primary">
-                                    {scopes.length}
-                                    <span className="pcm-tile__unit">scopes</span>
-                                </strong>
-                            </div>
-                        </div>
-                        <div className="col-6 col-lg-3">
-                            <div className="pcm-tile">
-                                <span className="pcm-tile__label">Sistem Pengawasan</span>
-                                <strong className="pcm-tile__value text-success">
-                                    TERISOLASI
-                                    <span className="pcm-tile__unit">per proyek</span>
-                                </strong>
-                            </div>
-                        </div>
+                        {canEdit && (
+                            <button
+                                type="button"
+                                className="btn btn-primary btn-sm fw-bold px-3 py-2 d-inline-flex align-items-center gap-1"
+                                style={{ borderRadius: 'var(--pcm-radius-control)', backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                onClick={() => setShowFolderModal(true)}
+                            >
+                                <IconPlus size="sm" />
+                                <span>Buat Proyek Baru</span>
+                            </button>
+                        )}
                     </div>
 
                     {/* Toolbar Pencarian & Filter */}
-                    <div className="pcm-toolbar mb-4">
+                    <div className="pcm-toolbar mb-3">
                         <div className="pcm-toolbar__grow">
                             <div className="pcm-search">
                                 <span className="pcm-search__icon"><IconSearch size="sm" /></span>
                                 <input
                                     type="text"
                                     className="form-control form-control-sm"
-                                    placeholder="Cari nama folder proyek, client, job no..."
-                                    aria-label="Cari folder proyek"
+                                    placeholder="Cari nama proyek, client, atau job no..."
+                                    aria-label="Cari proyek"
                                     value={searchFolder}
                                     onChange={(e) => setSearchFolder(e.target.value)}
                                 />
@@ -414,66 +362,112 @@ export function ProjectManagerTab({
                             </PcmSelect>
                         </div>
                         <span className="pcm-count">
-                            Menampilkan <strong>{filteredFolders.length}</strong> folder proyek
+                            Menampilkan <strong>{filteredFolders.length}</strong> proyek
                         </span>
                     </div>
 
-                    {/* Grid Folder Proyek Cards */}
-                    <div className="row g-3">
-                        {filteredFolders.map((p) => (
-                            <div className="col-12 col-md-6 col-xl-4" key={p.id}>
-                                <button
-                                    type="button"
-                                    className="pcm-folder-card text-start w-100"
-                                    onClick={() => handleSelectProject(p.id)}
-                                >
-                                    <span className="pcm-folder-card__top">
-                                        <span className="pcm-folder-card__icon"><IconFolder /></span>
-                                        <span className="pcm-folder-card__tags">
-                                            <span className="pcm-chip pcm-chip--neutral pcm-code">
-                                                JOB: {p.job_no || '-'}
-                                            </span>
-                                            <span className="pcm-chip pcm-chip--primary">
-                                                <IconBuilding size="sm" />
-                                                <span>{p.client || 'Client Umum'}</span>
-                                            </span>
-                                        </span>
-                                    </span>
-
-                                    <span className="pcm-folder-card__name">{p.name}</span>
-
-                                    <span className="pcm-folder-card__metrics">
-                                        <span className="pcm-folder-card__metric">
-                                            <span>Lingkup Kontrak</span>
-                                            <strong>{p.scopes_count} scopes</strong>
-                                        </span>
-                                        <span className="pcm-folder-card__metric">
-                                            <span>Realisasi Target DI</span>
-                                            <strong className="pcm-code">
-                                                {p.total_actual_di.toLocaleString('id-ID')} / {p.total_contract_di.toLocaleString('id-ID')} DI
-                                            </strong>
-                                        </span>
-                                        <span className="pcm-folder-card__metric">
-                                            <span>Progres Kumulatif</span>
-                                            <strong className="text-success">{p.progress_pct}%</strong>
-                                        </span>
-                                    </span>
-
-                                    <span className="pcm-folder-card__cta">
-                                        <span>Buka Proyek Ini</span>
-                                        <IconChevronRight size="sm" />
-                                    </span>
-                                </button>
-                            </div>
-                        ))}
+                    {/* Tabel List Proyek */}
+                    <div className="card border-0 shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.86rem' }}>
+                                <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.04em' }}>
+                                    <tr>
+                                        <th className="ps-3 py-3" style={{ width: '50px' }}>No</th>
+                                        <th className="py-3" style={{ width: '115px' }}>Job No</th>
+                                        <th className="py-3">Nama Proyek</th>
+                                        <th className="py-3">Client</th>
+                                        <th className="py-3 text-center" style={{ width: '100px' }}>Scopes</th>
+                                        <th className="py-3 text-end" style={{ width: '210px' }}>Realisasi / Target DI</th>
+                                        <th className="py-3 text-center" style={{ width: '110px' }}>Progres</th>
+                                        <th className="text-end pe-3 py-3" style={{ width: '140px' }}>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredFolders.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={8} className="text-center py-4 text-muted">
+                                                Belum ada proyek yang sesuai filter.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredFolders.map((p, idx) => {
+                                            const isCurrent = Number(selectedProjectId) === Number(p.id);
+                                            return (
+                                                <tr key={p.id}>
+                                                    <td className="ps-3 text-muted fw-bold">{idx + 1}</td>
+                                                    <td className="font-monospace fw-bold text-primary">
+                                                        {p.job_no || '-'}
+                                                    </td>
+                                                    <td>
+                                                        <div className="fw-bold text-dark">{p.name}</div>
+                                                        {isCurrent && (
+                                                            <span className="badge bg-success mt-1" style={{ fontSize: '0.66rem' }}>
+                                                                Proyek Aktif
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="text-muted">{p.client || 'Client Umum'}</td>
+                                                    <td className="text-center font-monospace fw-semibold">
+                                                        {p.scopes_count}
+                                                    </td>
+                                                    <td className="text-end font-monospace">
+                                                        <span className="fw-bold text-dark">{p.total_actual_di.toLocaleString('id-ID')}</span>
+                                                        <span className="text-muted"> / {p.total_contract_di.toLocaleString('id-ID')} DI</span>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <span className="badge px-2.5 py-1 fw-bold text-dark border font-monospace" style={{ backgroundColor: '#f1f5f9', borderRadius: 'var(--pcm-radius-chip)' }}>
+                                                            {p.progress_pct}%
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-end pe-3">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-primary btn-sm px-3 py-1 fw-bold"
+                                                            style={{ borderRadius: 'var(--pcm-radius-chip)', backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                                            onClick={() => {
+                                                                handleSelectProject(p.id);
+                                                                if (onSelectTab) onSelectTab('schedule');
+                                                            }}
+                                                        >
+                                                            Buka Proyek
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* ============================================================
-                VIEW B: KONTEN DI DALAM PROYEK AKTIF (CHILD LEVEL DENGAN GUARD)
+                EMPTY STATE JIKA BELUM ADA PROYEK SAMA SEKALI DI DATABASE
                 ============================================================ */}
-            {activeProject && (
+            {currentSection !== 'pm_projects' && !activeProject && (
+                <div className="pcm-state">
+                    <span className="pcm-state__icon"><IconFolder size="lg" /></span>
+                    <h2 className="pcm-state__title">Belum ada proyek terdaftar</h2>
+                    <p className="pcm-state__text">
+                        Silakan buat proyek terlebih dahulu di halaman Project List untuk menggunakan modul {SECTION_LABELS[currentSection] || currentSection}.
+                    </p>
+                    <button
+                        type="button"
+                        className="btn btn-primary btn-sm fw-bold px-3 py-2"
+                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                        onClick={() => onSelectTab?.('pm_projects')}
+                    >
+                        Buka Project List
+                    </button>
+                </div>
+            )}
+
+            {/* ============================================================
+                VIEW B: KONTEN DI DALAM PROYEK AKTIF (KONTRAK & BOQ, S-CURVE, DLL)
+                ============================================================ */}
+            {currentSection !== 'pm_projects' && activeProject && (
                 <div>
                     {/* BREADCRUMB & PROJECT CONTEXT BAR */}
                     <div
@@ -484,10 +478,10 @@ export function ProjectManagerTab({
                             <button
                                 type="button"
                                 className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 fw-semibold"
-                                onClick={() => handleSelectProject(null)}
+                                onClick={() => (onSelectTab ? onSelectTab('pm_projects') : handleSelectProject(null))}
                             >
                                 <IconArrowLeft size="sm" />
-                                <span>Daftar Proyek</span>
+                                <span>Project List</span>
                             </button>
                             <span className="pcm-chip pcm-chip--primary pcm-code">
                                 JOB: {activeProject.job_no || '-'}

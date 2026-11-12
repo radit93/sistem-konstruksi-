@@ -82,7 +82,7 @@ class MaterialReportController extends Controller
     private function filters(Request $request, array $extraRules = []): array
     {
         $validated = $request->validate(array_merge([
-            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
+            'project_id' => ['required', 'integer', 'exists:projects,id'],
             'search' => ['nullable', 'string', 'max:128'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d'],
@@ -141,6 +141,6 @@ class MaterialReportController extends Controller
             return Project::query()->find((int) $filters['project_id']);
         }
 
-        return Project::query()->orderBy('id')->first();
+        return null;
     }
 }

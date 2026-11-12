@@ -288,6 +288,23 @@ class CrudController extends Controller
         );
     }
 
+    private function checkRead(Request $request, string $res): void
+    {
+        $permission = match ($res) {
+            'material-inspections' => 'material_inspection.view',
+            'material-receivings', 'material-storings', 'material-issuings' => 'stock.view',
+            default => null,
+        };
+
+        if ($permission !== null) {
+            abort_unless(
+                $request->user()?->hasPermission($permission),
+                403,
+                'Akses ditolak: butuh izin '.$permission
+            );
+        }
+    }
+
     /**
      * Superadmin may narrow the whole app to one department from the sidebar.
      * The value arrives as X-Department-Id and is ignored for every other role;
@@ -347,6 +364,7 @@ class CrudController extends Controller
 
     public function index(Request $request, string $res)
     {
+        $this->checkRead($request, $res);
         [$model] = $this->resolve($res);
         $q = $this->scope($request, $model::query(), $res);
 
@@ -502,6 +520,7 @@ class CrudController extends Controller
 
     public function show(Request $request, string $res, int $id)
     {
+        $this->checkRead($request, $res);
         [$model] = $this->resolve($res);
         $with = match ($res) {
             'joints' => ['inspections'],

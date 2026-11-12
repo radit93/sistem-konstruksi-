@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BomGenerationController;
+use App\Http\Controllers\BoqGenerationController;
 use App\Http\Controllers\CrudController;
 use App\Http\Controllers\MaterialDocumentController;
 use App\Http\Controllers\MaterialReportController;
@@ -42,7 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/roles/{role}/permissions', [PermissionController::class, 'sync'])->middleware('permission:access.update');
     });
 
-    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|fitting-standards|fitting-catalogs|pipe-standards|system-parameters|piping-class-templates|pipe-schedules|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|budget-items|material-receivings|material-inspections|material-storings|material-issuings';
+    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|fitting-standards|fitting-catalogs|pipe-standards|system-parameters|piping-class-templates|pipe-schedules|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|project-members|budget-items|material-receivings|material-inspections|material-storings|material-issuings';
     Route::get('/overview', [CrudController::class, 'overview']);
     Route::get('/material-requirements', [CrudController::class, 'materialRequirements']);
 
@@ -60,10 +61,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Priority C: Auto-generate BOM/MTO dari isometrik drawing & piping class.
     Route::post('/drawings/{drawing}/generate-bom', [BomGenerationController::class, 'store']);
-    Route::post('/engineering-boqs/sync-from-welding-map', [\App\Http\Controllers\BoqGenerationController::class, 'sync']);
+    Route::post('/engineering-boqs/sync-from-welding-map', [BoqGenerationController::class, 'sync']);
 
     Route::post('/material-receivings/{id}/request-inspection', [CrudController::class, 'requestMaterialInspection']);
     Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);
+    Route::patch('/milestone-activities/{id}/toggle', [CrudController::class, 'toggleMilestoneActivity']);
+    Route::patch('/milestone-activities/{id}/note', [CrudController::class, 'noteMilestoneActivity']);
     Route::get('/fitting-standards/lookup', [CrudController::class, 'lookupFitting']);
     Route::get('/{res}', [CrudController::class, 'index'])->where('res', $resRegex);
     Route::get('/{res}/{id}', [CrudController::class, 'show'])->where('res', $resRegex);

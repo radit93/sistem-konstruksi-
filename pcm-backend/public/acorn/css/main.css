@@ -1776,6 +1776,14 @@ html[data-placement=horizontal] .nav-container .logo .img {
     padding-right: 1.85rem;
 }
 
+.pcm-searchselect input.pcm-searchselect__input[readonly]:not(:disabled) {
+    background: var(--pcm-surface) !important;
+    border-color: var(--pcm-line) !important;
+    color: var(--pcm-ink) !important;
+    -webkit-text-fill-color: var(--pcm-ink) !important;
+    cursor: pointer !important;
+}
+
 .pcm-searchselect__clear {
     position: absolute;
     top: 50%;
@@ -1844,8 +1852,9 @@ html[data-placement=horizontal] .nav-container .logo .img {
 .pcm-searchselect__label {
     overflow: hidden;
     font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
 }
 
 .pcm-searchselect__hint {

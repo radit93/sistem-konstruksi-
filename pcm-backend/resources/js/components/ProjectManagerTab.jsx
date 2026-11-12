@@ -87,7 +87,7 @@ const SECTION_LABELS = {
     pm_projects: 'Project List',
     schedule: 'Kontrak & BOQ',
     pm_scurve: 'S-Curve & Schedule',
-    pm_budget: 'Budget vs Actual',
+    pm_budget: 'Budgeting',
     pm_daily: 'Daily Progress Log',
     pm_milestone: 'Project Milestone',
     report: 'Laporan Eksekutif'
@@ -141,6 +141,7 @@ export function ProjectManagerTab({
     const [folderError, setFormError] = useState('');
 
     const canEdit = can(user, 'project.create') || can(user, 'scope.write');
+    const isPmOversight = Boolean(user?.is_superadmin) || can(user, 'scope.view');
 
     // Sinkronisasi penyimpanan proyek aktif ke global App & localStorage
     const handleSelectProject = (projId) => {
@@ -201,9 +202,9 @@ export function ProjectManagerTab({
 
     const effectiveProjectId = activeProject?.id || selectedProjectId;
 
-    // Muat data lintas departemen setiap kali proyek aktif dibuka
+    // Muat data lintas departemen hanya jika user punya izin pengawasan PM (scope.view)
     useEffect(() => {
-        if (!effectiveProjectId || currentSection === 'pm_projects') return undefined;
+        if (!effectiveProjectId || currentSection === 'pm_projects' || !isPmOversight) return undefined;
         let alive = true;
         setCrossData((prev) => ({ ...prev, loading: true }));
 
@@ -233,7 +234,7 @@ export function ProjectManagerTab({
         return () => {
             alive = false;
         };
-    }, [effectiveProjectId, currentSection]);
+    }, [effectiveProjectId, currentSection, isPmOversight]);
 
     // Filter folder
     const filteredFolders = useMemo(() => {
@@ -447,7 +448,7 @@ export function ProjectManagerTab({
             {/* ============================================================
                 LOADING / EMPTY STATE JIKA PROYEK BELUM SIAP
                 ============================================================ */}
-            {currentSection !== 'pm_projects' && !activeProject && loading && (
+            {currentSection !== 'pm_projects' && !(currentSection === 'pm_milestone' && isPmOversight) && !activeProject && loading && (
                 <div className="pcm-state" role="status" aria-live="polite">
                     <span className="spinner-border spinner-border-sm text-primary mb-2" aria-hidden="true" />
                     <p className="pcm-state__title">Memuat data proyek</p>
@@ -455,28 +456,45 @@ export function ProjectManagerTab({
                 </div>
             )}
 
-            {currentSection !== 'pm_projects' && !activeProject && !loading && (
+            {currentSection !== 'pm_projects' && !(currentSection === 'pm_milestone' && isPmOversight) && !activeProject && !loading && (
                 <div className="pcm-state">
                     <span className="pcm-state__icon"><IconFolder size="lg" /></span>
                     <h2 className="pcm-state__title">Belum ada proyek terdaftar</h2>
                     <p className="pcm-state__text">
                         Silakan buat proyek terlebih dahulu di halaman Project List untuk menggunakan modul {SECTION_LABELS[currentSection] || currentSection}.
                     </p>
-                    <button
-                        type="button"
-                        className="btn btn-primary btn-sm fw-bold px-3 py-2"
-                        style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
-                        onClick={() => onSelectTab?.('pm_projects')}
-                    >
-                        Buka Project List
-                    </button>
+                    {isPmOversight && (
+                        <button
+                            type="button"
+                            className="btn btn-primary btn-sm fw-bold px-3 py-2"
+                            style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                            onClick={() => onSelectTab?.('pm_projects')}
+                        >
+                            Buka Project List
+                        </button>
+                    )}
                 </div>
+            )}
+
+            {/* KHUSUS PROJECT MANAGER: MONITORING MILESTONE PER AKUN -> PER PROJECT */}
+            {currentSection === 'pm_milestone' && isPmOversight && (
+                <MilestoneSection
+                    project={activeProject}
+                    projects={enrichedProjects}
+                    drawings={projectDrawings}
+                    joints={projectJoints}
+                    materialInspections={crossData.materialInspections}
+                    inspections={crossData.inspections}
+                    testPackages={crossData.testPackages}
+                    user={user}
+                    onToast={onReload}
+                />
             )}
 
             {/* ============================================================
                 VIEW B: KONTEN DI DALAM PROYEK AKTIF (KONTRAK & BOQ, S-CURVE, DLL)
                 ============================================================ */}
-            {currentSection !== 'pm_projects' && activeProject && (
+            {currentSection !== 'pm_projects' && !(currentSection === 'pm_milestone' && isPmOversight) && activeProject && (
                 <div>
                     {/* BREADCRUMB & PROJECT CONTEXT BAR */}
                     <div
@@ -484,14 +502,16 @@ export function ProjectManagerTab({
                         style={{ borderRadius: 'var(--pcm-radius-card)', boxShadow: 'var(--pcm-elev-1)', borderColor: 'var(--pcm-line-soft)' }}
                     >
                         <div className="d-flex align-items-center gap-2 flex-wrap">
-                            <button
-                                type="button"
-                                className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 fw-semibold"
-                                onClick={() => (onSelectTab ? onSelectTab('pm_projects') : handleSelectProject(null))}
-                            >
-                                <IconArrowLeft size="sm" />
-                                <span>Project List</span>
-                            </button>
+                            {isPmOversight && (
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 fw-semibold"
+                                    onClick={() => (onSelectTab ? onSelectTab('pm_projects') : handleSelectProject(null))}
+                                >
+                                    <IconArrowLeft size="sm" />
+                                    <span>Project List</span>
+                                </button>
+                            )}
                             <span className="pcm-chip pcm-chip--primary pcm-code">
                                 JOB: {activeProject.job_no || '-'}
                             </span>
@@ -506,7 +526,8 @@ export function ProjectManagerTab({
                         <div className="d-flex align-items-center gap-2">
                             <span className="text-muted small fw-semibold text-nowrap">Pindah Proyek:</span>
                             <PcmSelect
-                                style={{ width: 'auto', minWidth: '210px' }}
+                                searchable={false}
+                                clearable={false}
                                 value={activeProject.id}
                                 onChange={(e) => handleSelectProject(e.target.value)}
                             >
@@ -544,6 +565,7 @@ export function ProjectManagerTab({
                             project={activeProject}
                             engBoqs={projectEngBoqs}
                             boms={projectBoms}
+                            joints={projectJoints}
                             user={user}
                             onToast={onReload}
                         />
@@ -560,6 +582,7 @@ export function ProjectManagerTab({
                     {currentSection === 'pm_milestone' && (
                         <MilestoneSection
                             project={activeProject}
+                            projects={enrichedProjects}
                             drawings={projectDrawings}
                             joints={projectJoints}
                             materialInspections={crossData.materialInspections}

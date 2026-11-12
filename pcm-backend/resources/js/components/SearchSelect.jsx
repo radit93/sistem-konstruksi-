@@ -9,6 +9,14 @@ import { createPortal } from 'react-dom';
  * allowCustom=true membuat nilai yang diketik tetap bisa dipakai walau
  * belum ada di master (masa transisi sebelum tabel perusahaan diimpor).
  */
+function flattenNodeText(node) {
+    if (node === null || node === undefined || typeof node === 'boolean') return '';
+    if (typeof node === 'string' || typeof node === 'number') return String(node);
+    if (Array.isArray(node)) return node.map(flattenNodeText).join('');
+    if (React.isValidElement(node)) return flattenNodeText(node.props?.children);
+    return String(node);
+}
+
 function normalizeOptions(options) {
     return (options || [])
         .map((opt) => {
@@ -40,9 +48,11 @@ export function SearchSelect({
     emptyText = 'Tidak ada pilihan yang cocok',
     children,
     searchable = true,
+    clearable,
     menuAlign = 'left',
     menuWidth,
 }) {
+    const canClear = clearable !== undefined ? clearable : searchable;
     const list = useMemo(() => {
         /* Dukungan <option> anak: memudahkan pemakaian sebagai pengganti
            <select> biasa tanpa harus menyusun array options. */
@@ -51,7 +61,7 @@ export function SearchSelect({
         if (kids.length > 0) {
             return kids.map((child) => ({
                 value: String(child.props.value ?? ''),
-                label: String(child.props.children ?? child.props.value ?? ''),
+                label: flattenNodeText(child.props.children ?? child.props.value ?? ''),
                 hint: ''
             }));
         }
@@ -198,7 +208,7 @@ export function SearchSelect({
                 type="text"
                 readOnly={!searchable}
                 className="form-control form-control-sm pcm-searchselect__input"
-                style={!searchable ? { cursor: 'pointer', userSelect: 'none' } : undefined}
+                style={!searchable ? { cursor: 'pointer', userSelect: 'none', backgroundColor: disabled ? undefined : '#ffffff' } : undefined}
                 value={open ? (searchable ? query : selectedLabel) : selectedLabel}
                 placeholder={placeholder}
                 disabled={disabled}
@@ -226,7 +236,7 @@ export function SearchSelect({
                 }}
                 onKeyDown={handleKeyDown}
             />
-            {value ? (
+            {canClear && value ? (
                 <button
                     type="button"
                     className="pcm-searchselect__clear"
@@ -319,6 +329,7 @@ export function PcmSelect({
     ariaLabel,
     emptyText,
     searchable = true,
+    clearable,
     menuAlign = 'left',
     menuWidth,
 }) {
@@ -327,7 +338,7 @@ export function PcmSelect({
             .filter((child) => React.isValidElement(child) && child.type === 'option')
             .map((child) => ({
                 value: String(child.props.value ?? ''),
-                label: String(child.props.children ?? child.props.value ?? ''),
+                label: flattenNodeText(child.props.children ?? child.props.value ?? ''),
             }));
         return {
             options: kids.filter((opt) => opt.value !== ''),
@@ -354,6 +365,7 @@ export function PcmSelect({
             required={required}
             emptyText={emptyText}
             searchable={searchable}
+            clearable={clearable}
             menuAlign={menuAlign}
             menuWidth={menuWidth}
         />

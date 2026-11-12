@@ -4,7 +4,7 @@ import { can } from '../../auth';
 import { formatRupiah } from '../../currency';
 import { PcmSelect } from '../SearchSelect';
 
-export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onToast }) {
+export function BudgetCostSection({ project, engBoqs = [], boms = [], joints = [], user, onToast }) {
     const [budgetList, setBudgetList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -142,7 +142,17 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
 
         setFormLoading(true);
         try {
-            const payload = { ...form, project_id: project?.id };
+            const payload = {
+                ...form,
+                project_id: project?.id,
+                labor_cost: parseFloat(form.labor_cost) || 0,
+                equipment_cost: parseFloat(form.equipment_cost) || 0,
+                consumable_cost: parseFloat(form.consumable_cost) || 0,
+                total_budget: parseFloat(form.total_budget) || 0,
+                actual_cost: parseFloat(form.actual_cost) || 0,
+                contract_qty: parseFloat(form.contract_qty) || 0,
+                unit_price: parseFloat(form.unit_price) || 0,
+            };
             if (editingItem) {
                 await api.put(`/budget-items/${editingItem.id}`, payload);
                 if (onToast) onToast('Item Anggaran berhasil diperbarui.');
@@ -180,9 +190,9 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
             {/* Header & Action Toolbar */}
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                 <div>
-                    <h2 className="h4 fw-bold text-dark mb-1">Budget vs Actual Cost Control</h2>
+                    <h2 className="h4 fw-bold text-dark mb-1">Budgeting &amp; Cost Control</h2>
                     <p className="text-muted small mb-0">
-                        Pengendalian biaya proyek (Direct &amp; Indirect Cost): alokasi tenaga kerja (Labor), peralatan (Equipment), dan bahan habis pakai (Consumable). Semua nilai dalam Rupiah (IDR).
+                        Pagu anggaran (Budget) dan realisasi aktual (Actual Cost) proyek.
                     </p>
                 </div>
                 {canEdit && (
@@ -200,80 +210,35 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
             {/* Metric Summary Tiles (PCM Design Tokens) */}
             <div className="row g-3 mb-4">
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100">
+                    <div className="pcm-tile h-100 p-3">
                         <span className="pcm-tile__label">Total Anggaran (Budget)</span>
-                        <strong className="pcm-tile__value pcm-tile__value--primary text-truncate" title={formatRupiah(stats.totalBudget)}>
+                        <div className="pcm-tile__value pcm-tile__value--primary fw-bold font-monospace" style={{ fontSize: '1.25rem', whiteSpace: 'normal', wordBreak: 'break-word' }}>
                             {formatRupiah(stats.totalBudget)}
-                        </strong>
+                        </div>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100">
+                    <div className="pcm-tile h-100 p-3">
                         <span className="pcm-tile__label">Realisasi Biaya (Actual)</span>
-                        <strong className="pcm-tile__value text-success text-truncate" title={formatRupiah(stats.totalActual)}>
+                        <div className="pcm-tile__value text-success fw-bold font-monospace" style={{ fontSize: '1.25rem', whiteSpace: 'normal', wordBreak: 'break-word' }}>
                             {formatRupiah(stats.totalActual)}
-                        </strong>
+                        </div>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100">
+                    <div className="pcm-tile h-100 p-3">
                         <span className="pcm-tile__label">Sisa Pagu Anggaran</span>
-                        <strong className={`pcm-tile__value text-truncate ${stats.budgetVariance < 0 ? 'text-danger' : 'text-dark'}`} title={formatRupiah(stats.budgetVariance)}>
+                        <div className={`pcm-tile__value fw-bold font-monospace ${stats.budgetVariance < 0 ? 'text-danger' : 'text-dark'}`} style={{ fontSize: '1.25rem', whiteSpace: 'normal', wordBreak: 'break-word' }}>
                             {formatRupiah(stats.budgetVariance)}
-                        </strong>
+                        </div>
                     </div>
                 </div>
                 <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100">
-                        <span className="pcm-tile__label">Budget Absorption</span>
-                        <strong className="pcm-tile__value">
+                    <div className="pcm-tile h-100 p-3">
+                        <span className="pcm-tile__label">Penyerapan Anggaran</span>
+                        <div className="pcm-tile__value fw-bold font-monospace" style={{ fontSize: '1.25rem' }}>
                             {stats.burnRatePct}%
-                            <span className="pcm-tile__unit">terserap</span>
-                        </strong>
-                    </div>
-                </div>
-            </div>
-
-            {/* Integrasi Biaya Engineering BOQ & Material BOM */}
-            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 'var(--pcm-radius-card)', borderLeft: '4px solid #1e40af' }}>
-                <div className="card-body py-3 px-4">
-                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                        <div>
-                            <div className="small fw-bold text-uppercase text-primary">
-                                Estimasi Biaya Teknis Dari Engineering (BOQ Jasa Las + Elektroda + Material MTO)
-                            </div>
-                            <div className="text-muted small">
-                                Dihitung otomatis dari tabel Welding Map Engineering BOQ ({(engBoqs || []).length} baris) dan Bill of Materials ({(boms || []).length} item).
-                            </div>
-                        </div>
-                        <span className="badge px-3 py-2 fw-bold" style={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: 'var(--pcm-radius-chip)' }}>
-                            Total Proyeksi Teknis: {formatRupiah(stats.totalEngineeringEstimate)}
-                        </span>
-                    </div>
-                    <div className="row g-2 small">
-                        <div className="col-6 col-md-3">
-                            <div className="p-2.5 rounded bg-light border">
-                                <div className="text-muted" style={{ fontSize: '0.72rem' }}>Jasa Fabrikasi &amp; Erection</div>
-                                <div className="fw-bold text-dark font-monospace">{formatRupiah(stats.engWorkTotal)}</div>
-                            </div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                            <div className="p-2.5 rounded bg-light border">
-                                <div className="text-muted" style={{ fontSize: '0.72rem' }}>Biaya Elektroda Las</div>
-                                <div className="fw-bold text-dark font-monospace">{formatRupiah(stats.engWeldingTotal)}</div>
-                            </div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                            <div className="p-2.5 rounded bg-light border">
-                                <div className="text-muted" style={{ fontSize: '0.72rem' }}>Pengadaan Material (BOM/MTO)</div>
-                                <div className="fw-bold text-dark font-monospace">{formatRupiah(stats.bomMaterialTotal)}</div>
-                            </div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                            <div className="p-2.5 rounded bg-light border">
-                                <div className="text-muted" style={{ fontSize: '0.72rem' }}>Alokasi Manpower (Budget)</div>
-                                <div className="fw-bold text-dark font-monospace">{formatRupiah(stats.totalLabor)}</div>
-                            </div>
+                            <span className="pcm-tile__unit ms-1 fw-normal text-muted" style={{ fontSize: '0.8rem' }}>terserap</span>
                         </div>
                     </div>
                 </div>
@@ -292,6 +257,8 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
                     />
                 </div>
                 <PcmSelect
+                    searchable={false}
+                    clearable={false}
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
                     style={{ width: 'auto', borderRadius: 'var(--pcm-radius-control)' }}
@@ -302,34 +269,32 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
                 </PcmSelect>
             </div>
 
-            {/* Table */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
+            {/* Table dengan Grid Rapi */}
+            <div className="card border shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)', borderColor: '#cbd5e1' }}>
                 <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.82rem' }}>
-                        <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.7rem', letterSpacing: '0.04em' }}>
-                            <tr>
-                                <th className="ps-3 py-2.5" style={{ width: '110px' }}>Item Code</th>
-                                <th className="py-2.5" style={{ width: '100px' }}>Kategori</th>
-                                <th className="py-2.5">Deskripsi Scope Biaya</th>
-                                <th className="py-2.5 text-center" style={{ width: '60px' }}>Unit</th>
-                                <th className="py-2.5 text-end" style={{ width: '120px' }}>Labor Cost</th>
-                                <th className="py-2.5 text-end" style={{ width: '120px' }}>Equipment</th>
-                                <th className="py-2.5 text-end" style={{ width: '120px' }}>Consumables</th>
-                                <th className="py-2.5 text-end" style={{ width: '130px' }}>Total Budget</th>
-                                <th className="py-2.5 text-end" style={{ width: '130px' }}>Actual Cost</th>
-                                {canEdit && <th className="text-end pe-3 py-2.5" style={{ width: '80px' }}>Aksi</th>}
+                    <table className="table table-bordered table-hover align-middle mb-0" style={{ fontSize: '0.82rem', borderColor: '#cbd5e1' }}>
+                        <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.04em', borderColor: '#cbd5e1' }}>
+                            <tr style={{ backgroundColor: '#f8fafc' }}>
+                                <th className="ps-3 py-2.5 text-dark" style={{ width: '130px', borderColor: '#cbd5e1' }}>Item Code</th>
+                                <th className="py-2.5 text-dark" style={{ width: '110px', borderColor: '#cbd5e1' }}>Kategori</th>
+                                <th className="py-2.5 text-dark" style={{ minWidth: '320px', borderColor: '#cbd5e1' }}>Deskripsi Scope &amp; Komponen Biaya</th>
+                                <th className="py-2.5 text-center text-dark" style={{ width: '60px', borderColor: '#cbd5e1' }}>Unit</th>
+                                <th className="py-2.5 text-end text-dark" style={{ width: '135px', borderColor: '#cbd5e1' }}>Total Budget</th>
+                                <th className="py-2.5 text-end text-dark" style={{ width: '135px', borderColor: '#cbd5e1' }}>Actual Cost</th>
+                                <th className="py-2.5 text-end text-dark" style={{ width: '135px', borderColor: '#cbd5e1' }}>Sisa Anggaran</th>
+                                {canEdit && <th className="text-center pe-3 py-2.5 text-dark" style={{ width: '85px', borderColor: '#cbd5e1' }}>Aksi</th>}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody style={{ borderColor: '#cbd5e1' }}>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 10 : 9} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 8 : 7} className="text-center py-4 text-muted" style={{ borderColor: '#cbd5e1' }}>
                                         Memuat data anggaran biaya...
                                     </td>
                                 </tr>
                             ) : filteredBudget.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canEdit ? 10 : 9} className="text-center py-4 text-muted">
+                                    <td colSpan={canEdit ? 8 : 7} className="text-center py-4 text-muted" style={{ borderColor: '#cbd5e1' }}>
                                         Tidak ada data anggaran yang sesuai.
                                     </td>
                                 </tr>
@@ -337,28 +302,44 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
                                 filteredBudget.map((b) => {
                                     const budget = parseFloat(b.total_budget) || 0;
                                     const actual = parseFloat(b.actual_cost) || 0;
+                                    const variance = budget - actual;
                                     const isOver = actual > budget;
+                                    const labor = parseFloat(b.labor_cost) || 0;
+                                    const equip = parseFloat(b.equipment_cost) || 0;
+                                    const consum = parseFloat(b.consumable_cost) || 0;
+                                    const hasBreakdown = labor > 0 || equip > 0 || consum > 0;
                                     return (
                                         <tr key={b.id}>
-                                            <td className="ps-3 fw-bold font-monospace text-dark">{b.item_code}</td>
-                                            <td>
+                                            <td className="ps-3 fw-bold font-monospace text-dark" style={{ borderColor: '#cbd5e1' }}>{b.item_code}</td>
+                                            <td style={{ borderColor: '#cbd5e1' }}>
                                                 <span className="badge px-2 py-1 text-dark border" style={{ backgroundColor: '#f1f5f9' }}>
                                                     {b.category}
                                                 </span>
                                             </td>
-                                            <td className="fw-semibold text-dark">{b.scope_description}</td>
-                                            <td className="text-center font-monospace">{b.unit}</td>
-                                            <td className="text-end font-monospace">{formatRupiah(b.labor_cost)}</td>
-                                            <td className="text-end font-monospace">{formatRupiah(b.equipment_cost)}</td>
-                                            <td className="text-end font-monospace">{formatRupiah(b.consumable_cost)}</td>
-                                            <td className="text-end fw-bold text-dark font-monospace">{formatRupiah(budget)}</td>
-                                            <td className="text-end fw-bold font-monospace">
+                                            <td style={{ borderColor: '#cbd5e1' }}>
+                                                <div className="fw-semibold text-dark">{b.scope_description}</div>
+                                                {hasBreakdown && (
+                                                    <div className="text-muted font-monospace mt-0.5" style={{ fontSize: '0.72rem' }}>
+                                                        {labor > 0 && <span>Tenaga Kerja: {formatRupiah(labor)}</span>}
+                                                        {equip > 0 && <span className="ms-2">&bull; Alat: {formatRupiah(equip)}</span>}
+                                                        {consum > 0 && <span className="ms-2">&bull; Bahan: {formatRupiah(consum)}</span>}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="text-center font-monospace" style={{ borderColor: '#cbd5e1' }}>{b.unit}</td>
+                                            <td className="text-end fw-bold text-dark font-monospace" style={{ borderColor: '#cbd5e1' }}>{formatRupiah(budget)}</td>
+                                            <td className="text-end fw-bold font-monospace" style={{ borderColor: '#cbd5e1' }}>
                                                 <span className={isOver ? 'text-danger' : 'text-success'}>
                                                     {formatRupiah(actual)}
                                                 </span>
                                             </td>
+                                            <td className="text-end fw-bold font-monospace" style={{ borderColor: '#cbd5e1' }}>
+                                                <span className={variance < 0 ? 'text-danger' : 'text-dark'}>
+                                                    {variance >= 0 ? `+${formatRupiah(variance)}` : formatRupiah(variance)}
+                                                </span>
+                                            </td>
                                             {canEdit && (
-                                                <td className="text-end pe-3">
+                                                <td className="text-center pe-3" style={{ borderColor: '#cbd5e1' }}>
                                                     <button
                                                         type="button"
                                                         className="btn btn-outline-primary btn-sm px-2.5 py-1 fw-bold"
@@ -382,15 +363,15 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
             {showModal && (
                 <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(15,23,42,0.6)', zIndex: 1060 }}>
                     <div className="modal-dialog modal-dialog-centered modal-lg">
-                        <div className="modal-content border-0 shadow" style={{ borderRadius: 'var(--pcm-radius-card)' }}>
+                        <div className="modal-content bg-white border-0 shadow" style={{ borderRadius: 'var(--pcm-radius-card)', backgroundColor: '#ffffff' }}>
                             <form onSubmit={handleSave}>
-                                <div className="modal-header border-bottom">
-                                    <h5 className="modal-title fw-bold text-dark">
+                                <div className="modal-header border-bottom bg-white">
+                                    <h5 className="modal-title fw-bold text-dark mb-0">
                                         {editingItem ? 'Edit Item Anggaran' : 'Tambah Item Anggaran Baru'}
                                     </h5>
                                     <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                                 </div>
-                                <div className="modal-body p-4">
+                                <div className="modal-body p-4 bg-white">
                                     {formError && (
                                         <div className="alert alert-danger py-2 small mb-3">{formError}</div>
                                     )}
@@ -408,6 +389,8 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
                                         <div className="col-12 col-md-4">
                                             <label className="form-label small fw-bold">Kategori</label>
                                             <PcmSelect
+                                                searchable={false}
+                                                clearable={false}
                                                 value={form.category}
                                                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                                             >
@@ -442,10 +425,11 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
                                                 className="form-control font-monospace"
                                                 value={form.labor_cost}
                                                 onChange={(e) => {
-                                                    const lc = parseFloat(e.target.value) || 0;
+                                                    const val = e.target.value;
+                                                    const lc = parseFloat(val) || 0;
                                                     const eq = parseFloat(form.equipment_cost) || 0;
                                                     const cs = parseFloat(form.consumable_cost) || 0;
-                                                    setForm({ ...form, labor_cost: lc, total_budget: lc + eq + cs });
+                                                    setForm(prev => ({ ...prev, labor_cost: val, total_budget: lc + eq + cs }));
                                                 }}
                                             />
                                         </div>
@@ -457,10 +441,11 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
                                                 className="form-control font-monospace"
                                                 value={form.equipment_cost}
                                                 onChange={(e) => {
-                                                    const eq = parseFloat(e.target.value) || 0;
+                                                    const val = e.target.value;
+                                                    const eq = parseFloat(val) || 0;
                                                     const lc = parseFloat(form.labor_cost) || 0;
                                                     const cs = parseFloat(form.consumable_cost) || 0;
-                                                    setForm({ ...form, equipment_cost: eq, total_budget: lc + eq + cs });
+                                                    setForm(prev => ({ ...prev, equipment_cost: val, total_budget: lc + eq + cs }));
                                                 }}
                                             />
                                         </div>
@@ -472,10 +457,11 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
                                                 className="form-control font-monospace"
                                                 value={form.consumable_cost}
                                                 onChange={(e) => {
-                                                    const cs = parseFloat(e.target.value) || 0;
+                                                    const val = e.target.value;
+                                                    const cs = parseFloat(val) || 0;
                                                     const lc = parseFloat(form.labor_cost) || 0;
                                                     const eq = parseFloat(form.equipment_cost) || 0;
-                                                    setForm({ ...form, consumable_cost: cs, total_budget: lc + eq + cs });
+                                                    setForm(prev => ({ ...prev, consumable_cost: val, total_budget: lc + eq + cs }));
                                                 }}
                                             />
                                         </div>
@@ -486,17 +472,17 @@ export function BudgetCostSection({ project, engBoqs = [], boms = [], user, onTo
                                                 step="1"
                                                 className="form-control fw-bold font-monospace"
                                                 value={form.total_budget}
-                                                onChange={(e) => setForm({ ...form, total_budget: parseFloat(e.target.value) || 0 })}
+                                                onChange={(e) => setForm({ ...form, total_budget: e.target.value })}
                                             />
                                         </div>
                                         <div className="col-12 col-md-6">
-                                            <label className="form-label small fw-bold">Realisasi Biaya Aktual (Rp)</label>
+                                            <label className="form-label small fw-bold text-dark">Realisasi Biaya Aktual (Input PM / Lapangan) (Rp)</label>
                                             <input
                                                 type="number"
                                                 step="1"
-                                                className="form-control font-monospace"
+                                                className="form-control font-monospace fw-bold"
                                                 value={form.actual_cost}
-                                                onChange={(e) => setForm({ ...form, actual_cost: parseFloat(e.target.value) || 0 })}
+                                                onChange={(e) => setForm({ ...form, actual_cost: e.target.value })}
                                             />
                                         </div>
                                     </div>

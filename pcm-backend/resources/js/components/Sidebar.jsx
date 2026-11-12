@@ -55,7 +55,8 @@ export const DEPARTMENT_MENUS = {
         'bom',
         'material_standard',
         'master_pipe',
-        'document_control'
+        'document_control',
+        'pm_milestone'
     ],
     MAT: [
         'material_standard',
@@ -66,11 +67,12 @@ export const DEPARTMENT_MENUS = {
         'mat_storing',
         'mat_warehouse',
         'mat_openyard',
-        'mat_issuing'
+        'mat_issuing',
+        'pm_milestone'
     ],
-    CONS: ['material_standard', 'master_pipe', 'construction', 'erection'],
-    QAQC: ['material_standard', 'master_pipe', 'qaqc', 'testpackage', 'mat_inspection'],
-    HSE: ['hse']
+    CONS: ['material_standard', 'master_pipe', 'construction', 'erection', 'pm_milestone'],
+    QAQC: ['material_standard', 'master_pipe', 'qaqc', 'testpackage', 'mat_inspection', 'pm_milestone'],
+    HSE: ['hse', 'pm_milestone']
 };
 
 // Satu menu = satu layar. Visibilitas ditentukan izin dari database.
@@ -258,7 +260,7 @@ export const ROLE_SIDEBAR_MENUS = [
     },
     {
         id: 'pm_budget',
-        label: 'Budget vs Actual',
+        label: 'Budgeting',
         perm: 'scope.view',
         group: 'Project Management',
         desc: 'Direct & Indirect Cost Control'
@@ -273,9 +275,9 @@ export const ROLE_SIDEBAR_MENUS = [
     {
         id: 'pm_milestone',
         label: 'Project Milestone',
-        perm: 'scope.view',
+        anyOf: ['scope.view', 'milestone.view'],
         group: 'Project Management',
-        desc: 'Phase Gates & Hold Point Sign-off'
+        desc: 'Milestone Per Akun, Estimasi Durasi & Jadwal Kerja Harian/Jam'
     },
     {
         id: 'report',

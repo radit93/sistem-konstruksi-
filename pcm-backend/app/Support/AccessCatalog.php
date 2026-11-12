@@ -77,6 +77,8 @@ class AccessCatalog
             ['scope.view',        'schedule',     'Lihat BOQ dan S-Curve',          80],
             ['scope.write',       'schedule',     'Ubah BOQ kontrak',               81],
             ['progress.write',    'schedule',     'Input progres harian',           82],
+            ['milestone.view',    'schedule',     'Lihat Milestone & Jadwal Kerja', 83],
+            ['milestone.write',   'schedule',     'Input Milestone Pribadi',        84],
 
             ['report.view',       'report',       'Lihat Laporan Terpadu',          90],
 
@@ -122,6 +124,7 @@ class AccessCatalog
             'project_manager' => array_merge($readAdmin, [
                 'dashboard.view',
                 'scope.view', 'scope.write', 'progress.write', 'report.view',
+                'milestone.view', 'milestone.write',
                 'drawing.view', 'stock.view', 'material_inspection.view',
                 'joint.view', 'inspection.view', 'testpackage.view', 'hse.view',
             ]),
@@ -130,17 +133,20 @@ class AccessCatalog
             'engineer' => [
                 'dashboard.view',
                 'drawing.view', 'drawing.write',
+                'milestone.view', 'milestone.write',
             ],
 
             'material' => [
                 'dashboard.view',
                 'stock.view', 'stock.write',
                 'material_inspection.view',
+                'milestone.view', 'milestone.write',
             ],
 
             'construction' => [
                 'dashboard.view',
                 'joint.view', 'joint.write',
+                'milestone.view', 'milestone.write',
             ],
 
             'qaqc' => [
@@ -148,16 +154,19 @@ class AccessCatalog
                 'joint.write', 'joint.cross',
                 'inspection.view', 'inspection.write',
                 'material_inspection.view', 'material_inspection.write',
+                'milestone.view', 'milestone.write',
             ],
 
             'testpackage' => [
                 'dashboard.view',
                 'testpackage.view', 'testpackage.write',
+                'milestone.view', 'milestone.write',
             ],
 
             'hse' => [
                 'dashboard.view',
                 'hse.view', 'hse.write',
+                'milestone.view', 'milestone.write',
             ],
         ];
     }

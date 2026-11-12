@@ -50,6 +50,7 @@ export function ProjectListSection({
     activeProjectId = '',
     loading = false,
     onSelectProject,
+    description = 'Pilih satu project untuk membuka data Material Control. Data stok, penerimaan, dan pengeluaran hanya ditampilkan untuk project yang dipilih.',
 }) {
     const [search, setSearch] = useState('');
     const [filterClient, setFilterClient] = useState('ALL');
@@ -85,8 +86,7 @@ export function ProjectListSection({
                     Project List
                 </h2>
                 <p className="text-muted small mb-0">
-                    Pilih satu project untuk membuka data Material Control. Data stok, penerimaan, dan
-                    pengeluaran hanya ditampilkan untuk project yang dipilih.
+                    {description}
                 </p>
             </div>
 

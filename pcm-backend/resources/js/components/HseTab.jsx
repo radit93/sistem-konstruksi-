@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { PcmSelect } from './SearchSelect';
+import { ProjectGuard } from './ProjectGuard';
 
-export function HseTab({ hseLogs, user, onReload }) {
+export function HseTab({ projects = [], hseLogs, user, onReload, activeProjectId, onSetActiveProject }) {
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
         log_date: new Date().toISOString().split('T')[0],
@@ -23,7 +24,7 @@ export function HseTab({ hseLogs, user, onReload }) {
         setLoading(true);
         try {
             await api.post('/hse', {
-                project_id: 1,
+                project_id: activeProjectId,
                 ...formData
             });
             setShowModal(false);
@@ -34,6 +35,10 @@ export function HseTab({ hseLogs, user, onReload }) {
             setLoading(false);
         }
     };
+
+    if (!activeProjectId) {
+        return <ProjectGuard projects={projects} onSelectProject={onSetActiveProject} />;
+    }
 
     return (
         <div className="container-fluid px-4 py-4">

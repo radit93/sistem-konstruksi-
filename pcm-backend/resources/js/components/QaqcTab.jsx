@@ -3,12 +3,13 @@ import { api } from '../api';
 import { can } from '../auth';
 import { jointLabel } from './FabricationTab';
 import { PcmSelect } from './SearchSelect';
+import { ProjectGuard } from './ProjectGuard';
 
 // Kolom nyata inspections: joint_id, kind, result, defect_type, report_no, insp_date, inspector, photo_path, remarks.
 const today = () => new Date().toISOString().split('T')[0];
 const specLabel = j => [j.spec_a || j.spec_b, j.size_in ? `${j.size_in}"` : ''].filter(Boolean).join(' ');
 
-export function QaqcTab({ joints, inspections, user, onReload }) {
+export function QaqcTab({ projects = [], joints, inspections, user, onReload, activeProjectId, onSetActiveProject }) {
     const [search, setSearch] = useState('');
     const [selectedJoint, setSelectedJoint] = useState(null);
     const [showInspectModal, setShowInspectModal] = useState(false);
@@ -80,6 +81,10 @@ export function QaqcTab({ joints, inspections, user, onReload }) {
             (r.inspector || '').toLowerCase().includes(q) ||
             (r.kind || '').toLowerCase().includes(q);
     });
+
+    if (!activeProjectId) {
+        return <ProjectGuard projects={projects} onSelectProject={onSetActiveProject} />;
+    }
 
     return (
         <div className="container-fluid px-4 py-4">

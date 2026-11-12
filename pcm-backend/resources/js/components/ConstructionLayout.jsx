@@ -1,24 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { can } from '../auth';
 import { FabricationTab } from './FabricationTab';
+import { ProjectGuard } from './ProjectGuard';
 
-export function ConstructionLayout({ projects, joints, user, onReload }) {
-    const [activeProjectId, setActiveProjectId] = useState(() => {
-        return localStorage.getItem('pcm_active_construction_project_id') || '';
-    });
+export function ConstructionLayout({ projects, joints, user, onReload, activeProjectId, onSetActiveProject, onSelectTab }) {
     const [search, setSearch] = useState('');
 
     const canEdit = can(user, 'joint.write');
-
-    const handleSetActiveProject = useCallback((id) => {
-        if (id) {
-            localStorage.setItem('pcm_active_construction_project_id', String(id));
-            setActiveProjectId(String(id));
-        } else {
-            localStorage.removeItem('pcm_active_construction_project_id');
-            setActiveProjectId('');
-        }
-    }, []);
 
     const activeProject = useMemo(() => {
         return projects.find((p) => String(p.id) === String(activeProjectId)) || null;
@@ -45,28 +33,13 @@ export function ConstructionLayout({ projects, joints, user, onReload }) {
 
     if (!activeProjectId) {
         return (
-            <div className="container-fluid px-4 py-4">
-                <div className="alert alert-info d-flex align-items-start gap-2" role="alert">
-                    <i className="cs-warning-hexagon fs-5 text-info mt-1"></i>
-                    <div>
-                        <strong className="d-block mb-2">Pilih Project Terlebih Dahulu</strong>
-                        <span className="text-muted mb-3 d-block">
-                            Construction Shop dan Field Erection hanya menampilkan data dari project yang dipilih.
-                            Pilih project untuk memulai pekerjaan.
-                        </span>
-                        <select
-                            className="form-select w-auto"
-                            value={activeProjectId}
-                            onChange={(e) => handleSetActiveProject(e.target.value)}
-                        >
-                            <option value="">-- Pilih Project --</option>
-                            {projects.map(p => (
-                                <option key={p.id} value={p.id}>{p.name || p.job_no || `Project #${p.id}`}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-            </div>
+            <ProjectGuard
+                sectionLabel="Construction Shop"
+                projects={projects}
+                activeProjectId={activeProjectId}
+                onSelectProject={onSetActiveProject}
+                onOpenProjectList={() => onSelectTab?.('construction_project_list')}
+            />
         );
     }
 
@@ -86,7 +59,7 @@ export function ConstructionLayout({ projects, joints, user, onReload }) {
                         className="form-select form-select-sm"
                         style={{ width: '240px' }}
                         value={activeProjectId}
-                        onChange={(e) => handleSetActiveProject(e.target.value)}
+                        onChange={(e) => onSetActiveProject(e.target.value)}
                     >
                         {projects.map(p => (
                             <option key={p.id} value={p.id}>
@@ -106,7 +79,7 @@ export function ConstructionLayout({ projects, joints, user, onReload }) {
                     <button
                         type="button"
                         className="btn btn-outline-secondary btn-sm"
-                        onClick={() => handleSetActiveProject('')}
+                        onClick={() => onSetActiveProject('')}
                     >
                         Ganti Project
                     </button>

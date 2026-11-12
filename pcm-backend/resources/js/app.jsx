@@ -21,6 +21,7 @@ import { TestPackageTab } from './components/TestPackageTab';
 import { HseTab } from './components/HseTab';
 import { AdminTab } from './components/AdminTab';
 import { ProjectManagerTab } from './components/ProjectManagerTab';
+import { ProjectListSection as ConstructionProjectListSection } from './components/construction/ProjectListSection';
 
 // Pemetaan role pengguna ke tab awal saat pertama login (Global Dashboard belum bisa dibuka)
 const ROLE_DEFAULT_TABS = {
@@ -385,7 +386,6 @@ function App() {
                             scopeLabel={scopeLabel}
                             loading={dataLoading}
                             error={dataError}
-                            onSelectTab={setActiveTab}
                             onReload={() => {
                                 loadData();
                                 showToast('Data Global Dashboard diperbarui');
@@ -441,9 +441,23 @@ function App() {
                             projects={projects}
                             joints={joints}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
                             onReload={() => {
                                 loadData();
                                 showToast('Status Field Erection diperbarui');
+                            }}
+                        />
+                    )}
+                    {activeTab === 'construction_project_list' && (
+                        <ConstructionProjectListSection
+                            projects={projects}
+                            activeProjectId={activeProjectId}
+                            loading={dataLoading}
+                            onSelectProject={(id) => {
+                                handleSetActiveProject(id);
+                                setActiveTab('construction');
                             }}
                         />
                     )}
@@ -452,6 +466,9 @@ function App() {
                             projects={projects}
                             joints={joints}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
                             onReload={() => {
                                 loadData();
                                 showToast('Status Konstruksi diperbarui');
@@ -460,9 +477,12 @@ function App() {
                     )}
                     {activeTab === 'qaqc' && (
                         <QaqcTab
+                            projects={projects}
                             joints={joints}
                             inspections={inspections}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
                             onReload={() => {
                                 loadData();
                                 showToast('Laporan QC & Joint Status diperbarui');
@@ -471,9 +491,12 @@ function App() {
                     )}
                     {activeTab === 'testpackage' && (
                         <TestPackageTab
+                            projects={projects}
                             testPackages={testPackages}
                             joints={joints}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
                             onReload={() => {
                                 loadData();
                                 showToast('Test Package diperbarui');
@@ -482,8 +505,11 @@ function App() {
                     )}
                     {activeTab === 'hse' && (
                         <HseTab
+                            projects={projects}
                             hseLogs={hseLogs}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
                             onReload={() => {
                                 loadData();
                                 showToast('Log HSE diperbarui');

@@ -305,8 +305,8 @@ export function WarehousingSection({
                 open={Boolean(reportType)}
                 reportType={reportType || 'stock'}
                 initialFilters={reportType === 'location-map'
-                    ? { storage_type: 'WAREHOUSE', search }
-                    : { storage_type: 'WAREHOUSE', search, category: filterCategory }}
+                    ? { project_id: activeProjectId, storage_type: 'WAREHOUSE', search }
+                    : { project_id: activeProjectId, storage_type: 'WAREHOUSE', search, category: filterCategory }}
                 onClose={() => setReportType(null)}
             />
         </div>

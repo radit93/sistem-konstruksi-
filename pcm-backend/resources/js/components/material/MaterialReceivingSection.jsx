@@ -822,6 +822,7 @@ export function MaterialReceivingSection({
                 open={reportOpen}
                 reportType="receiving"
                 initialFilters={{
+                    project_id: activeProjectId,
                     search,
                     status: filterStatus,
                 }}

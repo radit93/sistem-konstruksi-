@@ -19,6 +19,7 @@ export const OPERATIONAL_MENU_IDS = [
     'pm_milestone',
     'report',
     'material',
+    'mat_project_list',
     'mat_requirement',
     'mat_receiving',
     'mat_inspection',
@@ -58,6 +59,7 @@ export const DEPARTMENT_MENUS = {
     MAT: [
         'material_standard',
         'master_pipe',
+        'mat_project_list',
         'mat_requirement',
         'mat_receiving',
         'mat_inspection',
@@ -126,7 +128,24 @@ export const ROLE_SIDEBAR_MENUS = [
         label: 'Material Standard',
         anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',
-        desc: 'ASTM Standard Catalog'
+        desc: 'ASTM Standard Catalog',
+        children: [
+            {
+                id: 'material_pipe',
+                label: 'Pipe Standards',
+                desc: 'Pipe material standards'
+            },
+            {
+                id: 'material_fitting',
+                label: 'Fitting Standards',
+                desc: 'Elbow, tee, reducer, weld-o-let standards'
+            },
+            {
+                id: 'material_additional',
+                label: 'Additional Standards',
+                desc: 'Flange, valve, gasket, and fastener standards'
+            }
+        ]
     },
     {
         id: 'master_pipe',
@@ -153,6 +172,13 @@ export const ROLE_SIDEBAR_MENUS = [
         perm: 'drawing.view',
         group: 'Engineering',
         desc: 'Revision History & Transmittal Letters'
+    },
+    {
+        id: 'mat_project_list',
+        label: 'Project List',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Pilih project untuk membuka data material'
     },
     {
         id: 'mat_requirement',

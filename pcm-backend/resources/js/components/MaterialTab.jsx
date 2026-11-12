@@ -1,5 +1,6 @@
 import React from 'react';
 import { ProjectGuard } from './ProjectGuard';
+import { ProjectListSection } from './material/ProjectListSection';
 import { MaterialRequirementSection } from './material/MaterialRequirementSection';
 import { MaterialReceivingSection } from './material/MaterialReceivingSection';
 import { MaterialInspectionSection } from './material/MaterialInspectionSection';
@@ -40,6 +41,23 @@ export function MaterialTab({
         ? `${activeProject.name || 'Project'}${activeProject.job_no ? ` • JOB ${activeProject.job_no}` : ''}`
         : '';
 
+    /* Halaman Project List milik Material: tetap bisa dibuka walau belum ada
+       project aktif, karena dari sinilah project dipilih. */
+    if (currentSection === 'mat_project_list') {
+        return (
+            <div className="container-fluid px-4 py-4">
+                <ProjectListSection
+                    projects={projects}
+                    activeProjectId={projectId}
+                    onSelectProject={(id) => {
+                        if (onSetActiveProject) onSetActiveProject(id);
+                        if (onSelectTab) onSelectTab('mat_storing');
+                    }}
+                />
+            </div>
+        );
+    }
+
     if (!hasProject) {
         return (
             <div className="container-fluid px-4 py-4">
@@ -52,7 +70,7 @@ export function MaterialTab({
                         if (onSetActiveProject) onSetActiveProject(id || '');
                     }}
                     onOpenProjectList={() => {
-                        if (onSelectTab) onSelectTab('project_list');
+                        if (onSelectTab) onSelectTab('mat_project_list');
                     }}
                 />
             </div>

@@ -276,7 +276,14 @@ function App() {
         };
 
         const resolved = resolveMenu(activeTab);
-        if (resolved && allowed(resolved.owner) && inScope(resolved.owner)) return;
+        if (resolved && allowed(resolved.owner) && inScope(resolved.owner)) {
+            /* Kalau yang aktif adalah menu induk yang punya sub-menu, arahkan
+               ke anak pertama supaya halaman langsung terbuka. */
+            if (Array.isArray(resolved.target.children) && resolved.target.children.length > 0) {
+                setActiveTab(resolved.target.children[0].id);
+            }
+            return;
+        }
 
         const fallback = ROLE_SIDEBAR_MENUS.find((m) => allowed(m) && inScope(m))?.id || 'overview';
         setActiveTab(fallback);
@@ -403,7 +410,7 @@ function App() {
                             }}
                         />
                     )}
-                    {['material', 'mat_requirement', 'mat_receiving', 'mat_inspection', 'mat_storing', 'mat_warehouse', 'mat_openyard', 'mat_issuing'].includes(activeTab) && (
+                    {['material', 'mat_project_list', 'mat_requirement', 'mat_receiving', 'mat_inspection', 'mat_storing', 'mat_warehouse', 'mat_openyard', 'mat_issuing'].includes(activeTab) && (
                         <MaterialTab
                             currentSection={activeTab}
                             stockMoves={stockMoves}

@@ -9,6 +9,7 @@ use App\Http\Controllers\BomGenerationController;
 use App\Http\Controllers\CrudController;
 use App\Http\Controllers\MaterialDocumentController;
 use App\Http\Controllers\MaterialReportController;
+use App\Http\Controllers\MaterialInventoryController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -64,6 +65,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/material-receivings/{id}/request-inspection', [CrudController::class, 'requestMaterialInspection']);
     Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);
+    Route::post('/material-returns', [MaterialInventoryController::class, 'storeReturn']);
+    Route::post('/material-adjustments', [MaterialInventoryController::class, 'storeAdjustment']);
     Route::get('/fitting-standards/lookup', [CrudController::class, 'lookupFitting']);
     Route::get('/{res}', [CrudController::class, 'index'])->where('res', $resRegex);
     Route::get('/{res}/{id}', [CrudController::class, 'show'])->where('res', $resRegex);

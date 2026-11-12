@@ -348,6 +348,7 @@ export function EngineeringTab({
     // Filter dan pencarian
     const [searchFolder, setSearchFolder] = useState('');
     const [clientFilter, setClientFilter] = useState('ALL');
+    const [projectListPage, setProjectListPage] = useState(1);
     const [searchDrawing, setSearchDrawing] = useState('');
 
     // Modal Drawing
@@ -496,6 +497,36 @@ export function EngineeringTab({
             || (f.job_no || '').toLowerCase().includes(q);
         return matchClient && matchSearch;
     }), [folderList, clientFilter, searchFolder]);
+
+    const projectListPageSize = 10;
+    const projectListRows = useMemo(() => {
+        const rows = filteredFolders.map((folder) => ({
+            ...folder,
+            _isUnassigned: false
+        }));
+        if (unassignedDrawings.length > 0) {
+            const q = searchFolder.trim().toLowerCase();
+            if (!q || 'unassigned drawings'.includes(q) || 'general'.includes(q)) {
+                rows.push({
+                    id: 'unassigned',
+                    job_no: 'UNASSIGNED',
+                    name: 'Unassigned Drawings',
+                    client: 'General (Unassigned)',
+                    drawings_count: unassignedDrawings.length,
+                    total_joints: unassignedDrawings.reduce((sum, d) => sum + (parseInt(d.total_joints, 10) || 0), 0),
+                    _isUnassigned: true
+                });
+            }
+        }
+        return rows;
+    }, [filteredFolders, unassignedDrawings, searchFolder]);
+
+    const totalProjectPages = Math.max(1, Math.ceil(projectListRows.length / projectListPageSize));
+    const safeProjectPage = Math.min(projectListPage, totalProjectPages);
+    const paginatedProjectRows = useMemo(() => {
+        const start = (safeProjectPage - 1) * projectListPageSize;
+        return projectListRows.slice(start, start + projectListPageSize);
+    }, [projectListRows, safeProjectPage]);
 
     const activeFolderDrawings = useMemo(() => {
         const list = !selectedProjectId
@@ -749,13 +780,13 @@ export function EngineeringTab({
             )}
 
             {/* ============================================================
-                MODUL 0: List Project (Direktori Folder Proyek Persegi 4)
+                MODUL 0: Project List (Table / List View)
                 ============================================================ */}
             {activeEngTab === 'project_list' && (
                 <div>
                     <div className="mb-4">
                         <h2 className="h3 fw-bolder text-dark mb-0" style={{ letterSpacing: '-0.02em' }}>
-                            Project List Directory
+                            Project List
                         </h2>
                     </div>
 
@@ -763,10 +794,10 @@ export function EngineeringTab({
                     <div className="row g-3 mb-4">
                         <div className="col-6 col-lg-3">
                             <div className="pcm-tile">
-                                <span className="pcm-tile__label">Project Folders</span>
+                                <span className="pcm-tile__label">Total Projects</span>
                                 <strong className="pcm-tile__value">
                                     {folderList.length}
-                                    <span className="pcm-tile__unit">folders</span>
+                                    <span className="pcm-tile__unit">projects</span>
                                 </strong>
                             </div>
                         </div>
@@ -808,10 +839,13 @@ export function EngineeringTab({
                             <input
                                 type="text"
                                 className="form-control form-control-sm pcm-filter-input w-100"
-                                placeholder="Search project folder name, client, job no..."
-                                aria-label="Search project folder"
+                                placeholder="Search project name, client, job no..."
+                                aria-label="Search project list"
                                 value={searchFolder}
-                                onChange={(e) => setSearchFolder(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchFolder(e.target.value);
+                                    setProjectListPage(1);
+                                }}
                             />
                         </div>
                     </div>
@@ -819,107 +853,187 @@ export function EngineeringTab({
                     {loading && folderList.length === 0 && (
                         <div className="pcm-state" role="status" aria-live="polite">
                             <span className="spinner-border spinner-border-sm text-primary mb-2" aria-hidden="true" />
-                            <p className="pcm-state__title">Loading project folders data</p>
-                            <p className="pcm-state__text">Fetching project folders and drawing registers from server.</p>
+                            <p className="pcm-state__title">Loading project list</p>
+                            <p className="pcm-state__text">Fetching projects and drawing registers from server.</p>
                         </div>
                     )}
 
                     {showDirectoryEmpty && (
                         <div className="pcm-state">
-                            <span className="pcm-state__icon"><IconFolder size="lg" /></span>
-                            <h2 className="pcm-state__title">No client project folders yet</h2>
+                            <span className="pcm-state__icon"><IconFile size="lg" /></span>
+                            <h2 className="pcm-state__title">No projects registered yet</h2>
                             <p className="pcm-state__text">
-                                No project folders registered yet. Project folders are created and managed via Project Manager or Admin modules.
+                                Projects are created and managed via Project Manager or Admin modules.
                             </p>
                         </div>
                     )}
 
-                    {(filteredFolders.length > 0 || unassignedDrawings.length > 0) && (
-                        <div className="row g-3">
-                            {filteredFolders.map((folder) => (
-                                <div className="col-12 col-sm-6 col-lg-4 col-xl-3 d-flex" key={folder.id}>
-                                    <button
-                                        type="button"
-                                        className="pcm-folder-square-card h-100 w-100"
-                                        onClick={() => {
-                                            setSelectedProjectId(folder.id);
-                                            if (onSelectTab) onSelectTab('engineering');
-                                        }}
-                                    >
-                                        <div className="d-flex align-items-center justify-content-between mb-3 w-100">
-                                            <span className="pcm-folder-square-card__icon">
-                                                <IconFolder size="sm" />
-                                            </span>
-                                            <span className="pcm-folder-square-card__arrow text-muted">
-                                                <IconChevronRight size="sm" />
-                                            </span>
-                                        </div>
+                    {!showDirectoryEmpty && (!loading || folderList.length > 0) && (
+                        <div className="pcm-card">
+                            <div className="table-responsive">
+                                <table className="table table-hover align-middle pcm-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" className="text-center" style={{ width: '140px' }}>
+                                                <span className="pcm-th-title">Job No</span>
+                                            </th>
+                                            <th scope="col" className="text-start ps-3" style={{ minWidth: '260px' }}>
+                                                <span className="pcm-th-title">Project Name</span>
+                                            </th>
+                                            <th scope="col" className="text-start ps-3" style={{ minWidth: '200px' }}>
+                                                <span className="pcm-th-title">Client</span>
+                                            </th>
+                                            <th scope="col" className="text-center" style={{ width: '115px' }}>
+                                                <span className="pcm-th-title">Drawings</span>
+                                            </th>
+                                            <th scope="col" className="text-center" style={{ width: '105px' }}>
+                                                <span className="pcm-th-title">Joints</span>
+                                            </th>
+                                            <th scope="col" className="text-center" style={{ width: '125px' }}>
+                                                <span className="pcm-th-title">Action</span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedProjectRows.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="py-5 text-center">
+                                                    <div className="pcm-state border-0 bg-transparent py-3">
+                                                        <p className="pcm-state__title">No projects match your filter</p>
+                                                        <p className="pcm-state__text mb-3">
+                                                            Try adjusting or clearing your search query.
+                                                        </p>
+                                                        {searchFolder && (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-outline-secondary"
+                                                                onClick={() => {
+                                                                    setSearchFolder('');
+                                                                    setProjectListPage(1);
+                                                                }}
+                                                            >
+                                                                Clear Search
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            paginatedProjectRows.map((row) => (
+                                                <tr
+                                                    key={row.id}
+                                                    onClick={() => {
+                                                        setSelectedProjectId(row.id);
+                                                        if (onSelectTab) onSelectTab('engineering');
+                                                    }}
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        backgroundColor: row._isUnassigned ? '#fffdfa' : undefined
+                                                    }}
+                                                >
+                                                    <td className="text-center">
+                                                        <span
+                                                            className={`pcm-chip ${row._isUnassigned ? 'pcm-chip--warning' : 'pcm-chip--neutral'} pcm-code`}
+                                                            style={{ fontSize: '0.75rem', padding: '0.18rem 0.55rem' }}
+                                                        >
+                                                            {row.job_no || 'NO JOB'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-start ps-3">
+                                                        <div
+                                                            className="fw-bold"
+                                                            style={{ fontSize: '0.9rem', color: '#0f172a' }}
+                                                        >
+                                                            {row.name}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-start ps-3">
+                                                        <span className="fw-semibold" style={{ fontSize: '0.84rem', color: '#334155' }}>
+                                                            {row.client || 'General Client'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <span className="fw-bold pcm-code" style={{ color: '#0f172a' }}>
+                                                            {row.drawings_count || 0}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <span className="fw-bold pcm-code" style={{ color: '#0f172a' }}>
+                                                            {row.total_joints || 0}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm fw-bold px-3 py-1 d-inline-flex align-items-center gap-1"
+                                                            style={{
+                                                                backgroundColor: '#1e40af',
+                                                                borderColor: '#1d4ed8',
+                                                                color: '#ffffff',
+                                                                fontSize: '0.78rem'
+                                                            }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedProjectId(row.id);
+                                                                if (onSelectTab) onSelectTab('engineering');
+                                                            }}
+                                                        >
+                                                            <span>Open</span>
+                                                            <IconChevronRight size="sm" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
 
-                                        <div className="flex-grow-1 d-flex flex-column justify-content-center min-w-0 w-100 my-1">
-                                            <h3 className="pcm-folder-square-card__name text-truncate mb-2" title={folder.name}>
-                                                {folder.name}
-                                            </h3>
-                                            <div className="d-flex align-items-center gap-1.5 text-truncate">
-                                                <span className="pcm-chip pcm-chip--neutral pcm-code" style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem' }}>
-                                                    {folder.job_no || 'NO JOB'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="pcm-folder-square-card__footer mt-3 pt-2 w-100 border-top">
-                                            <span className="fw-bold small text-truncate d-block" style={{ color: '#0f172a' }} title={folder.client || 'General Client'}>
-                                                {folder.client || 'General Client'}
-                                            </span>
-                                        </div>
-                                    </button>
-                                </div>
-                            ))}
-
-                            {unassignedDrawings.length > 0 && (
-                                <div className="col-12 col-sm-6 col-lg-4 col-xl-3 d-flex">
-                                    <button
-                                        type="button"
-                                        className="pcm-folder-square-card pcm-folder-square-card--warning h-100 w-100"
-                                        onClick={() => {
-                                            setSelectedProjectId('unassigned');
-                                            if (onSelectTab) onSelectTab('engineering');
-                                        }}
-                                    >
-                                        <div className="d-flex align-items-center justify-content-between mb-3 w-100">
-                                            <span className="pcm-folder-square-card__icon">
-                                                <IconFolder size="sm" />
-                                            </span>
-                                            <span className="pcm-folder-square-card__arrow text-muted">
-                                                <IconChevronRight size="sm" />
-                                            </span>
-                                        </div>
-
-                                        <div className="flex-grow-1 d-flex flex-column justify-content-center min-w-0 w-100 my-1">
-                                            <h3 className="pcm-folder-square-card__name text-truncate mb-2">
-                                                Unassigned Drawings
-                                            </h3>
-                                            <div>
-                                                <span className="pcm-chip pcm-chip--warning" style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem' }}>
-                                                    UNASSIGNED
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="pcm-folder-square-card__footer mt-3 pt-2 w-100 border-top">
-                                            <span className="text-muted small">
-                                                {unassignedDrawings.length} drawing files
-                                            </span>
-                                        </div>
-                                    </button>
+                            {projectListRows.length > projectListPageSize && (
+                                <div
+                                    className="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 border-top bg-white"
+                                    style={{
+                                        borderBottomLeftRadius: 'var(--pcm-radius-card)',
+                                        borderBottomRightRadius: 'var(--pcm-radius-card)'
+                                    }}
+                                >
+                                    <div className="pcm-cell-sub" style={{ fontSize: '0.8125rem', color: '#1e293b' }}>
+                                        Showing <strong>{(safeProjectPage - 1) * projectListPageSize + 1}</strong> &ndash;{' '}
+                                        <strong>{Math.min(safeProjectPage * projectListPageSize, projectListRows.length)}</strong> of{' '}
+                                        <strong>{projectListRows.length}</strong> projects
+                                        <span className="ms-2 text-muted fw-normal">
+                                            (Page <strong>{safeProjectPage}</strong> of <strong>{totalProjectPages}</strong>)
+                                        </span>
+                                    </div>
+                                    <div className="d-flex align-items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            className="pcm-page-nav-btn d-inline-flex align-items-center justify-content-center"
+                                            disabled={safeProjectPage <= 1}
+                                            onClick={() => setProjectListPage(Math.max(1, safeProjectPage - 1))}
+                                            title="Previous page"
+                                            aria-label="Previous page"
+                                        >
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#000000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                <polyline points="15 18 9 12 15 6" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="pcm-page-nav-btn d-inline-flex align-items-center justify-content-center"
+                                            disabled={safeProjectPage >= totalProjectPages}
+                                            onClick={() => setProjectListPage(Math.min(totalProjectPages, safeProjectPage + 1))}
+                                            title="Next page"
+                                            aria-label="Next page"
+                                        >
+                                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#000000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                <polyline points="9 18 15 12 9 6" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
-                    )}
-
-                    {!loading && filteredFolders.length === 0 && unassignedDrawings.length > 0 && (
-                        <p className="pcm-count mt-3 mb-0">
-                            No project folders match the filter. Unassigned drawings are still displayed above.
-                        </p>
                     )}
                 </div>
             )}

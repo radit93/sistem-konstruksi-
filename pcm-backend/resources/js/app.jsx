@@ -455,6 +455,8 @@ function App() {
                         <QaqcTab
                             joints={joints}
                             inspections={inspections}
+                            drawings={drawings}
+                            projects={projects}
                             user={user}
                             onReload={() => {
                                 loadData();

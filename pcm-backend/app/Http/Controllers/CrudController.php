@@ -229,10 +229,11 @@ class CrudController extends Controller
      */
     private array $crossDepartment = [
         'joints' => 'joint.cross',
-        // Material Control perlu membaca master Engineering (drawing, katalog
-        // standar, BOM) untuk mencocokkan requirement dengan stok. Hak tulis
-        // tetap dijaga permission drawing.write di checkWrite().
-        'drawings' => 'stock.view',
+        // Material Control, QA/QC, dan Construction perlu membaca master Engineering
+        // (drawing, welding map, katalog standar, BOM) untuk verifikasi teknis.
+        // Hak tulis tetap dijaga permission drawing.write di checkWrite().
+        'drawings' => ['stock.view', 'inspection.view', 'joint.view'],
+        'welding-maps' => ['stock.view', 'inspection.view', 'joint.view'],
         'material-standards' => 'stock.view',
         'bill-of-materials' => 'stock.view',
         'material-receivings' => 'material_inspection.write',
@@ -329,8 +330,13 @@ class CrudController extends Controller
         }
 
         $cross = $this->crossDepartment[$res] ?? null;
-        if ($cross && $user->hasPermission($cross)) {
-            return $query;
+        if ($cross) {
+            $allowed = is_array($cross)
+                ? collect($cross)->some(fn ($p) => $user->hasPermission($p))
+                : $user->hasPermission($cross);
+            if ($allowed) {
+                return $query;
+            }
         }
 
         // No department means no rows, never "all rows". A misconfigured user
@@ -617,8 +623,40 @@ class CrudController extends Controller
             $data['project_id'] = $data['project_id'] ?? $receiving->project_id;
         }
 
-        // QA-QC: Auto-update joint status when inspection passes or fails
+        // QA-QC: Auto-generate authoritative report_no & update joint status
         if ($res === 'inspections') {
+            $joint = Joint::find($data['joint_id'] ?? null);
+            if (! $joint) {
+                throw ValidationException::withMessages([
+                    'joint_id' => 'Joint wajib dipilih untuk laporan inspeksi.',
+                ]);
+            }
+
+            // Auto-generate nomor laporan dari Master Isometric & Joint jika kosong atau mock
+            $isAuto = empty($data['report_no'])
+                || str_starts_with($data['report_no'], 'QC-SEQ')
+                || str_starts_with($data['report_no'], 'QC-VR')
+                || str_starts_with($data['report_no'], 'AUTO');
+
+            if ($isAuto) {
+                $drawing = Drawing::where('drawing_no', $joint->drawing_no)->first();
+                $project = $drawing?->project;
+                $projCode = $project?->job_no ?? $project?->code ?? '2428';
+                $isoRaw = $drawing?->drawing_no ?? $joint->drawing_no ?? 'ISO';
+                $isoClean = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $isoRaw));
+                $seq = str_pad((string) ($joint->seq ?? 1), 2, '0', STR_PAD_LEFT);
+                $kindCode = match (strtoupper($data['kind'] ?? 'VISUAL')) {
+                    'RT' => 'RT',
+                    'PT' => 'PT',
+                    'UT' => 'UT',
+                    'PMI' => 'PMI',
+                    default => 'VT',
+                };
+                $count = Inspection::where('joint_id', $joint->id)->where('kind', $data['kind'] ?? 'VISUAL')->count() + 1;
+                $countPad = str_pad((string) $count, 2, '0', STR_PAD_LEFT);
+                $data['report_no'] = sprintf('QC-%s-%s-J%s-%s-%s', $projCode, $isoClean, $seq, $kindCode, $countPad);
+            }
+
             $inspection = DB::transaction(function () use ($model, $data) {
                 $inspection = $model::create($data);
                 $jointId = $inspection->joint_id;
@@ -700,6 +738,10 @@ class CrudController extends Controller
         $data = $request->all();
         if ($res === 'joints' && array_key_exists('status', $data)) {
             $this->validateJointStatusTransition($obj, (string) $data['status'], $request->user());
+        }
+        if ($res === 'inspections') {
+            // Nomor laporan dan joint_id tidak boleh diubah agar identitas master tidak corrupt
+            unset($data['report_no'], $data['joint_id']);
         }
         if ($res === 'drawings' && $request->hasFile('file')) {
             $path = $request->file('file')->store('drawings', 'public');
@@ -826,6 +868,27 @@ class CrudController extends Controller
         $obj->update($data);
         if ($res === 'welding-maps') {
             $this->syncWeldingMapToJoint($obj->fresh());
+        }
+        if ($res === 'inspections') {
+            $jointId = $obj->joint_id;
+            if ($jointId) {
+                $inspections = Inspection::where('joint_id', $jointId)->get();
+                $newStatus = null;
+                if ($inspections->contains(fn ($item) => $item->result === 'FAIL')) {
+                    $newStatus = 'REPAIR';
+                } else {
+                    $hasNdtPass = $inspections->contains(fn ($item) => in_array($item->kind, ['RT', 'PT', 'UT'], true) && $item->result === 'PASS');
+                    $hasVisualPass = $inspections->contains(fn ($item) => $item->kind === 'VISUAL' && $item->result === 'PASS');
+                    if ($hasNdtPass && $hasVisualPass) {
+                        $newStatus = 'NDT_OK';
+                    } elseif ($hasVisualPass) {
+                        $newStatus = 'VISUAL_OK';
+                    }
+                }
+                if ($newStatus !== null) {
+                    Joint::whereKey($jointId)->update(['status' => $newStatus]);
+                }
+            }
         }
 
         return response()->json($obj);

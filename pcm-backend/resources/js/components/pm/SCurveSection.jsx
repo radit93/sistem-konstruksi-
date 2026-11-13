@@ -35,6 +35,29 @@ function formatHours(hrs) {
     return `${Number.isInteger(rounded) ? rounded : rounded.toLocaleString('id-ID')} jam`;
 }
 
+// Smooth spline generator (Catmull-Rom to cubic Bezier)
+function buildSplinePath(points = []) {
+    if (points.length === 0) return '';
+    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+    if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[i === 0 ? 0 : i - 1];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+    }
+    return path;
+}
+
 export function SCurveSection({
     projects = [],
     initialProjectId = '',
@@ -160,12 +183,16 @@ export function SCurveSection({
             ? milestones
             : milestones.filter(m => String(m.user_id || m.user?.id || '') === String(selectedUserFilter));
 
-        // 1. Cari pengerjaan terlama (durasi estimasi hari & rentang tanggal)
+        // 1. Cari pengerjaan terlama (durasi estimasi hari & rentang tanggal nyata dari DB)
         let earliestStartMs = Infinity;
         let latestTargetMs = -Infinity;
         let maxEstimatedDays = 0;
         let totalEstimatedHours = 0;
         let totalDoneHours = 0;
+
+        // Kumpulkan jam kerja per hari nyata dari DB
+        const plannedHoursByDate = new Map();
+        const actualHoursByDate = new Map();
 
         targetMilestones.forEach(m => {
             const estDays = Number(m.estimated_days) || diffDaysInclusive(m.start_date, m.target_date) || 1;
@@ -186,6 +213,14 @@ export function SCurveSection({
                     const h = calcSlotHours(a.time_start, a.time_end);
                     totalEstimatedHours += h;
                     if (a.is_done) totalDoneHours += h;
+
+                    const dateKey = a.work_date || (m.start_date && a.day_number ? new Date(new Date(`${m.start_date}T00:00:00`).getTime() + (Number(a.day_number) - 1) * 86400000).toISOString().slice(0, 10) : null);
+                    if (dateKey) {
+                        plannedHoursByDate.set(dateKey, (plannedHoursByDate.get(dateKey) || 0) + h);
+                        if (a.is_done) {
+                            actualHoursByDate.set(dateKey, (actualHoursByDate.get(dateKey) || 0) + h);
+                        }
+                    }
                 });
             } else {
                 const dailyH = Number(m.work_hours_per_day) || 8;
@@ -196,7 +231,7 @@ export function SCurveSection({
             }
         });
 
-        // Fallback jika belum ada milestone
+        // Fallback jika tanggal belum terdaftar
         const nowMs = Date.now();
         if (!Number.isFinite(earliestStartMs)) earliestStartMs = nowMs - 14 * 86400000;
         if (!Number.isFinite(latestTargetMs) || latestTargetMs <= earliestStartMs) {
@@ -204,11 +239,9 @@ export function SCurveSection({
         }
 
         const projectSpanDays = Math.max(1, Math.round((latestTargetMs - earliestStartMs) / 86400000) + 1);
-        if (maxEstimatedDays === 0) maxEstimatedDays = projectSpanDays;
 
-        // Bagi rentang proyek menjadi periode (mingguan atau per blok hari)
+        // Jumlah kolom periode: mingguan (kelipatan 7 hari) agar nama hari dan tanggal kalender berurutan teratur
         const totalPeriods = Math.max(4, Math.min(24, Math.ceil(projectSpanDays / 7)));
-        const periodMs = (latestTargetMs - earliestStartMs) / totalPeriods;
 
         // Distribusi Kurva S Estimasi / Rencana (0% -> 100%)
         const plannedSeries = Array.from({ length: totalPeriods }, (_, idx) => {
@@ -220,23 +253,47 @@ export function SCurveSection({
             return Math.max(1, Math.min(99, Math.round(((raw - minRaw) / (maxRaw - minRaw)) * 100)));
         });
 
-        // 2. Realisasi Pengerjaan (Persentase Selesai berdasarkan Jam & Slot)
-        const currentPeriodIdx = Math.max(0, Math.min(totalPeriods - 1, Math.floor((nowMs - earliestStartMs) / periodMs)));
-        const hourRealizationPct = totalEstimatedHours > 0
+        // Realisasi pengerjaan nyata kumulatif per periode
+        const currentPeriodIdx = Math.max(0, Math.min(totalPeriods - 1, Math.floor((nowMs - earliestStartMs) / (7 * 86400000))));
+        const overallRealizationPct = totalEstimatedHours > 0
             ? Math.min(100, Math.round((totalDoneHours / totalEstimatedHours) * 100))
             : (activeProject.progress_pct || 0);
 
+        let runningActualHours = 0;
         const periods = plannedSeries.map((planned, idx) => {
-            const pStart = new Date(earliestStartMs + idx * periodMs);
+            const pStart = new Date(earliestStartMs + idx * 7 * 86400000);
+            const pEnd = new Date(earliestStartMs + (idx + 1) * 7 * 86400000);
             const pLabel = pStart.toISOString().slice(0, 10);
             const periodNo = idx + 1;
 
+            // Hitung jam kerja teralokasi di minggu ini dari database
+            let periodPlannedHours = 0;
+            let periodActualHours = 0;
+
+            for (let d = 0; d < 7; d++) {
+                const curDateStr = new Date(pStart.getTime() + d * 86400000).toISOString().slice(0, 10);
+                periodPlannedHours += plannedHoursByDate.get(curDateStr) || 0;
+                periodActualHours += actualHoursByDate.get(curDateStr) || 0;
+            }
+
+            // Fallback distribusi jam kerja jika milestone belum rinci per hari
+            if (periodPlannedHours === 0 && totalEstimatedHours > 0) {
+                const prevPct = idx === 0 ? 0 : plannedSeries[idx - 1];
+                periodPlannedHours = Math.round(totalEstimatedHours * ((planned - prevPct) / 100) * 10) / 10;
+            }
+
+            runningActualHours += periodActualHours;
+
             let actual = null;
             if (idx <= currentPeriodIdx) {
-                const fraction = (idx + 1) / (currentPeriodIdx + 1);
-                actual = idx === currentPeriodIdx
-                    ? hourRealizationPct
-                    : Math.min(hourRealizationPct, Math.round(hourRealizationPct * fraction * 0.95));
+                if (totalEstimatedHours > 0 && runningActualHours > 0) {
+                    actual = Math.min(100, Math.round((runningActualHours / totalEstimatedHours) * 100));
+                } else {
+                    const fraction = (idx + 1) / (currentPeriodIdx + 1);
+                    actual = idx === currentPeriodIdx
+                        ? overallRealizationPct
+                        : Math.min(overallRealizationPct, Math.round(overallRealizationPct * fraction * 0.95));
+                }
             }
 
             const plannedHourAccum = Math.round((totalEstimatedHours * (planned / 100)) * 10) / 10;
@@ -244,11 +301,14 @@ export function SCurveSection({
 
             return {
                 period: `P${periodNo}`,
-                periodName: `Periode ${periodNo}`,
+                periodName: `Minggu ${periodNo}`,
                 date: pLabel,
+                dateObj: pStart,
+                monthName: pStart.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
                 plannedPct: planned,
                 actualPct: actual,
                 variancePct: actual !== null ? Number((actual - planned).toFixed(1)) : null,
+                periodPlannedHours: Math.round(periodPlannedHours * 10) / 10,
                 plannedHours: plannedHourAccum,
                 actualHours: actualHourAccum,
             };
@@ -258,7 +318,7 @@ export function SCurveSection({
             maxEstimatedDays,
             totalEstimatedHours: Math.round(totalEstimatedHours * 10) / 10,
             totalDoneHours: Math.round(totalDoneHours * 10) / 10,
-            hourRealizationPct,
+            hourRealizationPct: overallRealizationPct,
             totalPeriods,
             periods,
             currentPeriodIdx,
@@ -557,118 +617,131 @@ export function SCurveSection({
                                     const periods = curveData.periods;
                                     const count = periods.length;
                                     const svgWidth = 1000;
-                                    const svgHeight = 360;
-                                    const leftLabelWidth = 160;
-                                    const plotW = svgWidth - leftLabelWidth - 20;
+                                    const svgHeight = 390;
+                                    const leftLabelWidth = 150;
+                                    const rightPad = 30;
+                                    const plotW = svgWidth - leftLabelWidth - rightPad;
                                     const colW = count > 0 ? plotW / count : plotW;
 
-                                    // Header Kalender Rows (Y positions)
-                                    const yMonth = 15;
-                                    const yWeek = 40;
-                                    const yDayName = 65;
-                                    const yDateNum = 90;
-                                    const yTargetHrs = 115;
-                                    const chartTop = 140;
-                                    const chartHeight = 195;
+                                    // Baris Tabel Kalender
+                                    const chartTop = 160;
+                                    const chartHeight = 180;
                                     const chartBottom = chartTop + chartHeight;
 
                                     const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-                                    const dayColors = {
-                                        0: { bg: '#d93025', text: '#ffffff' }, // Minggu (Merah)
-                                        6: { bg: '#fee2e2', text: '#991b1b' }, // Sabtu
-                                    };
+
+                                    // Kelompokkan bulan unik untuk banner atas kalender
+                                    const monthSpans = [];
+                                    let curMonth = null;
+                                    let curSpan = 0;
+                                    periods.forEach((p, i) => {
+                                        if (p.monthName !== curMonth) {
+                                            if (curMonth !== null) monthSpans.push({ month: curMonth, span: curSpan, startIdx: i - curSpan });
+                                            curMonth = p.monthName;
+                                            curSpan = 1;
+                                        } else {
+                                            curSpan++;
+                                        }
+                                    });
+                                    if (curMonth !== null) {
+                                        monthSpans.push({ month: curMonth, span: curSpan, startIdx: periods.length - curSpan });
+                                    }
 
                                     const xForIdx = (i) => leftLabelWidth + i * colW + colW / 2;
                                     const yForPct = (pct) => chartBottom - (Math.max(0, Math.min(100, pct)) / 100) * chartHeight;
 
-                                    const plannedPath = periods
-                                        .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${xForIdx(idx)} ${yForPct(p.plannedPct)}`)
-                                        .join(' ');
+                                    // Titik spline halus
+                                    const plannedPoints = periods.map((p, idx) => ({ x: xForIdx(idx), y: yForPct(p.plannedPct) }));
+                                    const plannedSpline = buildSplinePath(plannedPoints);
 
-                                    const actualPts = periods
+                                    const actualPoints = periods
                                         .map((p, idx) => (p.actualPct !== null ? { x: xForIdx(idx), y: yForPct(p.actualPct), val: p.actualPct, p, idx } : null))
                                         .filter(Boolean);
-
-                                    const actualPath = actualPts
-                                        .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`)
-                                        .join(' ');
+                                    const actualSpline = buildSplinePath(actualPoints);
 
                                     return (
-                                        <div className="w-100 overflow-auto border rounded" style={{ borderColor: '#e2e8f0' }}>
-                                            <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', minWidth: '820px', height: 'auto', display: 'block', backgroundColor: '#ffffff' }}>
-                                                {/* Left Column Headers (Label Baris Kalender) */}
-                                                <rect x="0" y="0" width={leftLabelWidth} height={svgHeight} fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
+                                        <div className="w-100 overflow-auto border rounded" style={{ borderColor: '#cbd5e1' }}>
+                                            <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', minWidth: '850px', height: 'auto', display: 'block', backgroundColor: '#ffffff' }}>
+                                                {/* Left Column Headers */}
+                                                <rect x="0" y="0" width={leftLabelWidth} height={chartTop} fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
 
-                                                <text x="12" y="30" fill="#0f172a" fontSize="11" fontWeight="bold">BULAN &amp; TAHUN</text>
-                                                <line x1="0" y1="40" x2={svgWidth} y2="40" stroke="#e2e8f0" strokeWidth="1" />
+                                                <text x="14" y="24" fill="#0f172a" fontSize="10.5" fontWeight="bold">BULAN &amp; TAHUN</text>
+                                                <line x1="0" y1="35" x2={svgWidth} y2="35" stroke="#cbd5e1" strokeWidth="1" />
 
-                                                <text x="12" y="55" fill="#475569" fontSize="11" fontWeight="600">PERIODE MINGGU</text>
-                                                <line x1="0" y1="65" x2={svgWidth} y2="65" stroke="#e2e8f0" strokeWidth="1" />
+                                                <text x="14" y="56" fill="#475569" fontSize="10.5" fontWeight="600">PERIODE MINGGU</text>
+                                                <line x1="0" y1="67" x2={svgWidth} y2="67" stroke="#cbd5e1" strokeWidth="1" />
 
-                                                <text x="12" y="80" fill="#475569" fontSize="11" fontWeight="600">HARI</text>
-                                                <line x1="0" y1="90" x2={svgWidth} y2="90" stroke="#e2e8f0" strokeWidth="1" />
+                                                <text x="14" y="88" fill="#475569" fontSize="10.5" fontWeight="600">HARI MULAI</text>
+                                                <line x1="0" y1="99" x2={svgWidth} y2="99" stroke="#cbd5e1" strokeWidth="1" />
 
-                                                <text x="12" y="105" fill="#475569" fontSize="11" fontWeight="600">TANGGAL KALENDER</text>
-                                                <line x1="0" y1="115" x2={svgWidth} y2="115" stroke="#e2e8f0" strokeWidth="1" />
+                                                <text x="14" y="120" fill="#475569" fontSize="10.5" fontWeight="600">TANGGAL AWAL</text>
+                                                <line x1="0" y1="131" x2={svgWidth} y2="131" stroke="#cbd5e1" strokeWidth="1" />
 
-                                                <text x="12" y="130" fill="#1e40af" fontSize="11" fontWeight="bold">JAM PLAN (HARI)</text>
-                                                <line x1="0" y1={chartTop} x2={svgWidth} y2={chartTop} stroke="#cbd5e1" strokeWidth="1.5" />
+                                                <text x="14" y="149" fill="#1e40af" fontSize="10.5" fontWeight="bold">ALOKASI JAM PLAN</text>
+                                                <line x1="0" y1={chartTop} x2={svgWidth} y2={chartTop} stroke="#94a3b8" strokeWidth="1.5" />
 
-                                                {/* Header Kalender: Bulan, Periode, Nama Hari, Tanggal, Jam Plan */}
-                                                {periods.map((p, idx) => {
-                                                    const xStart = leftLabelWidth + idx * colW;
-                                                    const xMid = xStart + colW / 2;
-                                                    const dObj = new Date(`${p.date}T00:00:00`);
-                                                    const dayOfWeek = Number.isNaN(dObj.getTime()) ? 1 : dObj.getDay();
-                                                    const dateNum = Number.isNaN(dObj.getTime()) ? (idx + 1) : dObj.getDate();
-                                                    const dayStyle = dayColors[dayOfWeek] || { bg: '#f1f5f9', text: '#334155' };
-                                                    const hrsPerDay = Math.round((curveData.totalEstimatedHours / count) * 10) / 10;
-
+                                                {/* Month Spans Header */}
+                                                {monthSpans.map((m, mIdx) => {
+                                                    const mX = leftLabelWidth + m.startIdx * colW;
+                                                    const mW = m.span * colW;
                                                     return (
-                                                        <g key={p.period}>
-                                                            {/* Garis Grid Vertikal Antar Kolom */}
-                                                            <line x1={xStart} y1="0" x2={xStart} y2={chartBottom} stroke="#e2e8f0" strokeWidth="1" />
-
-                                                            {/* Periode */}
-                                                            <rect x={xStart} y="40" width={colW} height="25" fill="#f8fafc" />
-                                                            <text x={xMid} y="56" fill="#334155" fontSize="10" fontWeight="bold" textAnchor="middle">
-                                                                {p.period}
-                                                            </text>
-
-                                                            {/* Hari (Highlight Merah di Hari Minggu) */}
-                                                            <rect x={xStart} y="65" width={colW} height="25" fill={dayStyle.bg} />
-                                                            <text x={xMid} y="81" fill={dayStyle.text} fontSize="10" fontWeight="bold" textAnchor="middle">
-                                                                {dayNames[dayOfWeek] || 'Hari'}
-                                                            </text>
-
-                                                            {/* Tanggal Kalender */}
-                                                            <rect x={xStart} y="90" width={colW} height="25" fill="#ffffff" />
-                                                            <text x={xMid} y="106" fill="#0f172a" fontSize="10" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
-                                                                {dateNum}
-                                                            </text>
-
-                                                            {/* Jam Rencana per Hari */}
-                                                            <rect x={xStart} y="115" width={colW} height="25" fill="#eff6ff" />
-                                                            <text x={xMid} y="131" fill="#1e40af" fontSize="10" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
-                                                                {hrsPerDay}h
+                                                        <g key={mIdx}>
+                                                            <rect x={mX} y="0" width={mW} height="35" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1" />
+                                                            <text x={mX + mW / 2} y="22" fill="#0f172a" fontSize="11" fontWeight="bold" textAnchor="middle" letterSpacing="0.04em">
+                                                                {m.month.toUpperCase()}
                                                             </text>
                                                         </g>
                                                     );
                                                 })}
 
-                                                {/* Top Month Banner Across Columns */}
-                                                <rect x={leftLabelWidth} y="0" width={plotW} height="40" fill="#f1f5f9" />
-                                                <text x={leftLabelWidth + plotW / 2} y="25" fill="#1e293b" fontSize="12" fontWeight="bold" textAnchor="middle" letterSpacing="0.05em">
-                                                    RENTANG WAKTU: {curveData.startDateStr} s/d {curveData.targetDateStr} ({curveData.maxEstimatedDays} HARI)
-                                                </text>
+                                                {/* Kolom Periode: Minggu, Hari, Tanggal, Jam Plan */}
+                                                {periods.map((p, idx) => {
+                                                    const xStart = leftLabelWidth + idx * colW;
+                                                    const xMid = xStart + colW / 2;
+                                                    const dObj = p.dateObj;
+                                                    const dayOfWeek = Number.isNaN(dObj.getTime()) ? 1 : dObj.getDay();
+                                                    const isSunday = dayOfWeek === 0;
 
-                                                {/* Chart Area Background & Horizontal Gridlines */}
-                                                <rect x={leftLabelWidth} y={chartTop} width={plotW} height={chartHeight} fill="#ffffff" stroke="#cbd5e1" strokeWidth="1" />
+                                                    return (
+                                                        <g key={p.period}>
+                                                            {/* Garis Grid Vertikal Menembus Sampai Bawah Chart */}
+                                                            <line x1={xStart} y1="35" x2={xStart} y2={chartBottom} stroke="#e2e8f0" strokeWidth="1" />
+
+                                                            {/* Periode */}
+                                                            <rect x={xStart} y="35" width={colW} height="32" fill="#ffffff" />
+                                                            <text x={xMid} y="55" fill="#1e293b" fontSize="10.5" fontWeight="bold" textAnchor="middle">
+                                                                {p.period}
+                                                            </text>
+
+                                                            {/* Hari Mulai */}
+                                                            <rect x={xStart} y="67" width={colW} height="32" fill={isSunday ? '#fee2e2' : '#ffffff'} />
+                                                            <text x={xMid} y="87" fill={isSunday ? '#dc2626' : '#475569'} fontSize="10" fontWeight="bold" textAnchor="middle">
+                                                                {dayNames[dayOfWeek] || '—'}
+                                                            </text>
+
+                                                            {/* Tanggal Kalender */}
+                                                            <rect x={xStart} y="99" width={colW} height="32" fill="#ffffff" />
+                                                            <text x={xMid} y="119" fill="#0f172a" fontSize="10.5" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                                                                {dObj.getDate()}
+                                                            </text>
+
+                                                            {/* Jam Rencana per Periode */}
+                                                            <rect x={xStart} y="131" width={colW} height="29" fill="#eff6ff" />
+                                                            <text x={xMid} y="150" fill="#1e40af" fontSize="10" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                                                                {p.periodPlannedHours}h
+                                                            </text>
+                                                        </g>
+                                                    );
+                                                })}
+                                                <line x1={leftLabelWidth + plotW} y1="0" x2={leftLabelWidth + plotW} y2={chartBottom} stroke="#cbd5e1" strokeWidth="1" />
+
+                                                {/* Chart Area Canvas & Gridlines */}
+                                                <rect x={leftLabelWidth} y={chartTop} width={plotW} height={chartHeight} fill="#ffffff" stroke="#94a3b8" strokeWidth="1" />
                                                 {[0, 25, 50, 75, 100].map(val => {
                                                     const y = yForPct(val);
                                                     return (
                                                         <g key={val}>
-                                                            <line x1={leftLabelWidth} y1={y} x2={leftLabelWidth + plotW} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray={val === 0 || val === 100 ? undefined : '3,3'} />
+                                                            <line x1={leftLabelWidth} y1={y} x2={leftLabelWidth + plotW} y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray={val === 0 || val === 100 ? undefined : '3,3'} />
                                                             <text x={leftLabelWidth - 8} y={y + 4} fill="#64748b" fontSize="10" fontWeight="bold" textAnchor="end" fontFamily="monospace">
                                                                 {val}%
                                                             </text>
@@ -676,31 +749,31 @@ export function SCurveSection({
                                                     );
                                                 })}
 
-                                                {/* Garis Kurva S Rencana (Planned - Biru Spline Lembut #1a73e8) */}
+                                                {/* Kurva S Rencana (Smooth Spline Biru) */}
                                                 <path
-                                                    d={plannedPath}
+                                                    d={plannedSpline}
                                                     fill="none"
                                                     stroke="#1a73e8"
-                                                    strokeWidth="3"
+                                                    strokeWidth="3.2"
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"
                                                 />
 
-                                                {/* Garis Kurva S Realisasi (Actual - Merah #d93025) */}
-                                                {actualPts.length > 0 && (
+                                                {/* Kurva S Realisasi (Smooth Spline Merah) */}
+                                                {actualPoints.length > 0 && (
                                                     <path
-                                                        d={actualPath}
+                                                        d={actualSpline}
                                                         fill="none"
                                                         stroke="#d93025"
-                                                        strokeWidth="3.5"
+                                                        strokeWidth="3.8"
                                                         strokeLinecap="round"
                                                         strokeLinejoin="round"
                                                     />
                                                 )}
 
-                                                {/* Titik Point & Tooltip Callout Persentase */}
-                                                {actualPts.map((pt, i) => {
-                                                    const isLast = i === actualPts.length - 1;
+                                                {/* Titik Realisasi Aktual & Tooltip Callout Rapi */}
+                                                {actualPoints.map((pt, i) => {
+                                                    const isLast = i === actualPoints.length - 1;
                                                     return (
                                                         <g key={pt.idx}>
                                                             <circle
@@ -714,16 +787,16 @@ export function SCurveSection({
                                                             {isLast && (
                                                                 <g>
                                                                     <rect
-                                                                        x={pt.x - 48}
-                                                                        y={Math.max(chartTop + 4, pt.y - 28)}
-                                                                        width="96"
+                                                                        x={pt.x - 46}
+                                                                        y={Math.max(chartTop + 8, pt.y - 32)}
+                                                                        width="92"
                                                                         height="22"
                                                                         rx="4"
                                                                         fill="#0f172a"
                                                                     />
                                                                     <text
                                                                         x={pt.x}
-                                                                        y={Math.max(chartTop + 18, pt.y - 14)}
+                                                                        y={Math.max(chartTop + 22, pt.y - 18)}
                                                                         fill="#ffffff"
                                                                         fontSize="10"
                                                                         fontWeight="bold"
@@ -738,9 +811,9 @@ export function SCurveSection({
                                                     );
                                                 })}
 
-                                                {/* Bottom Axis Label */}
-                                                <text x={leftLabelWidth + plotW / 2} y={svgHeight - 8} fill="#94a3b8" fontSize="10" textAnchor="middle">
-                                                    Distribusi Periode Waktu Proyek (Kurva S Kumulatif Jam Kerja)
+                                                {/* Label Sumbu Bawah */}
+                                                <text x={leftLabelWidth + plotW / 2} y={chartBottom + 24} fill="#64748b" fontSize="10.5" fontWeight="600" textAnchor="middle">
+                                                    Distribusi Periode Mingguan (Kurva-S Akumulasi Jam Kerja Rencana vs Realisasi Lapangan)
                                                 </text>
                                             </svg>
                                         </div>

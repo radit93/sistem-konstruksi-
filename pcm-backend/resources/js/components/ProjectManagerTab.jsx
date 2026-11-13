@@ -86,7 +86,7 @@ function IconShield({ size }) {
 const SECTION_LABELS = {
     pm_projects: 'Project List',
     schedule: 'Kontrak & BOQ',
-    pm_scurve: 'S-Curve & Schedule',
+    pm_scurve: 'Grafik',
     pm_budget: 'Budgeting',
     pm_daily: 'Daily Progress Log',
     pm_milestone: 'Project Milestone',
@@ -448,7 +448,7 @@ export function ProjectManagerTab({
             {/* ============================================================
                 LOADING / EMPTY STATE JIKA PROYEK BELUM SIAP
                 ============================================================ */}
-            {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && !activeProject && loading && (
+            {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && currentSection !== 'pm_scurve' && !activeProject && loading && (
                 <div className="pcm-state" role="status" aria-live="polite">
                     <span className="spinner-border spinner-border-sm text-primary mb-2" aria-hidden="true" />
                     <p className="pcm-state__title">Memuat data proyek</p>
@@ -456,7 +456,7 @@ export function ProjectManagerTab({
                 </div>
             )}
 
-            {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && !activeProject && !loading && (
+            {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && currentSection !== 'pm_scurve' && !activeProject && !loading && (
                 <div className="pcm-state">
                     <span className="pcm-state__icon"><IconFolder size="lg" /></span>
                     <h2 className="pcm-state__title">Belum ada proyek terdaftar</h2>
@@ -474,6 +474,19 @@ export function ProjectManagerTab({
                         </button>
                     )}
                 </div>
+            )}
+
+            {/* S-CURVE & SCHEDULE: TAMPILKAN LIST PROJECT & DRILL-DOWN PROGRES GLOBAL / PER AKUN */}
+            {currentSection === 'pm_scurve' && (
+                <SCurveSection
+                    projects={enrichedProjects.length > 0 ? enrichedProjects : projects}
+                    initialProjectId={activeProject?.id || selectedProjectId || ''}
+                    onSelectProject={(projId) => handleSelectProject(projId)}
+                    scopes={scopes}
+                    joints={joints}
+                    dailyLogs={crossData.dailyLogs}
+                    user={user}
+                />
             )}
 
             {/* PROJECT MILESTONE: LANGSUNG RENDER TANPA DIBLOKIR STATUS PROYEK */}
@@ -529,7 +542,7 @@ export function ProjectManagerTab({
             {/* ============================================================
                 VIEW B: KONTEN DI DALAM PROYEK AKTIF (KONTRAK & BOQ, S-CURVE, DLL)
                 ============================================================ */}
-            {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && activeProject && (
+            {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && currentSection !== 'pm_scurve' && activeProject && (
                 <div>
                     {/* BREADCRUMB & PROJECT CONTEXT BAR */}
                     <div
@@ -584,15 +597,6 @@ export function ProjectManagerTab({
                             joints={projectJoints}
                             user={user}
                             onReload={onReload}
-                        />
-                    )}
-                    {currentSection === 'pm_scurve' && (
-                        <SCurveSection
-                            project={activeProject}
-                            scopes={projectScopes}
-                            joints={projectJoints}
-                            dailyLogs={projectDailyLogs}
-                            user={user}
                         />
                     )}
                     {currentSection === 'pm_budget' && (

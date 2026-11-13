@@ -253,7 +253,7 @@ export const ROLE_SIDEBAR_MENUS = [
     },
     {
         id: 'pm_scurve',
-        label: 'S-Curve & Schedule',
+        label: 'Grafik',
         perm: 'scope.view',
         group: 'Project Management',
         desc: 'Kurva S Mingguan & Deviasi Jadwal'

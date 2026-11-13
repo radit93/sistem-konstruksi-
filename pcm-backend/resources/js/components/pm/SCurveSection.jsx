@@ -1,362 +1,823 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { api } from '../../api';
+import { PcmSelect } from '../SearchSelect';
 
-export function SCurveSection({ scopes = [], joints = [], dailyLogs = [], project }) {
-    const [basisMode, setBasisMode] = useState('CONTRACT'); // 'CONTRACT' | 'JOINTS'
+function diffDaysInclusive(startStr, endStr) {
+    if (!startStr || !endStr) return 0;
+    const sParts = String(startStr).split('-');
+    const eParts = String(endStr).split('-');
+    if (sParts.length !== 3 || eParts.length !== 3) return 0;
+    const sUtc = Date.UTC(Number(sParts[0]), Number(sParts[1]) - 1, Number(sParts[2]));
+    const eUtc = Date.UTC(Number(eParts[0]), Number(eParts[1]) - 1, Number(eParts[2]));
+    if (Number.isNaN(sUtc) || Number.isNaN(eUtc)) return 0;
+    return Math.max(1, Math.round((eUtc - sUtc) / 86400000) + 1);
+}
 
-    const schedule = useMemo(() => {
-        const totalContractDI = scopes
-            .filter(s => s.unit === 'DI')
-            .reduce((acc, s) => acc + (parseFloat(s.contract_qty) || 0), 0);
+function parseMinutes(hhmm) {
+    const m = String(hhmm || '').match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    const h = Number(m[1]);
+    const min = Number(m[2]);
+    if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+    return h * 60 + min;
+}
 
-        const scopeActualDI = scopes
-            .filter(s => s.unit === 'DI')
-            .reduce((acc, s) => acc + (parseFloat(s.cumulative_qty) || 0), 0);
+function calcSlotHours(startStr, endStr) {
+    const s = parseMinutes(startStr);
+    const e = parseMinutes(endStr);
+    if (s === null || e === null || e <= s) return 0;
+    return Math.round(((e - s) / 60) * 100) / 100;
+}
 
-        const doneStatuses = new Set(['WELDED', 'VISUAL_OK', 'NDT_OK', 'TESTED']);
-        const weldedJoints = (joints || []).filter(j => doneStatuses.has((j.status || '').toUpperCase()));
-        const jointActualDI = weldedJoints.reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0);
-        const jointRegisteredTotalDI = (joints || []).reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0);
+function formatHours(hrs) {
+    const h = Number(hrs) || 0;
+    const rounded = Math.round(h * 10) / 10;
+    return `${Number.isInteger(rounded) ? rounded : rounded.toLocaleString('id-ID')} jam`;
+}
 
-        // Denominator sesuai mode yang dipilih
-        const denominator = basisMode === 'JOINTS'
-            ? Math.max(1, jointRegisteredTotalDI)
-            : (totalContractDI > 0 ? totalContractDI : Math.max(1, jointRegisteredTotalDI));
+export function SCurveSection({
+    projects = [],
+    initialProjectId = '',
+    onSelectProject,
+    scopes = [],
+    joints = [],
+    dailyLogs = [],
+    user
+}) {
+    // Mode Tampilan: jika belum pilih proyek -> List Proyek, jika sudah -> Detail Proyek
+    const [selectedProjId, setSelectedProjId] = useState(initialProjectId ? String(initialProjectId) : '');
+    const [searchProject, setSearchProject] = useState('');
+    const [clientFilter, setClientFilter] = useState('ALL');
 
-        // Tentukan tanggal mulai proyek & durasi minggu
-        const weldDates = weldedJoints.map(j => new Date(j.weld_date).getTime()).filter(Number.isFinite);
-        const logDates = (dailyLogs || []).map(l => new Date(l.prog_date).getTime()).filter(Number.isFinite);
-        const startMs = project?.start_date
-            ? new Date(project.start_date).getTime()
-            : (logDates.length > 0
-                ? Math.min(...logDates)
-                : (weldDates.length > 0 ? Math.min(...weldDates) : Date.now() - 14 * 86400000));
-        const endMs = project?.end_date ? new Date(project.end_date).getTime() : startMs + 12 * 7 * 86400000;
-        const totalWeeks = Math.max(4, Math.min(24, Math.round((endMs - startMs) / (7 * 86400000)) || 12));
+    // Filter Drill-down akun di dalam proyek aktif: 'ALL' = Global Proyek, number/id = Akun Pekerja Terpilih
+    const [selectedUserFilter, setSelectedUserFilter] = useState('ALL');
 
-        // Distribusi Kurva S rencana (logistic S-shape 0..100%)
-        const plannedSeries = Array.from({ length: totalWeeks }, (_, idx) => {
-            if (idx === totalWeeks - 1) return 100;
-            const t = (idx + 1) / totalWeeks;
+    // Data Milestone proyek untuk kurva estimasi durasi terlama & jam kerja
+    const [milestones, setMilestones] = useState([]);
+    const [loadingMilestones, setLoadingMilestones] = useState(false);
+
+    useEffect(() => {
+        if (initialProjectId && String(initialProjectId) !== selectedProjId) {
+            setSelectedProjId(String(initialProjectId));
+        }
+    }, [initialProjectId]);
+
+    const activeProject = useMemo(() => {
+        if (!selectedProjId) return null;
+        return (projects || []).find(p => String(p.id) === String(selectedProjId)) || null;
+    }, [projects, selectedProjId]);
+
+    // Muat data milestone untuk proyek aktif (termasuk kegiatan jam kerja per hari)
+    const loadMilestones = useCallback(async (projId) => {
+        setLoadingMilestones(true);
+        try {
+            const url = projId ? `/project-milestones?project_id=${projId}` : '/project-milestones';
+            const data = await api.get(url);
+            const raw = Array.isArray(data) ? data : [];
+            const filtered = projId
+                ? raw.filter(m => Number(m.project_id) === Number(projId) || (!m.project_id && Number(projId) === 1))
+                : raw;
+            setMilestones(filtered);
+        } catch (err) {
+            console.error('Failed to load milestones for scurve:', err);
+            setMilestones([]);
+        } finally {
+            setLoadingMilestones(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (selectedProjId) {
+            loadMilestones(selectedProjId);
+        } else {
+            setMilestones([]);
+        }
+    }, [selectedProjId, loadMilestones]);
+
+    const handlePickProject = (projId) => {
+        const idStr = String(projId || '');
+        setSelectedProjId(idStr);
+        setSelectedUserFilter('ALL');
+        if (onSelectProject) onSelectProject(idStr);
+    };
+
+    // Client options untuk filter list proyek
+    const clientOptions = useMemo(() => {
+        return Array.from(new Set((projects || []).map(p => (p.client || '').trim()).filter(Boolean))).sort();
+    }, [projects]);
+
+    const filteredProjects = useMemo(() => {
+        const q = searchProject.toLowerCase();
+        return (projects || []).filter(p => {
+            const matchClient = clientFilter === 'ALL' || (p.client || '').toLowerCase() === clientFilter.toLowerCase();
+            const matchSearch = !q ||
+                (p.name || '').toLowerCase().includes(q) ||
+                (p.client || '').toLowerCase().includes(q) ||
+                (p.job_no || '').toLowerCase().includes(q);
+            return matchClient && matchSearch;
+        });
+    }, [projects, searchProject, clientFilter]);
+
+    // Kumpulan akun yang terlibat di proyek ini berdasarkan milestonenya
+    const projectAccounts = useMemo(() => {
+        const map = new Map();
+        milestones.forEach(m => {
+            if (m.user?.id) {
+                const uid = String(m.user.id);
+                if (!map.has(uid)) {
+                    map.set(uid, {
+                        id: uid,
+                        name: m.user.name,
+                        role: m.project_role || m.user.role || 'Pekerja',
+                        milestones: [],
+                    });
+                }
+                map.get(uid).milestones.push(m);
+            }
+        });
+        return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }, [milestones]);
+
+    // Dropdown options untuk PcmSelect
+    const accountSelectOptions = useMemo(() => {
+        return [
+            { value: 'ALL', label: 'Semua Akun (Global)' },
+            ...projectAccounts.map(acc => ({
+                value: String(acc.id),
+                label: `${acc.name} (${acc.role}) • ${acc.milestones.length} milestone`
+            }))
+        ];
+    }, [projectAccounts]);
+
+    // ============================================================
+    // KALKULASI KURVA S (GLOBAL ATAU PER AKUN TERPILIH)
+    // ============================================================
+    const curveData = useMemo(() => {
+        if (!activeProject) return null;
+
+        // Filter milestone: Global vs Per Akun
+        const targetMilestones = selectedUserFilter === 'ALL'
+            ? milestones
+            : milestones.filter(m => String(m.user_id || m.user?.id || '') === String(selectedUserFilter));
+
+        // 1. Cari pengerjaan terlama (durasi estimasi hari & rentang tanggal)
+        let earliestStartMs = Infinity;
+        let latestTargetMs = -Infinity;
+        let maxEstimatedDays = 0;
+        let totalEstimatedHours = 0;
+        let totalDoneHours = 0;
+
+        targetMilestones.forEach(m => {
+            const estDays = Number(m.estimated_days) || diffDaysInclusive(m.start_date, m.target_date) || 1;
+            if (estDays > maxEstimatedDays) maxEstimatedDays = estDays;
+
+            if (m.start_date) {
+                const s = new Date(`${m.start_date}T00:00:00`).getTime();
+                if (Number.isFinite(s) && s < earliestStartMs) earliestStartMs = s;
+            }
+            if (m.target_date) {
+                const e = new Date(`${m.target_date}T00:00:00`).getTime();
+                if (Number.isFinite(e) && e > latestTargetMs) latestTargetMs = e;
+            }
+
+            const acts = m.activities || [];
+            if (acts.length > 0) {
+                acts.forEach(a => {
+                    const h = calcSlotHours(a.time_start, a.time_end);
+                    totalEstimatedHours += h;
+                    if (a.is_done) totalDoneHours += h;
+                });
+            } else {
+                const dailyH = Number(m.work_hours_per_day) || 8;
+                const estTotalH = estDays * dailyH;
+                totalEstimatedHours += estTotalH;
+                if (m.status === 'COMPLETED') totalDoneHours += estTotalH;
+                else if (m.status === 'IN_PROGRESS') totalDoneHours += estTotalH * 0.4;
+            }
+        });
+
+        // Fallback jika belum ada milestone
+        const nowMs = Date.now();
+        if (!Number.isFinite(earliestStartMs)) earliestStartMs = nowMs - 14 * 86400000;
+        if (!Number.isFinite(latestTargetMs) || latestTargetMs <= earliestStartMs) {
+            latestTargetMs = earliestStartMs + Math.max(7, maxEstimatedDays || 30) * 86400000;
+        }
+
+        const projectSpanDays = Math.max(1, Math.round((latestTargetMs - earliestStartMs) / 86400000) + 1);
+        if (maxEstimatedDays === 0) maxEstimatedDays = projectSpanDays;
+
+        // Bagi rentang proyek menjadi periode (mingguan atau per blok hari)
+        const totalPeriods = Math.max(4, Math.min(24, Math.ceil(projectSpanDays / 7)));
+        const periodMs = (latestTargetMs - earliestStartMs) / totalPeriods;
+
+        // Distribusi Kurva S Estimasi / Rencana (0% -> 100%)
+        const plannedSeries = Array.from({ length: totalPeriods }, (_, idx) => {
+            if (idx === totalPeriods - 1) return 100;
+            const t = (idx + 1) / totalPeriods;
             const raw = 1 / (1 + Math.exp(-8 * (t - 0.5)));
             const minRaw = 1 / (1 + Math.exp(4));
             const maxRaw = 1 / (1 + Math.exp(-4));
             return Math.max(1, Math.min(99, Math.round(((raw - minRaw) / (maxRaw - minRaw)) * 100)));
         });
 
-        // Kelompokkan progres nyata dari dailyLogs per minggu; jika dailyLogs kosong, fallback ke weld_date joints
-        const weeklyAddedDI = new Array(totalWeeks).fill(0);
-        let hasDatedProgress = false;
+        // 2. Realisasi Pengerjaan (Persentase Selesai berdasarkan Jam & Slot)
+        const currentPeriodIdx = Math.max(0, Math.min(totalPeriods - 1, Math.floor((nowMs - earliestStartMs) / periodMs)));
+        const hourRealizationPct = totalEstimatedHours > 0
+            ? Math.min(100, Math.round((totalDoneHours / totalEstimatedHours) * 100))
+            : (activeProject.progress_pct || 0);
 
-        if (dailyLogs && dailyLogs.length > 0) {
-            dailyLogs.forEach(log => {
-                const d = new Date(log.prog_date).getTime();
-                if (!Number.isFinite(d)) return;
-                hasDatedProgress = true;
-                const wIdx = Math.max(0, Math.min(totalWeeks - 1, Math.floor((d - startMs) / (7 * 86400000))));
-                weeklyAddedDI[wIdx] += parseFloat(log.qty) || 0;
-            });
-        } else if (weldedJoints.some(j => j.weld_date)) {
-            weldedJoints.forEach(j => {
-                if (!j.weld_date) return;
-                const d = new Date(j.weld_date).getTime();
-                if (!Number.isFinite(d)) return;
-                hasDatedProgress = true;
-                const wIdx = Math.max(0, Math.min(totalWeeks - 1, Math.floor((d - startMs) / (7 * 86400000))));
-                weeklyAddedDI[wIdx] += parseFloat(j.size_in ?? j.dia_inch) || 0;
-            });
-        }
-
-        const nowMs = Date.now();
-        const currentWeekIdx = Math.max(0, Math.min(totalWeeks - 1, Math.floor((nowMs - startMs) / (7 * 86400000))));
-        const effectiveActualDI = basisMode === 'JOINTS' ? jointActualDI : Math.max(scopeActualDI, jointActualDI);
-        const rawPct = (effectiveActualDI / denominator) * 100;
-        const overallActualPct = Math.min(100, Number(rawPct >= 1 ? rawPct.toFixed(1) : rawPct.toFixed(2)));
-
-        let runningDI = 0;
-        const weeks = plannedSeries.map((planned, idx) => {
-            const weekNo = idx + 1;
-            const weekStart = new Date(startMs + idx * 7 * 86400000);
-            const weekLabel = weekStart.toISOString().slice(0, 10);
+        const periods = plannedSeries.map((planned, idx) => {
+            const pStart = new Date(earliestStartMs + idx * periodMs);
+            const pLabel = pStart.toISOString().slice(0, 10);
+            const periodNo = idx + 1;
 
             let actual = null;
-            if (hasDatedProgress) {
-                runningDI += weeklyAddedDI[idx];
-                if (idx <= currentWeekIdx || weeklyAddedDI[idx] > 0) {
-                    const pctFromLogs = (runningDI / denominator) * 100;
-                    const formatted = Number(pctFromLogs >= 1 ? pctFromLogs.toFixed(1) : pctFromLogs.toFixed(2));
-                    actual = idx === currentWeekIdx ? Math.max(formatted, overallActualPct) : formatted;
-                }
-            } else if (idx <= currentWeekIdx) {
-                actual = idx === currentWeekIdx
-                    ? overallActualPct
-                    : Number(((overallActualPct * (idx + 1)) / (currentWeekIdx + 1)).toFixed(1));
+            if (idx <= currentPeriodIdx) {
+                const fraction = (idx + 1) / (currentPeriodIdx + 1);
+                actual = idx === currentPeriodIdx
+                    ? hourRealizationPct
+                    : Math.min(hourRealizationPct, Math.round(hourRealizationPct * fraction * 0.95));
             }
 
+            const plannedHourAccum = Math.round((totalEstimatedHours * (planned / 100)) * 10) / 10;
+            const actualHourAccum = actual !== null ? Math.round((totalEstimatedHours * (actual / 100)) * 10) / 10 : null;
+
             return {
-                week: `Minggu ${weekNo}`,
-                weekShort: `W${weekNo}`,
-                weekDate: weekLabel,
-                planned,
-                actual,
-                variance: actual !== null ? Number((actual - planned).toFixed(1)) : null,
+                period: `P${periodNo}`,
+                periodName: `Periode ${periodNo}`,
+                date: pLabel,
+                plannedPct: planned,
+                actualPct: actual,
+                variancePct: actual !== null ? Number((actual - planned).toFixed(1)) : null,
+                plannedHours: plannedHourAccum,
+                actualHours: actualHourAccum,
             };
         });
 
-        // Hitung produktivitas Shop vs Field (Acuan Excel: Shop 15 DI/hari, Field 10 DI/hari)
-        const shopDI = weldedJoints
-            .filter(j => (j.shop_field || j.location || '').toUpperCase().includes('SHOP'))
-            .reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0);
-        const fieldDI = weldedJoints
-            .filter(j => !(j.shop_field || j.location || '').toUpperCase().includes('SHOP'))
-            .reduce((acc, j) => acc + (parseFloat(j.size_in ?? j.dia_inch) || 0), 0);
-        const activeDays = Math.max(1, new Set([
-            ...(dailyLogs || []).map(l => l.prog_date).filter(Boolean),
-            ...weldedJoints.map(j => j.weld_date).filter(Boolean),
-        ]).size);
-
         return {
-            weeks,
-            totalWeeks,
-            currentWeekIdx,
-            effectiveActualDI,
-            denominator,
-            totalContractDI,
-            jointRegisteredTotalDI,
-            jointActualDI,
-            overallActualPct,
-            shopRate: Number((shopDI / activeDays).toFixed(1)),
-            fieldRate: Number((fieldDI / activeDays).toFixed(1)),
+            maxEstimatedDays,
+            totalEstimatedHours: Math.round(totalEstimatedHours * 10) / 10,
+            totalDoneHours: Math.round(totalDoneHours * 10) / 10,
+            hourRealizationPct,
+            totalPeriods,
+            periods,
+            currentPeriodIdx,
+            startDateStr: new Date(earliestStartMs).toISOString().slice(0, 10),
+            targetDateStr: new Date(latestTargetMs).toISOString().slice(0, 10),
+            milestoneCount: targetMilestones.length,
         };
-    }, [scopes, joints, dailyLogs, project, basisMode]);
-
-    const { weeks, totalWeeks, shopRate, fieldRate, effectiveActualDI, denominator, overallActualPct } = schedule;
-    const passedWeeks = weeks.filter(w => w.actual !== null);
-    const latestActual = passedWeeks.slice(-1)[0] || { weekShort: 'W1', planned: weeks[0]?.planned || 0, actual: 0, variance: -(weeks[0]?.planned || 0) };
-    const isBehind = (latestActual.variance ?? 0) < 0;
-
-    // Koordinat dinamis SVG
-    const xPos = (idx) => (totalWeeks <= 1 ? 60 : 60 + (idx * (900 / (totalWeeks - 1))));
-    const yPos = (pct) => 220 - (Math.max(0, Math.min(100, pct)) * 2);
-
-    const plannedPath = weeks.map((w, idx) => `${idx === 0 ? 'M' : 'L'} ${xPos(idx).toFixed(1)},${yPos(w.planned).toFixed(1)}`).join(' ');
-    const actualPoints = weeks
-        .map((w, idx) => (w.actual !== null ? { idx, x: xPos(idx), y: yPos(w.actual), val: w.actual } : null))
-        .filter(Boolean);
-    const actualPath = actualPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    }, [activeProject, selectedUserFilter, milestones]);
 
     return (
         <div>
-            {/* Header Toolbar */}
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            {/* ============================================================
+                VIEW 1: LIST PROJECT (JIKA BELUM MEMILIH PROYEK)
+                ============================================================ */}
+            {!activeProject ? (
                 <div>
-                    <h2 className="h4 fw-bold text-dark mb-1">S-Curve &amp; Schedule Monitoring</h2>
-                    <p className="text-muted small mb-0">
-                        Kurva-S kumulatif rencana (Planned) vs realisasi aktual lapangan berdasarkan data Daily Progress &amp; Joint Welding nyata.
-                    </p>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                    <div className="btn-group btn-group-sm" role="group">
-                        <button
-                            type="button"
-                            className={`btn fw-bold ${basisMode === 'CONTRACT' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                            onClick={() => setBasisMode('CONTRACT')}
-                            style={{ borderRadius: 'var(--pcm-radius-control) 0 0 var(--pcm-radius-control)' }}
-                        >
-                            Basis Kontrak
-                        </button>
-                        <button
-                            type="button"
-                            className={`btn fw-bold ${basisMode === 'JOINTS' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                            onClick={() => setBasisMode('JOINTS')}
-                            style={{ borderRadius: '0 var(--pcm-radius-control) var(--pcm-radius-control) 0' }}
-                        >
-                            Basis Joint Terdaftar
-                        </button>
+                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                        <div>
+                            <h2 className="h4 fw-bold text-dark mb-1">S-Curve &amp; Schedule &mdash; Pilih Proyek</h2>
+                            <p className="text-muted small mb-0">
+                                Daftar seluruh proyek. Klik salah satu proyek untuk melihat grafik Kurva S progres global proyek serta progresing per akun pekerja.
+                            </p>
+                        </div>
                     </div>
-                    <span className={`badge px-3 py-2 fw-bold ${isBehind ? 'bg-warning text-dark' : 'bg-success'}`} style={{ borderRadius: 'var(--pcm-radius-chip)' }}>
-                        {isBehind ? `Terlambat ${Math.abs(latestActual.variance)}% (Behind)` : `On Schedule (${latestActual.variance >= 0 ? '+' : ''}${latestActual.variance}%)`}
-                    </span>
-                </div>
-            </div>
 
-            {/* Metric Summary Tiles (PCM Design Tokens) */}
-            <div className="row g-3 mb-4">
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100">
-                        <span className="pcm-tile__label">Target Rencana ({latestActual.weekShort})</span>
-                        <strong className="pcm-tile__value pcm-tile__value--primary">
-                            {latestActual.planned}%
-                            <span className="pcm-tile__unit">kumulatif</span>
-                        </strong>
-                    </div>
-                </div>
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100">
-                        <span className="pcm-tile__label">Realisasi Aktual ({latestActual.weekShort})</span>
-                        <strong className="pcm-tile__value text-success">
-                            {overallActualPct}%
-                            <span className="pcm-tile__unit">({effectiveActualDI.toLocaleString('id-ID', { maximumFractionDigits: 1 })} / {denominator.toLocaleString('id-ID', { maximumFractionDigits: 1 })} DI)</span>
-                        </strong>
-                    </div>
-                </div>
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100">
-                        <span className="pcm-tile__label">Varians Jadwal</span>
-                        <strong className={`pcm-tile__value ${isBehind ? 'text-danger' : 'text-success'}`}>
-                            {latestActual.variance > 0 ? `+${latestActual.variance}` : latestActual.variance}%
-                            <span className="pcm-tile__unit">deviasi</span>
-                        </strong>
-                    </div>
-                </div>
-                <div className="col-6 col-md-3">
-                    <div className="pcm-tile h-100">
-                        <span className="pcm-tile__label">Produktivitas Las (DI/Hari)</span>
-                        <strong className="pcm-tile__value">
-                            {shopRate} / {fieldRate}
-                            <span className="pcm-tile__unit">Shop 15 &bull; Field 10 Target</span>
-                        </strong>
-                    </div>
-                </div>
-            </div>
-
-            {/* S-Curve Graphic (Dynamic SVG Chart) */}
-            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
-                <div className="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <h6 className="fw-bold text-dark mb-0">
-                        Grafik Kurva S Kumulatif (% Progres — {totalWeeks} Minggu) &bull; Mode: {basisMode === 'CONTRACT' ? 'Kontrak Scope' : 'Joint Construction'}
-                    </h6>
-                    <div className="d-flex gap-3 small">
-                        <span className="d-flex align-items-center gap-1">
-                            <span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#94a3b8', borderRadius: '2px' }}></span>
-                            <span className="text-muted">Target Rencana (Baseline)</span>
-                        </span>
-                        <span className="d-flex align-items-center gap-1">
-                            <span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#1e40af', borderRadius: '2px' }}></span>
-                            <span className="fw-bold text-primary">Realisasi Aktual</span>
-                        </span>
-                    </div>
-                </div>
-                <div className="card-body p-4">
-                    <div style={{ width: '100%', height: '250px', position: 'relative' }}>
-                        <svg viewBox="0 0 1000 245" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-                            {[0, 25, 50, 75, 100].map((val) => {
-                                const y = yPos(val);
-                                return (
-                                    <g key={val}>
-                                        <line x1="45" y1={y} x2="975" y2={y} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3,3" />
-                                        <text x="35" y={y + 4} fill="#94a3b8" fontSize="10" textAnchor="end" fontFamily="monospace">{val}%</text>
-                                    </g>
-                                );
-                            })}
-
-                            {/* Planned Baseline Curve */}
-                            <path
-                                d={plannedPath}
-                                fill="none"
-                                stroke="#94a3b8"
-                                strokeWidth="3"
-                                strokeDasharray="6,5"
-                            />
-
-                            {/* Actual Curve */}
-                            {actualPoints.length > 0 && (
-                                <path
-                                    d={actualPath}
-                                    fill="none"
-                                    stroke="#1e40af"
-                                    strokeWidth="4"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
+                    {/* Toolbar Pencarian */}
+                    <div className="pcm-toolbar mb-3">
+                        <div className="pcm-toolbar__grow">
+                            <div className="pcm-search">
+                                <span className="pcm-search__icon">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                    </svg>
+                                </span>
+                                <input
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    placeholder="Cari proyek, job no, client..."
+                                    value={searchProject}
+                                    onChange={(e) => setSearchProject(e.target.value)}
                                 />
-                            )}
+                            </div>
+                            <PcmSelect
+                                searchable={false}
+                                clearable={false}
+                                value={clientFilter}
+                                onChange={(e) => setClientFilter(e.target.value)}
+                            >
+                                <option value="ALL">Semua Client ({projects.length})</option>
+                                {clientOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                            </PcmSelect>
+                        </div>
+                        <span className="pcm-count">
+                            Menampilkan <strong>{filteredProjects.length}</strong> proyek
+                        </span>
+                    </div>
 
-                            {/* Actual Points */}
-                            {actualPoints.map((pt, i) => {
-                                const isLast = i === actualPoints.length - 1;
-                                return (
-                                    <g key={pt.idx}>
-                                        <circle
-                                            cx={pt.x}
-                                            cy={pt.y}
-                                            r={isLast ? 6 : 4.5}
-                                            fill={isLast ? '#15803d' : '#1e40af'}
-                                            stroke="#ffffff"
-                                            strokeWidth="2"
-                                        />
-                                        {isLast && (
-                                            <text x={pt.x} y={Math.max(14, pt.y - 12)} fill="#15803d" fontSize="11" fontWeight="bold" textAnchor="middle">
-                                                {pt.val}%
-                                            </text>
-                                        )}
-                                    </g>
-                                );
-                            })}
-
-                            {/* X-Axis Week Labels */}
-                            {weeks.map((w, idx) => (
-                                <text key={w.week} x={xPos(idx)} y="238" fill="#64748b" fontSize="10" textAnchor="middle">
-                                    {w.weekShort}
-                                </text>
-                            ))}
-                        </svg>
+                    {/* Tabel List Proyek */}
+                    <div className="card border-0 shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
+                        <div className="table-responsive">
+                            <table className="table table-bordered table-hover align-middle mb-0" style={{ fontSize: '0.85rem', borderColor: '#cbd5e1' }}>
+                                <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.04em' }}>
+                                    <tr>
+                                        <th className="ps-3 py-3" style={{ width: '50px' }}>No</th>
+                                        <th className="py-3" style={{ width: '120px' }}>Job No</th>
+                                        <th className="py-3">Nama Paket Proyek</th>
+                                        <th className="py-3" style={{ width: '180px' }}>Client</th>
+                                        <th className="py-3 text-center" style={{ width: '120px' }}>Scopes</th>
+                                        <th className="py-3" style={{ width: '190px' }}>Progres Realisasi</th>
+                                        <th className="text-end pe-3 py-3" style={{ width: '170px' }}>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredProjects.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="text-center py-4 text-muted">
+                                                Tidak ada proyek yang sesuai dengan kriteria pencarian.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredProjects.map((p, idx) => (
+                                            <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => handlePickProject(p.id)}>
+                                                <td className="ps-3 text-muted fw-bold">{idx + 1}</td>
+                                                <td>
+                                                    <span className="pcm-chip pcm-chip--primary pcm-code fw-bold">
+                                                        {p.job_no || '—'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="fw-bold text-dark">{p.name}</div>
+                                                </td>
+                                                <td className="text-secondary">{p.client || '—'}</td>
+                                                <td className="text-center font-monospace">
+                                                    {p.scopes_count || 0} scope
+                                                </td>
+                                                <td>
+                                                    <div className="d-flex justify-content-between small fw-bold mb-1">
+                                                        <span>{p.progress_pct || 0}%</span>
+                                                        <span className="text-muted">{p.total_actual_di || 0} / {p.total_contract_di || 0} DI</span>
+                                                    </div>
+                                                    <div className="progress" style={{ height: '6px', backgroundColor: '#e2e8f0' }}>
+                                                        <div
+                                                            className={`progress-bar ${(p.progress_pct || 0) >= 100 ? 'bg-success' : 'bg-primary'}`}
+                                                            style={{ width: `${p.progress_pct || 0}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </td>
+                                                <td className="text-end pe-3">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary btn-sm px-3 py-1 fw-bold"
+                                                        style={{ borderRadius: 'var(--pcm-radius-chip)', backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handlePickProject(p.id);
+                                                        }}
+                                                    >
+                                                        Buka Kurva S &rarr;
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
+            ) : (
+                /* ============================================================
+                   VIEW 2: DETAIL S-CURVE PROYEK TERPILIH (GLOBAL & PER AKUN)
+                   ============================================================ */
+                <div>
+                    {/* Breadcrumb Context Bar */}
+                    <div
+                        className="pcm-crumbs mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 bg-white border"
+                        style={{ borderRadius: 'var(--pcm-radius-card)', boxShadow: 'var(--pcm-elev-1)', borderColor: 'var(--pcm-line-soft)' }}
+                    >
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 fw-semibold"
+                                onClick={() => handlePickProject('')}
+                            >
+                                <span>&larr; Ganti Proyek (List Proyek)</span>
+                            </button>
+                            <span className="pcm-chip pcm-chip--primary pcm-code">
+                                JOB: {activeProject.job_no || '-'}
+                            </span>
+                            <span className="fw-bold text-dark">{activeProject.name}</span>
+                            <span className="pcm-chip pcm-chip--neutral">
+                                <span>{activeProject.client || 'Client Umum'}</span>
+                            </span>
+                        </div>
 
-            {/* Weekly Breakdown Table */}
-            <div className="card border-0 shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
-                <div className="card-header bg-white border-bottom py-3">
-                    <h6 className="fw-bold text-dark mb-0">Rincian Progres Per Periode Mingguan</h6>
+                        {/* Quick Project Switcher */}
+                        <div className="d-flex align-items-center gap-2">
+                            <span className="text-muted small fw-semibold text-nowrap">Pindah Proyek:</span>
+                            <PcmSelect
+                                searchable={false}
+                                clearable={false}
+                                value={activeProject.id}
+                                onChange={(e) => handlePickProject(e.target.value)}
+                            >
+                                {projects.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.job_no ? `[${p.job_no}] ` : ''}{p.name}
+                                    </option>
+                                ))}
+                            </PcmSelect>
+                        </div>
+                    </div>
+
+                    {/* Filter Tab: Progres Global Proyek vs Progres Per Akun */}
+                    <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 'var(--pcm-radius-card)' }}>
+                        <div className="card-body p-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <div className="d-flex flex-wrap align-items-center gap-2">
+                                <span className="small fw-bold text-dark">Filter Tampilan Kurva S:</span>
+                                <div className="btn-group btn-group-sm" role="group">
+                                    <button
+                                        type="button"
+                                        className={`btn fw-bold px-3 ${selectedUserFilter === 'ALL' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                        style={{ backgroundColor: selectedUserFilter === 'ALL' ? '#1e40af' : undefined }}
+                                        onClick={() => setSelectedUserFilter('ALL')}
+                                    >
+                                        Progres Global Proyek
+                                    </button>
+                                    {selectedUserFilter !== 'ALL' && (
+                                        <button
+                                            type="button"
+                                            className="btn fw-bold px-3 btn-success text-white"
+                                            disabled
+                                        >
+                                            Akun: {projectAccounts.find(a => String(a.id) === String(selectedUserFilter))?.name || 'Pekerja'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Dropdown Akun Pekerja Terlibat */}
+                            <div className="d-flex align-items-center gap-2" style={{ minWidth: '280px' }}>
+                                <span className="small fw-semibold text-muted text-nowrap">Cek Akun:</span>
+                                <PcmSelect
+                                    searchable={false}
+                                    clearable={false}
+                                    value={selectedUserFilter}
+                                    onChange={(e) => setSelectedUserFilter(e.target.value)}
+                                >
+                                    {accountSelectOptions.map(opt => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </PcmSelect>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Metric Summary Tiles */}
+                    {curveData && (
+                        <div className="row g-3 mb-4">
+                            <div className="col-6 col-md-3">
+                                <div className="pcm-tile h-100">
+                                    <span className="pcm-tile__label">Estimasi Pengerjaan Terlama</span>
+                                    <strong className="pcm-tile__value pcm-tile__value--primary">
+                                        {curveData.maxEstimatedDays}
+                                        <span className="pcm-tile__unit">hari ({curveData.startDateStr} s/d {curveData.targetDateStr})</span>
+                                    </strong>
+                                </div>
+                            </div>
+                            <div className="col-6 col-md-3">
+                                <div className="pcm-tile h-100">
+                                    <span className="pcm-tile__label">Total Estimasi Jam Kerja</span>
+                                    <strong className="pcm-tile__value text-dark">
+                                        {curveData.totalEstimatedHours.toLocaleString('id-ID')}
+                                        <span className="pcm-tile__unit">jam rencana ({curveData.milestoneCount} milestone)</span>
+                                    </strong>
+                                </div>
+                            </div>
+                            <div className="col-6 col-md-3">
+                                <div className="pcm-tile h-100">
+                                    <span className="pcm-tile__label">Realisasi Jam Kerja Lapangan</span>
+                                    <strong className="pcm-tile__value text-success">
+                                        {curveData.totalDoneHours.toLocaleString('id-ID')}
+                                        <span className="pcm-tile__unit">jam selesai ({curveData.hourRealizationPct}%)</span>
+                                    </strong>
+                                </div>
+                            </div>
+                            <div className="col-6 col-md-3">
+                                <div className="pcm-tile h-100">
+                                    <span className="pcm-tile__label">Status Schedule (Varians)</span>
+                                    {(() => {
+                                        const curP = curveData.periods[curveData.currentPeriodIdx];
+                                        const v = curP?.variancePct;
+                                        const isBehind = v !== null && v !== undefined && v < 0;
+                                        return (
+                                            <strong className={`pcm-tile__value ${isBehind ? 'text-danger' : 'text-success'}`}>
+                                                {v !== null && v !== undefined ? `${v > 0 ? '+' : ''}${v}%` : '0%'}
+                                                <span className="pcm-tile__unit">{isBehind ? 'Behind Schedule' : 'On Track / Ahead'}</span>
+                                            </strong>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* GRAFIK KURVA S GAYA KALENDER / PROGRES PROJECT (SESUAI ACUAN EXCEL / TEMPLATE) */}
+                    {curveData && (
+                        <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
+                            <div className="card-header bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <h6 className="fw-bold text-dark mb-0">
+                                        {selectedUserFilter === 'ALL'
+                                            ? `Grafik Kurva S Global: Estimasi Pengerjaan Terlama vs Realisasi (${activeProject.name})`
+                                            : `Grafik Kurva S Pekerja: Estimasi vs Realisasi (${projectAccounts.find(a => String(a.id) === String(selectedUserFilter))?.name || 'Pekerja'})`}
+                                    </h6>
+                                    <div className="text-muted small">
+                                        Garis biru: Target Rencana (Plan); Garis merah: Realisasi Aktual. Kalender waktu di atas grafik memetakan hari, tanggal kalender, dan jam kerja teralokasi.
+                                    </div>
+                                </div>
+                                <div className="d-flex flex-wrap align-items-center gap-3 small">
+                                    <span className="d-flex align-items-center gap-1.5" style={{ color: '#1a73e8' }}>
+                                        <span style={{ display: 'inline-block', width: '20px', height: '3px', backgroundColor: '#1a73e8' }}></span>
+                                        <strong>Rencana (Plan - Biru)</strong>
+                                    </span>
+                                    <span className="d-flex align-items-center gap-1.5" style={{ color: '#d93025' }}>
+                                        <span style={{ display: 'inline-block', width: '20px', height: '3px', backgroundColor: '#d93025' }}></span>
+                                        <strong>Realisasi (Actual - Merah)</strong>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="card-body p-3 bg-white">
+                                {(() => {
+                                    const periods = curveData.periods;
+                                    const count = periods.length;
+                                    const svgWidth = 1000;
+                                    const svgHeight = 360;
+                                    const leftLabelWidth = 160;
+                                    const plotW = svgWidth - leftLabelWidth - 20;
+                                    const colW = count > 0 ? plotW / count : plotW;
+
+                                    // Header Kalender Rows (Y positions)
+                                    const yMonth = 15;
+                                    const yWeek = 40;
+                                    const yDayName = 65;
+                                    const yDateNum = 90;
+                                    const yTargetHrs = 115;
+                                    const chartTop = 140;
+                                    const chartHeight = 195;
+                                    const chartBottom = chartTop + chartHeight;
+
+                                    const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+                                    const dayColors = {
+                                        0: { bg: '#d93025', text: '#ffffff' }, // Minggu (Merah)
+                                        6: { bg: '#fee2e2', text: '#991b1b' }, // Sabtu
+                                    };
+
+                                    const xForIdx = (i) => leftLabelWidth + i * colW + colW / 2;
+                                    const yForPct = (pct) => chartBottom - (Math.max(0, Math.min(100, pct)) / 100) * chartHeight;
+
+                                    const plannedPath = periods
+                                        .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${xForIdx(idx)} ${yForPct(p.plannedPct)}`)
+                                        .join(' ');
+
+                                    const actualPts = periods
+                                        .map((p, idx) => (p.actualPct !== null ? { x: xForIdx(idx), y: yForPct(p.actualPct), val: p.actualPct, p, idx } : null))
+                                        .filter(Boolean);
+
+                                    const actualPath = actualPts
+                                        .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`)
+                                        .join(' ');
+
+                                    return (
+                                        <div className="w-100 overflow-auto border rounded" style={{ borderColor: '#e2e8f0' }}>
+                                            <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', minWidth: '820px', height: 'auto', display: 'block', backgroundColor: '#ffffff' }}>
+                                                {/* Left Column Headers (Label Baris Kalender) */}
+                                                <rect x="0" y="0" width={leftLabelWidth} height={svgHeight} fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
+
+                                                <text x="12" y="30" fill="#0f172a" fontSize="11" fontWeight="bold">BULAN &amp; TAHUN</text>
+                                                <line x1="0" y1="40" x2={svgWidth} y2="40" stroke="#e2e8f0" strokeWidth="1" />
+
+                                                <text x="12" y="55" fill="#475569" fontSize="11" fontWeight="600">PERIODE MINGGU</text>
+                                                <line x1="0" y1="65" x2={svgWidth} y2="65" stroke="#e2e8f0" strokeWidth="1" />
+
+                                                <text x="12" y="80" fill="#475569" fontSize="11" fontWeight="600">HARI</text>
+                                                <line x1="0" y1="90" x2={svgWidth} y2="90" stroke="#e2e8f0" strokeWidth="1" />
+
+                                                <text x="12" y="105" fill="#475569" fontSize="11" fontWeight="600">TANGGAL KALENDER</text>
+                                                <line x1="0" y1="115" x2={svgWidth} y2="115" stroke="#e2e8f0" strokeWidth="1" />
+
+                                                <text x="12" y="130" fill="#1e40af" fontSize="11" fontWeight="bold">JAM PLAN (HARI)</text>
+                                                <line x1="0" y1={chartTop} x2={svgWidth} y2={chartTop} stroke="#cbd5e1" strokeWidth="1.5" />
+
+                                                {/* Header Kalender: Bulan, Periode, Nama Hari, Tanggal, Jam Plan */}
+                                                {periods.map((p, idx) => {
+                                                    const xStart = leftLabelWidth + idx * colW;
+                                                    const xMid = xStart + colW / 2;
+                                                    const dObj = new Date(`${p.date}T00:00:00`);
+                                                    const dayOfWeek = Number.isNaN(dObj.getTime()) ? 1 : dObj.getDay();
+                                                    const dateNum = Number.isNaN(dObj.getTime()) ? (idx + 1) : dObj.getDate();
+                                                    const dayStyle = dayColors[dayOfWeek] || { bg: '#f1f5f9', text: '#334155' };
+                                                    const hrsPerDay = Math.round((curveData.totalEstimatedHours / count) * 10) / 10;
+
+                                                    return (
+                                                        <g key={p.period}>
+                                                            {/* Garis Grid Vertikal Antar Kolom */}
+                                                            <line x1={xStart} y1="0" x2={xStart} y2={chartBottom} stroke="#e2e8f0" strokeWidth="1" />
+
+                                                            {/* Periode */}
+                                                            <rect x={xStart} y="40" width={colW} height="25" fill="#f8fafc" />
+                                                            <text x={xMid} y="56" fill="#334155" fontSize="10" fontWeight="bold" textAnchor="middle">
+                                                                {p.period}
+                                                            </text>
+
+                                                            {/* Hari (Highlight Merah di Hari Minggu) */}
+                                                            <rect x={xStart} y="65" width={colW} height="25" fill={dayStyle.bg} />
+                                                            <text x={xMid} y="81" fill={dayStyle.text} fontSize="10" fontWeight="bold" textAnchor="middle">
+                                                                {dayNames[dayOfWeek] || 'Hari'}
+                                                            </text>
+
+                                                            {/* Tanggal Kalender */}
+                                                            <rect x={xStart} y="90" width={colW} height="25" fill="#ffffff" />
+                                                            <text x={xMid} y="106" fill="#0f172a" fontSize="10" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                                                                {dateNum}
+                                                            </text>
+
+                                                            {/* Jam Rencana per Hari */}
+                                                            <rect x={xStart} y="115" width={colW} height="25" fill="#eff6ff" />
+                                                            <text x={xMid} y="131" fill="#1e40af" fontSize="10" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                                                                {hrsPerDay}h
+                                                            </text>
+                                                        </g>
+                                                    );
+                                                })}
+
+                                                {/* Top Month Banner Across Columns */}
+                                                <rect x={leftLabelWidth} y="0" width={plotW} height="40" fill="#f1f5f9" />
+                                                <text x={leftLabelWidth + plotW / 2} y="25" fill="#1e293b" fontSize="12" fontWeight="bold" textAnchor="middle" letterSpacing="0.05em">
+                                                    RENTANG WAKTU: {curveData.startDateStr} s/d {curveData.targetDateStr} ({curveData.maxEstimatedDays} HARI)
+                                                </text>
+
+                                                {/* Chart Area Background & Horizontal Gridlines */}
+                                                <rect x={leftLabelWidth} y={chartTop} width={plotW} height={chartHeight} fill="#ffffff" stroke="#cbd5e1" strokeWidth="1" />
+                                                {[0, 25, 50, 75, 100].map(val => {
+                                                    const y = yForPct(val);
+                                                    return (
+                                                        <g key={val}>
+                                                            <line x1={leftLabelWidth} y1={y} x2={leftLabelWidth + plotW} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray={val === 0 || val === 100 ? undefined : '3,3'} />
+                                                            <text x={leftLabelWidth - 8} y={y + 4} fill="#64748b" fontSize="10" fontWeight="bold" textAnchor="end" fontFamily="monospace">
+                                                                {val}%
+                                                            </text>
+                                                        </g>
+                                                    );
+                                                })}
+
+                                                {/* Garis Kurva S Rencana (Planned - Biru Spline Lembut #1a73e8) */}
+                                                <path
+                                                    d={plannedPath}
+                                                    fill="none"
+                                                    stroke="#1a73e8"
+                                                    strokeWidth="3"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+
+                                                {/* Garis Kurva S Realisasi (Actual - Merah #d93025) */}
+                                                {actualPts.length > 0 && (
+                                                    <path
+                                                        d={actualPath}
+                                                        fill="none"
+                                                        stroke="#d93025"
+                                                        strokeWidth="3.5"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                )}
+
+                                                {/* Titik Point & Tooltip Callout Persentase */}
+                                                {actualPts.map((pt, i) => {
+                                                    const isLast = i === actualPts.length - 1;
+                                                    return (
+                                                        <g key={pt.idx}>
+                                                            <circle
+                                                                cx={pt.x}
+                                                                cy={pt.y}
+                                                                r={isLast ? 6 : 4}
+                                                                fill="#d93025"
+                                                                stroke="#ffffff"
+                                                                strokeWidth="2"
+                                                            />
+                                                            {isLast && (
+                                                                <g>
+                                                                    <rect
+                                                                        x={pt.x - 48}
+                                                                        y={Math.max(chartTop + 4, pt.y - 28)}
+                                                                        width="96"
+                                                                        height="22"
+                                                                        rx="4"
+                                                                        fill="#0f172a"
+                                                                    />
+                                                                    <text
+                                                                        x={pt.x}
+                                                                        y={Math.max(chartTop + 18, pt.y - 14)}
+                                                                        fill="#ffffff"
+                                                                        fontSize="10"
+                                                                        fontWeight="bold"
+                                                                        textAnchor="middle"
+                                                                        fontFamily="monospace"
+                                                                    >
+                                                                        {pt.val}% ({pt.p.actualHours || 0}h)
+                                                                    </text>
+                                                                </g>
+                                                            )}
+                                                        </g>
+                                                    );
+                                                })}
+
+                                                {/* Bottom Axis Label */}
+                                                <text x={leftLabelWidth + plotW / 2} y={svgHeight - 8} fill="#94a3b8" fontSize="10" textAnchor="middle">
+                                                    Distribusi Periode Waktu Proyek (Kurva S Kumulatif Jam Kerja)
+                                                </text>
+                                            </svg>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tabel Rincian Per Periode Termasuk Jam Kerja */}
+                    {curveData && (
+                        <div className="card border-0 shadow-sm" style={{ borderRadius: 'var(--pcm-radius-card)', overflow: 'hidden' }}>
+                            <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                                <h6 className="fw-bold text-dark mb-0">Rincian Estimasi Jam Kerja vs Realisasi Lapangan</h6>
+                                <span className="badge bg-light text-dark border font-monospace">
+                                    Total Jam Kerja Rencana: {formatHours(curveData.totalEstimatedHours)}
+                                </span>
+                            </div>
+                            <div className="table-responsive">
+                                <table className="table table-bordered table-hover align-middle mb-0" style={{ fontSize: '0.85rem', borderColor: '#cbd5e1' }}>
+                                    <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.04em' }}>
+                                        <tr>
+                                            <th className="ps-3 py-3" style={{ width: '100px' }}>Periode</th>
+                                            <th className="py-3" style={{ width: '130px' }}>Tanggal</th>
+                                            <th className="py-3 text-end" style={{ width: '140px' }}>Estimasi (%)</th>
+                                            <th className="py-3 text-end" style={{ width: '160px' }}>Target Jam Plan</th>
+                                            <th className="py-3 text-end" style={{ width: '140px' }}>Realisasi (%)</th>
+                                            <th className="py-3 text-end" style={{ width: '160px' }}>Realisasi Jam</th>
+                                            <th className="py-3 text-end" style={{ width: '120px' }}>Varians</th>
+                                            <th className="py-3 text-center" style={{ width: '110px' }}>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {curveData.periods.map(p => {
+                                            const isPassed = p.actualPct !== null;
+                                            const isNegative = p.variancePct !== null && p.variancePct < 0;
+                                            return (
+                                                <tr key={p.period}>
+                                                    <td className="ps-3 font-monospace fw-bold text-dark">{p.period}</td>
+                                                    <td className="font-monospace text-muted small">{p.date}</td>
+                                                    <td className="text-end font-monospace">{p.plannedPct}%</td>
+                                                    <td className="text-end font-monospace text-muted">{formatHours(p.plannedHours)}</td>
+                                                    <td className="text-end font-monospace fw-bold text-primary">
+                                                        {isPassed ? `${p.actualPct}%` : '—'}
+                                                    </td>
+                                                    <td className="text-end font-monospace fw-bold text-success">
+                                                        {isPassed ? formatHours(p.actualHours) : '—'}
+                                                    </td>
+                                                    <td className="text-end font-monospace">
+                                                        {p.variancePct !== null ? (
+                                                            <span className={isNegative ? 'text-danger fw-bold' : 'text-success fw-bold'}>
+                                                                {p.variancePct > 0 ? '+' : ''}{p.variancePct}%
+                                                            </span>
+                                                        ) : '—'}
+                                                    </td>
+                                                    <td className="text-center">
+                                                        {isPassed ? (
+                                                            <span className={`badge px-2.5 py-1 fw-bold ${isNegative ? 'bg-warning text-dark' : 'bg-success text-white'}`} style={{ borderRadius: 'var(--pcm-radius-chip)' }}>
+                                                                {isNegative ? 'Behind' : 'On Track'}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="badge px-2 py-0.5 text-muted border bg-light" style={{ borderRadius: 'var(--pcm-radius-chip)' }}>
+                                                                Planned
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </div>
-                <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-                        <thead className="table-light text-uppercase text-muted" style={{ fontSize: '0.72rem', letterSpacing: '0.04em' }}>
-                            <tr>
-                                <th className="ps-3 py-3">Periode</th>
-                                <th className="py-3">Mulai Minggu</th>
-                                <th className="py-3 text-end">Target Rencana (Plan)</th>
-                                <th className="py-3 text-end">Realisasi Aktual</th>
-                                <th className="py-3 text-end">Varians Kumulatif</th>
-                                <th className="py-3 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {weeks.map((w) => {
-                                const isPassed = w.actual !== null;
-                                const isDevNegative = w.variance !== null && w.variance < 0;
-                                return (
-                                    <tr key={w.week}>
-                                        <td className="ps-3 fw-bold text-dark">{w.week}</td>
-                                        <td className="text-muted font-monospace">{w.weekDate}</td>
-                                        <td className="text-end font-monospace">{w.planned}%</td>
-                                        <td className="text-end font-monospace fw-bold">
-                                            {isPassed ? `${w.actual}%` : '—'}
-                                        </td>
-                                        <td className="text-end font-monospace">
-                                            {w.variance !== null ? (
-                                                <span className={isDevNegative ? 'text-danger fw-bold' : 'text-success fw-bold'}>
-                                                    {w.variance > 0 ? '+' : ''}{w.variance}%
-                                                </span>
-                                            ) : '—'}
-                                        </td>
-                                        <td className="text-center">
-                                            {isPassed ? (
-                                                <span className={`badge px-2.5 py-1 fw-bold ${isDevNegative ? 'bg-warning text-dark' : 'bg-success'}`} style={{ borderRadius: 'var(--pcm-radius-chip)' }}>
-                                                    {isDevNegative ? 'Behind' : 'Achieved'}
-                                                </span>
-                                            ) : (
-                                                <span className="badge px-2 py-1 text-dark border" style={{ backgroundColor: '#f1f5f9', borderRadius: 'var(--pcm-radius-chip)' }}>
-                                                    Planned
-                                                </span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            )}
         </div>
     );
 }
+export default SCurveSection;

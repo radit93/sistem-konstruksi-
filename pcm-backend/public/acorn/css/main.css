@@ -3208,6 +3208,7 @@ html[data-placement=horizontal] .nav-container .logo .img {
    ========================================================================== */
 .pcm-searchselect input.pcm-searchselect__input {
     padding-right: 1.9rem !important;
+    height: 38px !important;
 }
 
 /* ==========================================================================

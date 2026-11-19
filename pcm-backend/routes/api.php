@@ -65,6 +65,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/drawings/{drawing}/generate-bom', [BomGenerationController::class, 'store']);
     Route::post('/engineering-boqs/sync-from-welding-map', [BoqGenerationController::class, 'sync']);
 
+    Route::patch('/milestone-activities/{id}/toggle', [CrudController::class, 'toggleMilestoneActivity']);
+    Route::patch('/milestone-activities/{id}/note', [CrudController::class, 'noteMilestoneActivity']);
+
     Route::post('/material-receivings/{id}/request-inspection', [CrudController::class, 'requestMaterialInspection']);
     Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);
     Route::post('/material-returns', [MaterialInventoryController::class, 'storeReturn']);

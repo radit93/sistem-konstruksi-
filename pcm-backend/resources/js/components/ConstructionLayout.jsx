@@ -15,11 +15,7 @@ export function ConstructionLayout({ projects, joints, user, onReload, activePro
     const filteredJoints = useMemo(() => {
         let items = joints || [];
         if (activeProjectId) {
-            items = items.filter(j => {
-                const jointProjectId = j.project_id ? String(j.project_id) : '';
-                return jointProjectId === String(activeProjectId)
-                    || (!j.project_id && activeProjectId === String((projects[0]?.id)));
-            });
+            items = items.filter(j => String(j.project_id || '') === String(activeProjectId));
         }
         const q = search.toLowerCase();
         return items.filter(j => {
@@ -48,10 +44,10 @@ export function ConstructionLayout({ projects, joints, user, onReload, activePro
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <div>
                     <h3 className="fw-bold text-dark mb-1">
-                        Construction — {activeProject?.name || activeProject?.job_no || `Project #${activeProjectId}`}
+                        Construction Shop — {activeProject?.name || activeProject?.job_no || `Project #${activeProjectId}`}
                     </h3>
                     <p className="text-muted mb-0">
-                        Proyek konstruksi piping aktif · Joint: {filteredJoints.length}
+                        Fabrikasi spool bengkel · Joint: {filteredJoints.length}
                     </p>
                 </div>
                 <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -96,7 +92,6 @@ export function ConstructionLayout({ projects, joints, user, onReload, activePro
                 user={user}
                 onReload={onReload}
                 activeProjectId={activeProjectId}
-            />
-        </div>
+            />        </div>
     );
 }

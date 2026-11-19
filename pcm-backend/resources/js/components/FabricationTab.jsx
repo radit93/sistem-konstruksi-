@@ -97,13 +97,13 @@ export function FabricationTab({ joints, user, onReload }) {
                 <div>
                     <h3 className="fw-bold text-dark mb-1">Shop Fabrication Spool Control</h3>
                     <p className="text-muted mb-0">
-                        Monitoring {shopJoints.length} Joint Fabrikasi Bengkel (Shop), Fit-Up, Welder ID & Tanggal Pengelasan (Job 2428)
+                        Monitoring {shopJoints.length} joint fabrikasi bengkel (shop weld), fit-up QC, welder ID, dan tanggal pengelasan
                     </p>
                 </div>
                 <div>
                     {!canEdit && (
                         <span className="badge bg-light text-muted border p-2">
-                            Mode Baca (Akses edit: Construction / Manager)
+                            Mode Baca (Akses edit: Fabrication / Manager)
                         </span>
                     )}
                 </div>

@@ -16,7 +16,7 @@ const GROUP_LABELS = {
     dashboard: 'Dashboard',
     engineering: 'Engineering',
     material: 'Material',
-    construction: 'Construction',
+    fabrication: 'Fabrication',
     qaqc: 'QA-QC',
     testpackage: 'Test Package',
     hse: 'HSE',

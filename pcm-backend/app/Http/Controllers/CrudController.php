@@ -615,6 +615,10 @@ class CrudController extends Controller
             }
         }
 
+        if ($res === 'joints') {
+            $data = $this->prepareJointPayload($data);
+        }
+
         if (in_array($res, ['material-receivings', 'material-storings', 'material-issuings'], true)
             && empty($data['project_id'])) {
             throw ValidationException::withMessages([
@@ -870,8 +874,21 @@ class CrudController extends Controller
                 'project_id' => 'Project tidak ditemukan.',
             ]);
         }
-        if ($res === 'joints' && array_key_exists('status', $data)) {
-            $this->validateJointStatusTransition($obj, (string) $data['status'], $request->user());
+        if ($res === 'joints') {
+            $joint = DB::transaction(function () use ($obj, $data, $request) {
+                $payload = $this->prepareJointPayload($data, $obj);
+
+                if (array_key_exists('status', $payload)) {
+                    $this->validateJointStatusTransition($obj, (string) $payload['status'], $request->user());
+                }
+
+                $payload = $this->assignRepairNumber($obj, $payload);
+                $obj->update($payload);
+
+                return $obj->fresh()->load('inspections');
+            });
+
+            return response()->json($joint);
         }
         if ($res === 'drawings' && $request->hasFile('file')) {
             $path = $request->file('file')->store('drawings', 'public');
@@ -1219,6 +1236,148 @@ class CrudController extends Controller
         return response()->json(['message' => 'OK']);
     }
 
+    /**
+     * Lengkapi payload joint dari sisi server: project mengikuti drawing,
+     * shop/field mengikuti jenis pekerjaan erection, dan seq harus unik.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareJointPayload(array $data, ?Joint $joint = null): array
+    {
+        $erectionTypes = ['SHOP_WELD', 'FILL_WELD', 'ASSEMBLY', 'BOLTED'];
+
+        $erectionType = null;
+        if (array_key_exists('erection_type', $data) && $data['erection_type'] !== '') {
+            $erectionType = strtoupper((string) $data['erection_type']);
+        } elseif ($joint !== null && $joint->erection_type) {
+            $erectionType = strtoupper((string) $joint->erection_type);
+        }
+
+        if ($erectionType !== null) {
+            if (! in_array($erectionType, $erectionTypes, true)) {
+                throw ValidationException::withMessages([
+                    'erection_type' => 'Jenis pekerjaan erection tidak dikenal.',
+                ]);
+            }
+
+            $data['erection_type'] = $erectionType;
+            $data['shop_field'] = $erectionType === 'SHOP_WELD' ? 'Shop' : 'Field';
+
+            if ($erectionType === 'BOLTED') {
+                // Sambungan baut tidak memakai parameter pengelasan.
+                $data['joint_type'] = 'BOLTED';
+                foreach (['wps', 'welder', 'fit_date', 'weld_date'] as $weldingField) {
+                    $data[$weldingField] = null;
+                }
+            }
+        }
+
+        $drawingNo = trim((string) ($data['drawing_no'] ?? $joint?->drawing_no ?? ''));
+        if ($drawingNo === '') {
+            throw ValidationException::withMessages([
+                'drawing_no' => 'Drawing isometric wajib dipilih untuk joint.',
+            ]);
+        }
+        $data['drawing_no'] = $drawingNo;
+
+        // Drawing adalah sumber kebenaran project; nilai dari klien hanya
+        // dipakai bila drawing belum terdaftar (data lama).
+        $drawingProjectId = Drawing::query()->where('drawing_no', $drawingNo)->value('project_id');
+        $projectId = $drawingProjectId ?: ($data['project_id'] ?? $joint?->project_id);
+        if ($projectId) {
+            $data['project_id'] = (int) $projectId;
+        }
+
+        // repair_cycle ditentukan server saat nomor repair dibuat.
+        unset($data['repair_cycle']);
+
+        // Seq unik per drawing + spool. Hanya diperiksa saat seq ikut dikirim.
+        if ($joint === null || array_key_exists('seq', $data)) {
+            $seq = $data['seq'] ?? null;
+            if ($seq !== null && $seq !== '') {
+                $spool = $data['spool_no'] ?? $joint?->spool_no;
+                $duplicate = Joint::query()
+                    ->where('drawing_no', $drawingNo)
+                    ->where('seq', (int) $seq)
+                    ->when(
+                        $spool !== null && $spool !== '',
+                        fn (Builder $query) => $query->where('spool_no', $spool),
+                        fn (Builder $query) => $query->whereNull('spool_no')
+                    )
+                    ->when($joint?->id, fn (Builder $query) => $query->whereKeyNot($joint->id))
+                    ->exists();
+
+                if ($duplicate) {
+                    throw ValidationException::withMessages([
+                        'seq' => "Joint seq {$seq} sudah terdaftar pada drawing {$drawingNo}.",
+                    ]);
+                }
+
+                $data['seq'] = (int) $seq;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Nomor repair otomatis, reset per isometrik (drawing_no) sesuai praktik
+     * weld map: R-001, R-002, ... dan maksimal dua kali repair per joint.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function assignRepairNumber(Joint $joint, array $data): array
+    {
+        $incomingStatus = strtoupper((string) ($data['status'] ?? ''));
+        $defect = trim((string) ($data['repair_defect'] ?? ''));
+        $existingNo = trim((string) ($joint->repair_no ?? ''));
+
+        $needsRepair = $defect !== '' || $incomingStatus === 'REPAIR';
+        if (! $needsRepair) {
+            return $data;
+        }
+
+        $startsNewCycle = $existingNo === ''
+            || (strtoupper((string) $joint->repair_status) === 'CLOSED' && $incomingStatus === 'REPAIR');
+
+        if (! $startsNewCycle) {
+            return $data;
+        }
+
+        $cycle = $existingNo === '' ? 1 : ((int) $joint->repair_cycle + 1);
+        if ($cycle > 2) {
+            throw ValidationException::withMessages([
+                'repair_no' => 'Joint ini sudah dua kali repair; sambungan harus di cut-out dan dibuat joint baru.',
+            ]);
+        }
+
+        $data['repair_no'] = $this->nextRepairNumber($joint->drawing_no);
+        $data['repair_cycle'] = $cycle;
+        $data['repair_status'] = 'OPEN';
+
+        return $data;
+    }
+
+    private function nextRepairNumber(string $drawingNo): string
+    {
+        $used = Joint::query()
+            ->where('drawing_no', $drawingNo)
+            ->whereNotNull('repair_no')
+            ->lockForUpdate()
+            ->pluck('repair_no');
+
+        $max = 0;
+        foreach ($used as $number) {
+            if (preg_match('/R-(\d+)$/i', (string) $number, $matches)) {
+                $max = max($max, (int) $matches[1]);
+            }
+        }
+
+        return sprintf('R-%03d', $max + 1);
+    }
+
     private function validateJointStatusTransition(Joint $joint, string $nextStatus, $user): void
     {
         $current = strtoupper((string) ($joint->status ?: 'PLANNED'));
@@ -1255,6 +1414,18 @@ class CrudController extends Controller
             'REPAIR' => ['WELDED', 'VISUAL_OK', 'NDT_OK'],
             'TESTED' => [],
         ];
+
+        // Sambungan bolted tidak punya tahap las: setelah fit-up langsung ke
+        // inspeksi visual, dan dipasang tanpa WELDED.
+        if (strtoupper((string) $joint->joint_type) === 'BOLTED') {
+            $allowed['FITUP_OK'] = ['VISUAL_OK', 'TESTED'];
+            if ($next === 'WELDED') {
+                throw ValidationException::withMessages([
+                    'status' => 'Sambungan bolted tidak melewati tahap pengelasan.',
+                ]);
+            }
+        }
+
         if (! in_array($next, $allowed[$current] ?? [], true)) {
             throw ValidationException::withMessages([
                 'status' => "Transisi status {$current} ke {$next} tidak valid.",
@@ -1270,6 +1441,9 @@ class CrudController extends Controller
         }
 
         $consDeptId = Department::where('code', 'CONS')->value('id') ?? $map->department_id;
+        $shopField = $map->location ?: 'Shop';
+        $projectId = $map->project_id
+            ?: Drawing::query()->where('drawing_no', $map->iso_drawing_no)->value('project_id');
 
         Joint::updateOrCreate(
             [
@@ -1278,13 +1452,15 @@ class CrudController extends Controller
                 'seq' => $jointSeq,
             ],
             [
+                'project_id' => $projectId,
                 'line_no' => $map->line_no,
                 'item_a' => $map->mat_a_item,
                 'spec_a' => $map->mat_a_spec,
                 'item_b' => $map->mat_b_item,
                 'spec_b' => $map->mat_b_spec,
                 'size_in' => $map->dia_inch,
-                'shop_field' => $map->location ?: 'Shop',
+                'shop_field' => $shopField,
+                'erection_type' => strtolower((string) $shopField) === 'field' ? 'FILL_WELD' : 'SHOP_WELD',
                 'joint_type' => $map->joint_type ?: 'BW',
                 'method' => 'GTAW+SMAW',
                 'wps' => $map->wps_no,

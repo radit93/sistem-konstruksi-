@@ -24,7 +24,7 @@ class AccessCatalog
             ['code' => 'PMO',  'name' => 'Project Management', 'sort' => 10],
             ['code' => 'ENG',  'name' => 'Engineering',        'sort' => 20],
             ['code' => 'MAT',  'name' => 'Material Control',   'sort' => 30],
-            ['code' => 'CONS', 'name' => 'Construction',       'sort' => 40],
+            ['code' => 'CONS', 'name' => 'Fabrication',        'sort' => 40],
             ['code' => 'QAQC', 'name' => 'Quality Control',    'sort' => 50],
             ['code' => 'HSE',  'name' => 'Health, Safety, Environment', 'sort' => 60],
         ];
@@ -37,7 +37,7 @@ class AccessCatalog
             ['code' => 'project_manager', 'name' => 'Project Manager',  'level' => 80,  'description' => 'Mengawasi job. Lihat semua project dan role, hanya baca'],
             ['code' => 'engineer',        'name' => 'Engineer',         'level' => 60,  'description' => 'Register isometrik dan folder proyek'],
             ['code' => 'material',        'name' => 'Material Control', 'level' => 50,  'description' => 'Stok pipa, heat number, mutasi gudang'],
-            ['code' => 'construction',    'name' => 'Construction',     'level' => 50,  'description' => 'Fit-up, pengelasan, dan erection'],
+            ['code' => 'fabrication',     'name' => 'Fabrication',      'level' => 50,  'description' => 'Fit-up, pengelasan, dan erection'],
             ['code' => 'qaqc',            'name' => 'QA/QC',            'level' => 50,  'description' => 'Inspeksi visual dan NDT'],
             ['code' => 'testpackage',     'name' => 'Test Package',     'level' => 50,  'description' => 'Hydrotest dan blinds'],
             ['code' => 'hse',             'name' => 'HSE',              'level' => 50,  'description' => 'Log keselamatan kerja'],
@@ -61,9 +61,9 @@ class AccessCatalog
             ['material_inspection.view',  'material', 'Lihat Inspeksi Material',       32],
             ['material_inspection.write', 'qaqc',     'Ubah Inspeksi Material',        33],
 
-            ['joint.view',        'construction', 'Lihat Joint',                    40],
-            ['joint.write',       'construction', 'Ubah Joint',                     41],
-            ['joint.cross',       'construction', 'Joint lintas departemen',        42],
+            ['joint.view',        'fabrication', 'Lihat Joint',                    40],
+            ['joint.write',       'fabrication', 'Ubah Joint',                     41],
+            ['joint.cross',       'fabrication', 'Joint lintas departemen',        42],
 
             ['inspection.view',   'qaqc',         'Lihat QA-QC Inspection',         50],
             ['inspection.write',  'qaqc',         'Ubah QA-QC Inspection',          51],
@@ -143,7 +143,7 @@ class AccessCatalog
                 'milestone.view', 'milestone.write',
             ],
 
-            'construction' => [
+            'fabrication' => [
                 'dashboard.view',
                 'joint.view', 'joint.write',
                 'milestone.view', 'milestone.write',
@@ -178,7 +178,7 @@ class AccessCatalog
             'project_manager' => 'PMO',
             'engineer' => 'ENG',
             'material' => 'MAT',
-            'construction' => 'CONS',
+            'fabrication' => 'CONS',
             'qaqc' => 'QAQC',
             'testpackage' => 'QAQC',
             'hse' => 'HSE',

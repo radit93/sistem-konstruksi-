@@ -93,6 +93,8 @@ const getCategoryBadgeStyle = (cat) => {
             return { backgroundColor: '#475569', borderColor: '#334155', color: '#ffffff' }; // Solid Steel Slate Gray
         case 'Gasket':
             return { backgroundColor: '#6b21a8', borderColor: '#581c87', color: '#ffffff' }; // Solid Rich Purple / Ungu Prima
+        case 'Consumable':
+            return { backgroundColor: '#a16207', borderColor: '#854d0e', color: '#ffffff' }; // Solid Bronze / Filler Las
         default:
             return { backgroundColor: '#334155', borderColor: '#1e293b', color: '#ffffff' };
     }
@@ -126,7 +128,8 @@ const CATEGORY_TAB_LABELS = {
     Flange: 'Flange',
     Valve: 'Valve',
     Gasket: 'Gasket',
-    Fastener: 'Fastener'
+    Fastener: 'Fastener',
+    Consumable: 'Consumable'
 };
 
 /* Parser untuk memisahkan Rating Tekanan (#) dan Pressure Class bila ada data gabungan lama */
@@ -528,13 +531,14 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
         'Valve',
         'Gasket',
         'Fastener',
+        'Consumable',
     ];
 
     /* Pengelompokan kategori untuk 3 anak menu Material Standart. */
     const MATERIAL_SCOPE_CATEGORIES = {
         pipe: ['Pipe'],
         fitting: ['Fitting', 'Elbow Long Radius', 'Elbow Short Radius', 'Tee', 'Tee Reducer', 'Reducer Concentric', 'Reducer Eccentric', 'Weldolet'],
-        additional: ['Flange', 'Valve', 'Gasket', 'Fastener']
+        additional: ['Flange', 'Valve', 'Gasket', 'Fastener', 'Consumable']
     };
 
     const visibleCategories = materialScope === 'all'
@@ -1390,6 +1394,7 @@ export function MaterialStandardSection({ user, onToast, initialView = 'material
                                                 <option value="Valve">Valve</option>
                                                 <option value="Gasket">Gasket</option>
                                                 <option value="Fastener">Fastener (Bolt &amp; Nut)</option>
+                                                <option value="Consumable">Consumable (Filler Las)</option>
                                             </PcmSelect>
                                         </div>
                                         <div className="col-12 col-md-4">

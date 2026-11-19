@@ -110,9 +110,12 @@ class PcmContractTest extends TestCase
     public function test_material_role_writes_material_modules(): void
     {
         $mat = $this->token('material');
+        $projectId = Project::query()->value('id');
+        $this->assertNotNull($projectId);
 
         // Test receiving write
         $rec = $this->postJson('/api/material-receivings', [
+            'project_id' => $projectId,
             'arrival_date' => '2026-10-15', 'shipment_no' => 'SJ-TEST-001', 'po_no' => 'PO-TEST',
             'vendor' => 'Test Vendor', 'item_name' => 'Test Pipe', 'description' => 'Test Pipe Desc',
             'specification' => 'ASTM A106', 'size' => '4"', 'heat_no' => 'HT-TEST-01', 'qty' => 10,
@@ -122,24 +125,26 @@ class PcmContractTest extends TestCase
 
         // Test storing write
         $stk = $this->postJson('/api/material-storings', [
+            'project_id' => $projectId,
             'item_code' => 'MAT-TEST-01', 'item_name' => 'Test Storing Item', 'category' => 'PIPE',
             'specification' => 'ASTM A106', 'size' => '4"', 'storage_type' => 'OPEN_YARD',
             'location_detail' => 'Laydown Test', 'stock_in' => 10, 'balance' => 10,
         ], ['Authorization' => "Bearer $mat"])->assertCreated()->json();
         $this->assertSame('MAT-TEST-01', $stk['item_code']);
-        MaterialStoring::where('item_code', 'MAT-TEST-01')->delete();
 
         // Test issuing write
         $iss = $this->postJson('/api/material-issuings', [
+            'project_id' => $projectId, 'material_storing_id' => $stk['id'],
             'issue_date' => '2026-10-16', 'issue_no' => 'MIS-TEST-001', 'requestor' => 'Test Requestor',
-            'vendor' => 'Test Vendor', 'item_name' => 'Test Pipe', 'description' => 'Test Pipe Desc',
-            'specification' => 'ASTM A106', 'size' => '4"', 'schedule_rating' => 'Sch 40', 'qty' => 2,
+            'vendor' => 'Test Vendor', 'description' => 'Test Pipe Desc',
+            'schedule_rating' => 'Sch 40', 'qty' => 2,
         ], ['Authorization' => "Bearer $mat"])->assertCreated()->json();
         $this->assertSame('MIS-TEST-001', $iss['issue_no']);
         $this->assertSame('Test Vendor', $iss['vendor']);
         $this->assertSame('Test Pipe Desc', $iss['description']);
         $this->assertSame('Sch 40', $iss['schedule_rating']);
         MaterialIssuing::where('issue_no', 'MIS-TEST-001')->delete();
+        MaterialStoring::where('item_code', 'MAT-TEST-01')->delete();
     }
 
     public function test_project_manager_writes_milestone_and_budget(): void
@@ -223,7 +228,7 @@ class PcmContractTest extends TestCase
 
     public function test_joint_status_cannot_skip_construction_stage(): void
     {
-        $cons = $this->token('construction');
+        $cons = $this->token('fabrication');
         $consDept = Department::where('code', 'CONS')->value('id');
         $joint = Joint::create([
             'joint_no' => 'J-TEST-TRANSITION', 'drawing_no' => 'DWG-TRANSITION', 'spool_no' => 'SP-TRANSITION',
@@ -303,7 +308,7 @@ class PcmContractTest extends TestCase
             'department_id' => $pmoDept,
         ]);
 
-        $con = $this->token('construction');
+        $con = $this->token('fabrication');
         $this->postJson('/api/daily-progress', [
             'prog_date' => '2026-10-12', 'scope' => 'Test Scope',
             'qty' => 7, 'team' => 'construction',
@@ -390,8 +395,11 @@ class PcmContractTest extends TestCase
 
         try {
             $mat = $this->token('material');
+            $projectId = Project::query()->value('id');
+            $this->assertNotNull($projectId);
 
             $rec = $this->postJson('/api/material-receivings', [
+                'project_id' => $projectId,
                 'arrival_date' => '2026-10-20',
                 'shipment_no' => $shipment,
                 'line_no' => '15-MPP-AB',
@@ -495,6 +503,7 @@ class PcmContractTest extends TestCase
             ]);
 
             $this->postJson('/api/material-issuings', [
+                'project_id' => $projectId,
                 'material_storing_id' => $stock->id,
                 'issue_date' => '2026-10-20',
                 'issue_no' => $overIssue,
@@ -510,6 +519,7 @@ class PcmContractTest extends TestCase
             $this->assertSame(10.0, (float) $stock->fresh()->balance);
 
             $iss = $this->postJson('/api/material-issuings', [
+                'project_id' => $projectId,
                 'material_storing_id' => $stock->id,
                 'issue_date' => '2026-10-20',
                 'issue_no' => $issue,
@@ -629,6 +639,7 @@ class PcmContractTest extends TestCase
             $mat = $this->token('material');
 
             $rec = $this->postJson('/api/material-receivings', [
+                'project_id' => $projectId,
                 'arrival_date' => '2026-10-22',
                 'shipment_no' => $shipment,
                 'line_no' => '15-MPP-AB',
@@ -682,6 +693,7 @@ class PcmContractTest extends TestCase
             $mat = $this->token('material');
 
             $firstIssue = $this->postJson('/api/material-issuings', [
+                'project_id' => $projectId,
                 'material_storing_id' => $stock->id,
                 'drawing_id' => $drawing->id,
                 'bom_id' => $bom->id,
@@ -745,6 +757,7 @@ class PcmContractTest extends TestCase
             $this->assertSame(3.0, (float) $updatedRequirements['rows'][0]['stock_balance']);
 
             $this->postJson('/api/material-issuings', [
+                'project_id' => $projectId,
                 'material_storing_id' => $stock->id,
                 'drawing_id' => $drawing->id,
                 'bom_id' => $bom->id,
@@ -822,8 +835,11 @@ class PcmContractTest extends TestCase
 
         try {
             $mat = $this->token('material');
+            $projectId = Project::query()->value('id');
+            $this->assertNotNull($projectId);
 
             $rec = $this->postJson('/api/material-receivings', [
+                'project_id' => $projectId,
                 'arrival_date' => '2026-10-22',
                 'shipment_no' => $shipment,
                 'line_no' => '15-MPP-AB',
@@ -871,6 +887,7 @@ class PcmContractTest extends TestCase
             )->assertOk();
 
             $stockRow = $this->postJson('/api/material-storings', [
+                'project_id' => $projectId,
                 'item_code' => $itemCode,
                 'item_name' => 'Report stock item',
                 'category' => 'PIPE',
@@ -896,6 +913,7 @@ class PcmContractTest extends TestCase
             ], ['Authorization' => "Bearer {$mat}"])->assertCreated();
 
             $issue = $this->postJson('/api/material-issuings', [
+                'project_id' => $projectId,
                 'material_storing_id' => $stock->id,
                 'issue_date' => '2026-10-22',
                 'issue_no' => $issueNo,
@@ -911,7 +929,7 @@ class PcmContractTest extends TestCase
             $issuing = MaterialIssuing::findOrFail($issue['id']);
 
             $receivingReport = $this->getJson(
-                "/api/material-reports/receiving?search={$shipment}",
+                "/api/material-reports/receiving?project_id={$projectId}&search={$shipment}",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
@@ -922,7 +940,7 @@ class PcmContractTest extends TestCase
             $this->assertSame(1, $receivingReport['rows'][0]['documents_count']);
 
             $issuingReport = $this->getJson(
-                "/api/material-reports/issuing?search={$issueNo}",
+                "/api/material-reports/issuing?project_id={$projectId}&search={$issueNo}",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
@@ -931,7 +949,7 @@ class PcmContractTest extends TestCase
             $this->assertSame($issueNo, $issuingReport['rows'][0]['issue_no']);
 
             $stockReport = $this->getJson(
-                "/api/material-reports/stock?search={$itemCode}",
+                "/api/material-reports/stock?project_id={$projectId}&search={$itemCode}",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
@@ -941,28 +959,28 @@ class PcmContractTest extends TestCase
             $this->assertSame(1, $stockReport['rows'][0]['documents_count']);
 
             $acceptedOnly = $this->getJson(
-                "/api/material-reports/receiving?search={$shipment}&status=ACCEPTED",
+                "/api/material-reports/receiving?project_id={$projectId}&search={$shipment}&status=ACCEPTED",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
             $this->assertSame(0, $acceptedOnly['summary']['total_batches']);
 
             $warehouseStock = $this->getJson(
-                "/api/material-reports/stock?search={$itemCode}&storage_type=WAREHOUSE",
+                "/api/material-reports/stock?project_id={$projectId}&search={$itemCode}&storage_type=WAREHOUSE",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
             $this->assertSame(0, $warehouseStock['summary']['total_items']);
 
             $lowStock = $this->getJson(
-                "/api/material-reports/stock?search={$itemCode}&stock_status=LOW",
+                "/api/material-reports/stock?project_id={$projectId}&search={$itemCode}&stock_status=LOW",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
             $this->assertSame(0, $lowStock['summary']['total_items']);
 
             $mapReport = $this->getJson(
-                "/api/material-reports/location-map?search={$itemCode}",
+                "/api/material-reports/location-map?project_id={$projectId}&search={$itemCode}",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
@@ -976,7 +994,7 @@ class PcmContractTest extends TestCase
             $eng = $this->token('engineer');
 
             $this->getJson(
-                "/api/material-reports/stock?search={$itemCode}",
+                "/api/material-reports/stock?project_id={$projectId}&search={$itemCode}",
                 ['Authorization' => "Bearer {$eng}"]
             )->assertForbidden();
 
@@ -1324,7 +1342,7 @@ class PcmContractTest extends TestCase
 
     public function test_worker_account_submits_milestone_with_daily_hourly_schedule(): void
     {
-        $con = $this->token('construction');
+        $con = $this->token('fabrication');
         $eng = $this->token('engineer');
         $pm = $this->token('project_manager');
 
@@ -1386,7 +1404,7 @@ class PcmContractTest extends TestCase
         $pmUsers = $this->getJson('/api/admin/users', ['Authorization' => "Bearer {$pm}"])
             ->assertOk()
             ->json();
-        $this->assertTrue(collect($pmUsers)->contains('role', 'construction'));
+        $this->assertTrue(collect($pmUsers)->contains('role', 'fabrication'));
 
         $pmList = $this->getJson('/api/project-milestones', ['Authorization' => "Bearer {$pm}"])
             ->assertOk()
@@ -1411,5 +1429,88 @@ class PcmContractTest extends TestCase
         $this->assertSame('Di sistem 2 jam pertama selesai, cek lapangan belum beres.', $noted['activities'][0]['notes']);
 
         ProjectMilestone::where('id', $created['id'])->delete();
+    }
+
+    /**
+     * Joint lapangan baru dibuat dari sisi Fabrication (erection): project dan
+     * shop/field diisi server dari drawing + jenis pekerjaan.
+     */
+    public function test_fabrication_creates_field_joint_with_automatic_repair_number(): void
+    {
+        $fab = $this->token('fabrication');
+        $drawing = Drawing::query()->whereNotNull('project_id')->firstOrFail();
+
+        $created = $this->postJson('/api/joints', [
+            'drawing_no' => $drawing->drawing_no,
+            'line_no' => 'TEST-LINE',
+            'spool_no' => 'SP-TEST',
+            'seq' => 9101,
+            'size_in' => 4,
+            'item_a' => 'Pipe',
+            'spec_a' => 'A106-B',
+            'item_b' => 'Flange',
+            'spec_b' => 'A105',
+            'erection_type' => 'ASSEMBLY',
+            'joint_type' => 'BW',
+            'status' => 'PLANNED',
+        ], ['Authorization' => "Bearer {$fab}"])->assertCreated()->json();
+
+        $this->assertSame($drawing->project_id, $created['project_id']);
+        $this->assertSame('Field', $created['shop_field']);
+        $this->assertSame('ASSEMBLY', $created['erection_type']);
+
+        $joint = Joint::query()->findOrFail($created['id']);
+
+        // Nomor repair dibuat server saat defect dicatat, reset per isometrik.
+        $repaired = $this->putJson("/api/joints/{$joint->id}", [
+            'repair_defect' => 'Porosity',
+            'repair_method' => 'Grinding',
+        ], ['Authorization' => "Bearer {$fab}"])->assertOk()->json();
+
+        $this->assertMatchesRegularExpression('/^R-\d{3}$/', $repaired['repair_no']);
+        $this->assertSame('OPEN', $repaired['repair_status']);
+        $this->assertSame(1, $repaired['repair_cycle']);
+
+        // Seq ganda pada drawing yang sama ditolak.
+        $this->postJson('/api/joints', [
+            'drawing_no' => $drawing->drawing_no,
+            'spool_no' => 'SP-TEST',
+            'seq' => 9101,
+            'erection_type' => 'ASSEMBLY',
+            'joint_type' => 'BW',
+        ], ['Authorization' => "Bearer {$fab}"])->assertStatus(422);
+
+        Joint::query()->whereKey($joint->id)->delete();
+    }
+
+    public function test_bolted_field_joint_skips_welding_stage(): void
+    {
+        $fab = $this->token('fabrication');
+        $drawing = Drawing::query()->whereNotNull('project_id')->firstOrFail();
+
+        $created = $this->postJson('/api/joints', [
+            'drawing_no' => $drawing->drawing_no,
+            'spool_no' => 'SP-BOLT',
+            'seq' => 9102,
+            'size_in' => 6,
+            'item_a' => 'Flange',
+            'item_b' => 'Valve',
+            'erection_type' => 'BOLTED',
+            'status' => 'PLANNED',
+        ], ['Authorization' => "Bearer {$fab}"])->assertCreated()->json();
+
+        $this->assertSame('BOLTED', $created['joint_type']);
+        $this->assertNull($created['welder']);
+
+        $joint = Joint::query()->findOrFail($created['id']);
+        foreach (['RECEIVED', 'ISSUED', 'FITUP_OK'] as $status) {
+            $joint->update(['status' => $status]);
+        }
+
+        $this->putJson("/api/joints/{$joint->id}", [
+            'status' => 'WELDED',
+        ], ['Authorization' => "Bearer {$fab}"])->assertStatus(422);
+
+        Joint::query()->whereKey($joint->id)->delete();
     }
 }

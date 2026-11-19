@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(RolePermissionSeeder::class);
         $this->call(InterimMasterDataSeeder::class);
+        $this->call(FillerMaterialSeeder::class);
 
         $departments = Department::pluck('id', 'code');
 
@@ -28,7 +29,10 @@ class DatabaseSeeder extends Seeder
             ['manager@pcm.local',      'Project Manager', 'project_manager', 'PMO'],
             ['engineer@pcm.local',     'Engineer',        'engineer',        'ENG'],
             ['material@pcm.local',     'Material Control', 'material',       'MAT'],
-            ['construction@pcm.local', 'Construction',    'construction',    'CONS'],
+            ['fabrication@pcm.local',  'Fabrication',     'fabrication',     'CONS'],
+            // Alias lama dipertahankan supaya dokumentasi/demo yang sudah beredar
+            // tetap bisa login; role-nya sama (fabrication).
+            ['construction@pcm.local', 'Fabrication',     'fabrication',     'CONS'],
             ['qaqc@pcm.local',         'QA/QC',           'qaqc',            'QAQC'],
             ['testpackage@pcm.local',  'Test Package',    'testpackage',     'QAQC'],
             ['hse@pcm.local',          'HSE',             'hse',             'HSE'],

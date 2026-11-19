@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { api } from '../api';
 import { PcmSelect } from './SearchSelect';
 
 /**
@@ -28,6 +29,7 @@ export const constructionFieldNames = [
     'repair_welder',
     'repair_date',
     'repair_status',
+    'repair_cycle',
     'repair_remarks'
 ];
 
@@ -68,6 +70,28 @@ export const formatJointSpec = (j) => {
 
 /** repair_status: OPEN (masih berjalan) / CLOSED (selesai). */
 export const REPAIR_STATUS_OPTIONS = ['OPEN', 'CLOSED'];
+
+/**
+ * Filler material diambil dari master Material Standard kategori Consumable
+ * supaya nilainya tidak diketik bebas. Cache modul-level: satu request per
+ * sesi browser, dipakai bersama oleh Shop, Fill, dan Field Erection.
+ */
+let fillerMaterialCache = null;
+
+export async function loadFillerMaterials() {
+    if (fillerMaterialCache) {
+        return fillerMaterialCache;
+    }
+
+    const data = await api.get('/material-standards');
+    fillerMaterialCache = (Array.isArray(data) ? data : [])
+        .filter((standard) => String(standard.category || '').toLowerCase() === 'consumable')
+        .map((standard) => String(standard.code || '').trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+
+    return fillerMaterialCache;
+}
 
 export const repairStatusOf = (joint) => {
     if (!joint?.repair_no) return '';
@@ -153,7 +177,7 @@ export function downloadConstructionCsv(items, filename, title) {
     URL.revokeObjectURL(url);
 }
 
-const QC_VALUE_OPTIONS = ['OK', 'NOK', 'N/A'];
+const QC_VALUE_OPTIONS = ['OK', 'ENGINEER', 'N/A'];
 const WELDING_PROCESS_OPTIONS = ['GTAW', 'SMAW', 'GTAW + SMAW', 'FCAW', 'GMAW'];
 const REPAIR_METHOD_OPTIONS = ['Grinding', 'Weld Build-up', 'Cut & Re-weld'];
 
@@ -174,8 +198,27 @@ function QcSelect({ label, name, value, onChange }) {
  * tracking. State-nya tetap milik pemanggil (editData / setEditData), dan
  * nama input === nama kolom di tabel joints.
  */
-export function ConstructionChecklistSection({ editData, setEditData }) {
+export function ConstructionChecklistSection({ editData, setEditData, showWelding = true }) {
     const set = (name) => (e) => setEditData({ ...editData, [name]: e.target.value });
+    const [fillerOptions, setFillerOptions] = useState([]);
+
+    useEffect(() => {
+        let alive = true;
+        loadFillerMaterials()
+            .then((options) => {
+                if (alive) setFillerOptions(options);
+            })
+            .catch(() => {
+                /* Master belum bisa dibaca: dropdown tetap tampil kosong. */
+            });
+        return () => {
+            alive = false;
+        };
+    }, []);
+
+    const fillerChoices = editData.filler_material && !fillerOptions.includes(editData.filler_material)
+        ? [editData.filler_material, ...fillerOptions]
+        : fillerOptions;
 
     return (
         <>
@@ -218,43 +261,44 @@ export function ConstructionChecklistSection({ editData, setEditData }) {
                             onChange={set('fitup_inspection_date')}
                         />
                     </div>
-                    <div className="col-6 col-lg-4">
-                        <label className="form-label small fw-semibold">Proses Pengelasan</label>
-                        <PcmSelect value={editData.welding_process} onChange={set('welding_process')}>
-                            <option value="">-- Pilih --</option>
-                            {WELDING_PROCESS_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                        </PcmSelect>
-                    </div>
-                    <div className="col-6 col-lg-4">
-                        <label className="form-label small fw-semibold">Filler Material</label>
-                        <input
-                            type="text"
-                            className="form-control"
-                            placeholder="ER70S-2 / E7018"
-                            value={editData.filler_material}
-                            onChange={set('filler_material')}
-                        />
-                    </div>
-                    <div className="col-6 col-lg-4">
-                        <label className="form-label small fw-semibold">Preheat (&deg;C)</label>
-                        <input
-                            type="text"
-                            className="form-control"
-                            placeholder="15"
-                            value={editData.preheat}
-                            onChange={set('preheat')}
-                        />
-                    </div>
-                    <div className="col-6 col-lg-4">
-                        <label className="form-label small fw-semibold">Suhu Interpass (&deg;C)</label>
-                        <input
-                            type="text"
-                            className="form-control"
-                            placeholder="120"
-                            value={editData.interpass_temperature}
-                            onChange={set('interpass_temperature')}
-                        />
-                    </div>
+                    {showWelding && (
+                        <>
+                            <div className="col-6 col-lg-4">
+                                <label className="form-label small fw-semibold">Proses Pengelasan</label>
+                                <PcmSelect value={editData.welding_process} onChange={set('welding_process')}>
+                                    <option value="">-- Pilih --</option>
+                                    {WELDING_PROCESS_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                                </PcmSelect>
+                            </div>
+                            <div className="col-6 col-lg-4">
+                                <label className="form-label small fw-semibold">Filler Material</label>
+                                <PcmSelect value={editData.filler_material} onChange={set('filler_material')}>
+                                    <option value="">-- Pilih Filler --</option>
+                                    {fillerChoices.map(code => <option key={code} value={code}>{code}</option>)}
+                                </PcmSelect>
+                            </div>
+                            <div className="col-6 col-lg-4">
+                                <label className="form-label small fw-semibold">Preheat (&deg;C)</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="15"
+                                    value={editData.preheat}
+                                    onChange={set('preheat')}
+                                />
+                            </div>
+                            <div className="col-6 col-lg-4">
+                                <label className="form-label small fw-semibold">Suhu Interpass (&deg;C)</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="120"
+                                    value={editData.interpass_temperature}
+                                    onChange={set('interpass_temperature')}
+                                />
+                            </div>
+                        </>
+                    )}
                     <div className="col-12">
                         <label className="form-label small fw-semibold">Remarks Konstruksi</label>
                         <textarea
@@ -288,10 +332,14 @@ export function ConstructionChecklistSection({ editData, setEditData }) {
                         <input
                             type="text"
                             className="form-control"
-                            placeholder="R-001"
-                            value={editData.repair_no}
-                            onChange={set('repair_no')}
+                            placeholder="Otomatis (R-001)"
+                            value={editData.repair_no || ''}
+                            readOnly
                         />
+                        <small className="text-muted">
+                            Nomor dibuat otomatis per isometrik
+                            {Number(editData.repair_cycle) > 1 ? ` · repair ke-${editData.repair_cycle}` : ''}.
+                        </small>
                     </div>
                     <div className="col-6 col-lg-4">
                         <label className="form-label small fw-semibold">Jenis Defect</label>

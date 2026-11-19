@@ -32,6 +32,7 @@ export const OPERATIONAL_MENU_IDS = [
     'erection',
     'construction',
     'construction_project_list',
+    'construction_fill',
     'qaqc_project_list',
     'qaqc',
     'testpackage',
@@ -72,7 +73,7 @@ export const DEPARTMENT_MENUS = {
         'mat_issuing'
         , 'mat_inventory'
     ],
-    CONS: ['construction_project_list', 'construction', 'erection'],
+    CONS: ['construction_project_list', 'construction', 'construction_fill', 'erection'],
     QAQC: ['qaqc_project_list', 'qaqc', 'testpackage', 'mat_inspection', 'material_standard', 'master_pipe'],
     HSE: ['hse']
 };
@@ -265,21 +266,29 @@ export const ROLE_SIDEBAR_MENUS = [
         id: 'construction_project_list',
         label: 'Project List',
         perm: 'joint.view',
-        group: 'Construction',
-        desc: 'Pilih project untuk membuka data konstruksi'
+        group: 'Fabrication',
+        desc: 'Pilih project untuk membuka data fabrication'
     },
     {
         id: 'construction',
         label: 'Construction Shop',
         perm: 'joint.view',
-        group: 'Construction',
+        group: 'Fabrication',
         desc: 'Fabrikasi spool, fit-up QC, dan repair tracking per project'
+    },
+    {
+        id: 'construction_fill',
+        label: 'Construction Fill',
+        perm: 'joint.view',
+        group: 'Fabrication',
+        desc: 'Sambungan fill weld lapangan per project'
     },
     {
         id: 'erection',
         label: 'Field Erection',
         perm: 'joint.view',
-        desc: 'Pemasangan spool dan monitoring joint di lapangan per project'
+        group: 'Fabrication',
+        desc: 'Assembly dan bolted connection di lapangan per project'
     },
     {
         id: 'hse',

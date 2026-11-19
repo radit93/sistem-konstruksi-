@@ -50,8 +50,18 @@ class DemoDataSeeder extends Seeder
             $status = $statusFlow[$i % count($statusFlow)];
             $itemB = $itemBOptions[($i - 1) % count($itemBOptions)];
 
+            // Ragam pekerjaan lapangan: sebagian joint erection dibuat assembly dan
+            // bolted connection supaya Field Erection punya contoh ketiga jenis.
+            $erectionType = $i % 2 === 0 ? 'SHOP_WELD' : 'FILL_WELD';
+            if (in_array($i, [7, 21], true)) {
+                $erectionType = 'ASSEMBLY';
+            } elseif (in_array($i, [11, 25], true)) {
+                $erectionType = 'BOLTED';
+            }
+            $isBolted = $erectionType === 'BOLTED';
+
             // Checklist fit-up QC: tersedia pada joint yang sudah lewat tahap ISSUED,
-            // satu bevel NOK agar repair tracking punya konteks yang jelas.
+            // satu bevel ENGINEER agar repair tracking punya konteks yang jelas.
             $pastIssued = ! in_array($status, ['RECEIVED', 'ISSUED'], true);
             $fields = [
                 'department_id' => $consDept,
@@ -62,12 +72,14 @@ class DemoDataSeeder extends Seeder
                 'item_b' => $itemB,
                 'spec_b' => 'A234-WPB',
                 'size_in' => $size,
-                'shop_field' => $i % 2 == 0 ? 'Shop' : 'Field',
-                'joint_type' => 'BW',
-                'method' => $size >= 6 ? 'GTAW + SMAW' : 'GTAW',
-                'welder' => 'W-00'.(($i % 5) + 1),
-                'fit_date' => now()->subDays(20 - ($i % 20)),
-                'weld_date' => now()->subDays(18 - ($i % 18)),
+                'project_id' => $drawings[($i - 1) % 3]->project_id,
+                'shop_field' => $erectionType === 'SHOP_WELD' ? 'Shop' : 'Field',
+                'erection_type' => $erectionType,
+                'joint_type' => $isBolted ? 'BOLTED' : 'BW',
+                'method' => $isBolted ? null : ($size >= 6 ? 'GTAW + SMAW' : 'GTAW'),
+                'welder' => $isBolted ? null : 'W-00'.(($i % 5) + 1),
+                'fit_date' => $isBolted ? null : now()->subDays(20 - ($i % 20)),
+                'weld_date' => $isBolted ? null : now()->subDays(18 - ($i % 18)),
                 'visual' => 'PASS',
                 'status' => $status,
             ];
@@ -76,20 +88,35 @@ class DemoDataSeeder extends Seeder
                 $fields = array_merge($fields, [
                     'fitup_alignment' => 'OK',
                     'fitup_root_gap' => 'OK',
-                    'fitup_bevel' => $i % 9 === 0 ? 'NOK' : 'OK',
+                    'fitup_bevel' => $i % 9 === 0 ? 'ENGINEER' : 'OK',
                     'fitup_hi_low' => 'OK',
                     'fitup_tack_weld' => 'OK',
                     'fitup_inspector' => 'QC-0'.(($i % 2) + 1),
                     'fitup_inspection_date' => now()->subDays(20 - ($i % 20))->toDateString(),
-                    'welding_process' => $size >= 6 ? 'GTAW + SMAW' : 'GTAW',
-                    'filler_material' => $size >= 6 ? 'ER70S-6 / E7018' : 'ER70S-2',
-                    'preheat' => $size >= 6 ? '25' : '-',
-                    'interpass_temperature' => '120',
                     'construction_remarks' => $itemB === 'Reducer' ? 'Perhatikan hi-lo reducer' : null,
                 ]);
             }
 
-            // Repair tracking: bevel NOK di-patch dengan grinding (seq 9 = Field, seq 18 = Shop).
+            // Sambungan bolted tidak memakai parameter pengelasan.
+            if ($pastIssued && ! $isBolted) {
+                $fields = array_merge($fields, [
+                    'welding_process' => $size >= 6 ? 'GTAW + SMAW' : 'GTAW',
+                    'filler_material' => $size >= 6 ? 'E7018' : 'ER70S-2',
+                    'preheat' => $size >= 6 ? '25' : '-',
+                    'interpass_temperature' => '120',
+                ]);
+            }
+
+            if ($isBolted) {
+                $fields = array_merge($fields, [
+                    'welding_process' => null,
+                    'filler_material' => null,
+                    'preheat' => null,
+                    'interpass_temperature' => null,
+                ]);
+            }
+
+            // Repair tracking: bevel ENGINEER di-patch dengan grinding (seq 9 = Field, seq 18 = Shop).
             if ($i === 9 || $i === 18) {
                 $fields = array_merge($fields, [
                     'repair_no' => 'R-00'.($i === 9 ? 1 : 2),
@@ -97,6 +124,8 @@ class DemoDataSeeder extends Seeder
                     'repair_method' => 'Grinding',
                     'repair_welder' => 'W-00'.(($i % 5) + 1),
                     'repair_date' => now()->subDays(2),
+                    'repair_cycle' => 1,
+                    'repair_status' => 'OPEN',
                     'repair_remarks' => 'Bevel di-grinding ulang mengikuti WPS lalu fit-up re-check OK.',
                 ]);
             }

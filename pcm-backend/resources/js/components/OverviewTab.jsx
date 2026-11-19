@@ -219,6 +219,10 @@ export function OverviewTab({
     const fieldJoints = jointList.filter((j) => (j.shop_field || '').toLowerCase() === 'field');
     const shopCount = shopJoints.length;
     const fieldCount = fieldJoints.length;
+    // Menu dipisah: Construction Fill menangani fill weld, Field Erection
+    // menangani assembly dan bolted connection.
+    const fillWeldCount = fieldJoints.filter((j) => j.erection_type === 'FILL_WELD').length;
+    const erectionCount = fieldJoints.filter((j) => ['ASSEMBLY', 'BOLTED'].includes(j.erection_type)).length;
     const shopReachedAt = (index) => shopJoints.filter((j) => stageIndex(j.status) >= index).length;
     const fieldReachedAt = (index) => fieldJoints.filter((j) => stageIndex(j.status) >= index).length;
 
@@ -329,7 +333,8 @@ export function OverviewTab({
     const modulePerms = {
         engineering: 'drawing.view',
         material: 'stock.view',
-        fabrication: 'joint.view',
+        construction: 'joint.view',
+        construction_fill: 'joint.view',
         erection: 'joint.view',
         qaqc: 'inspection.view',
         testpackage: 'testpackage.view',
@@ -341,8 +346,9 @@ export function OverviewTab({
     const quickNav = [
         { tab: 'engineering', icon: <IconFolder size="sm" />, title: 'Engineering Drawing', count: `${drawingList.length} iso` },
         { tab: 'material', icon: <IconCube size="sm" />, title: 'Material Control', count: `${smList.length} mutasi` },
-        { tab: 'fabrication', icon: <IconWeld size="sm" />, title: 'Construction Shop', count: `${shopCount} joint` },
-        { tab: 'erection', icon: <IconGantry size="sm" />, title: 'Field Erection', count: `${fieldCount} joint` },
+        { tab: 'construction', icon: <IconWeld size="sm" />, title: 'Construction Shop', count: `${shopCount} joint` },
+        { tab: 'construction_fill', icon: <IconWeld size="sm" />, title: 'Construction Fill', count: `${fillWeldCount} joint` },
+        { tab: 'erection', icon: <IconGantry size="sm" />, title: 'Field Erection', count: `${erectionCount} joint` },
         { tab: 'qaqc', icon: <IconSearch size="sm" />, title: 'QA-QC Inspection', count: `${inspectionTotal} laporan` },
         { tab: 'testpackage', icon: <IconFlask size="sm" />, title: 'Test Package', count: `${tpList.length} paket` },
         { tab: 'schedule', icon: <IconChart size="sm" />, title: 'Project Manager', count: `${scopeList.length} scope` }

@@ -13,7 +13,6 @@ import { LoginModal } from './components/LoginModal';
 import { OverviewTab } from './components/OverviewTab';
 import { EngineeringTab } from './components/EngineeringTab';
 import { MaterialTab } from './components/MaterialTab';
-import { FabricationTab } from './components/FabricationTab';
 import { FieldErectionTab } from './components/FieldErectionTab';
 import { ConstructionLayout } from './components/ConstructionLayout';
 import { QaqcTab } from './components/QaqcTab';
@@ -30,7 +29,7 @@ const ROLE_DEFAULT_TABS = {
     project_manager: 'overview',
     engineer: 'engineering',
     material: 'material',
-    construction: 'construction',
+    fabrication: 'construction',
     qaqc: 'qaqc',
     testpackage: 'testpackage',
     hse: 'hse'
@@ -46,14 +45,16 @@ function App() {
     const [departmentFilter, setDepartmentFilter] = useState(() => api.getDepartmentFilter());
     const [activeTab, setActiveTabState] = useState(() => {
         const hash = window.location.hash.replace('#', '');
+        // Alias lama: tab "fabrication" sekarang menjadi Construction Shop.
+        if (hash === 'fabrication') return 'construction';
         if (hash) return hash;
         const u = api.getUser();
         return u ? (ROLE_DEFAULT_TABS[u.role] || 'engineering') : 'engineering';
     });
 
     const setActiveTab = useCallback((tab) => {
-        window.location.hash = tab;
-        setActiveTabState(tab);
+        window.location.hash = tab === 'fabrication' ? 'construction' : tab;
+        setActiveTabState(tab === 'fabrication' ? 'construction' : tab);
     }, []);
 
     useEffect(() => {
@@ -427,13 +428,19 @@ function App() {
                             }}
                         />
                     )}
-                    {activeTab === 'fabrication' && (
-                        <FabricationTab
+                    {activeTab === 'construction_fill' && (
+                        <FieldErectionTab
+                            projects={projects}
                             joints={joints}
+                            drawings={drawings}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
+                            allowedWorkTypes={['FILL_WELD']}
                             onReload={() => {
                                 loadData();
-                                showToast('Status Spool Shop diperbarui');
+                                showToast('Status Construction Fill diperbarui');
                             }}
                         />
                     )}
@@ -441,10 +448,12 @@ function App() {
                         <FieldErectionTab
                             projects={projects}
                             joints={joints}
+                            drawings={drawings}
                             user={user}
                             activeProjectId={activeProjectId}
                             onSetActiveProject={handleSetActiveProject}
                             onSelectTab={setActiveTab}
+                            allowedWorkTypes={['ASSEMBLY', 'BOLTED']}
                             onReload={() => {
                                 loadData();
                                 showToast('Status Field Erection diperbarui');

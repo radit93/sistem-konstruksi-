@@ -5,7 +5,7 @@ const ROLE_MENUS = [
     { id: 'overview', label: 'Global Dashboard', icon: 'cs-screen', role: 'all', desc: 'Rangkuman Master Seluruh Role' },
     { id: 'engineering', label: 'Engineer', icon: 'cs-file-text', role: 'engineer', desc: 'Input Drawing & Upload CAD/PDF' },
     { id: 'material', label: 'Material', icon: 'cs-archive', role: 'material', desc: 'Kontrol Stok Pipa & Heat No' },
-    { id: 'fabrication', label: 'Construction', icon: 'cs-gear', role: 'construction', desc: 'Spool Workshop & Fit-up' },
+    { id: 'construction', label: 'Fabrication', icon: 'cs-gear', role: 'fabrication', desc: 'Spool Workshop & Fit-up' },
     { id: 'qaqc', label: 'QA-QC', icon: 'cs-check-square', role: 'qaqc', desc: 'Pemeriksaan Visual & NDT' },
     { id: 'testpackage', label: 'Test Package', icon: 'cs-clipboard', role: 'testpackage', desc: 'Hydrotest & Blinds Limits' },
     { id: 'hse', label: 'HSE', icon: 'cs-warning-hexagon', role: 'hse', desc: 'Jam Kerja Aman & Safety Log' },

@@ -1012,8 +1012,9 @@ export function MaterialStoringSection({
                 open={Boolean(reportType)}
                 reportType={reportType || 'stock'}
                 initialFilters={reportType === 'location-map'
-                    ? { search }
+                    ? { project_id: activeProjectId, search }
                     : {
+                        project_id: activeProjectId,
                         search,
                         category: filterCategory,
                         stock_status: filterStockStatus === 'OK' ? 'NORMAL' : filterStockStatus,

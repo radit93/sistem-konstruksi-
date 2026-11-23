@@ -19,6 +19,7 @@ export const OPERATIONAL_MENU_IDS = [
     'pm_milestone',
     'report',
     'material',
+    'mat_project_list',
     'mat_requirement',
     'mat_receiving',
     'mat_inspection',
@@ -26,9 +27,12 @@ export const OPERATIONAL_MENU_IDS = [
     'mat_warehouse',
     'mat_openyard',
     'mat_issuing',
+    'mat_inventory',
     'fabrication',
     'erection',
     'construction',
+    'construction_project_list',
+    'qaqc_project_list',
     'qaqc',
     'testpackage',
     'hse',
@@ -53,24 +57,24 @@ export const DEPARTMENT_MENUS = {
         'bom',
         'material_standard',
         'master_pipe',
-        'document_control',
-        'pm_milestone'
+        'document_control'
     ],
     MAT: [
         'material_standard',
         'master_pipe',
+        'mat_project_list',
         'mat_requirement',
         'mat_receiving',
         'mat_inspection',
         'mat_storing',
         'mat_warehouse',
         'mat_openyard',
-        'mat_issuing',
-        'pm_milestone'
+        'mat_issuing'
+        , 'mat_inventory'
     ],
-    CONS: ['material_standard', 'master_pipe', 'construction', 'erection', 'pm_milestone'],
-    QAQC: ['material_standard', 'master_pipe', 'qaqc', 'testpackage', 'mat_inspection', 'pm_milestone'],
-    HSE: ['hse', 'pm_milestone']
+    CONS: ['construction_project_list', 'construction', 'erection'],
+    QAQC: ['qaqc_project_list', 'qaqc', 'testpackage', 'mat_inspection', 'material_standard', 'master_pipe'],
+    HSE: ['hse']
 };
 
 // Satu menu = satu layar. Visibilitas ditentukan izin dari database.
@@ -80,6 +84,27 @@ export const ROLE_SIDEBAR_MENUS = [
         label: 'Global Dashboard',
         perm: 'dashboard.view',
         desc: 'Ringkasan seluruh departemen'
+    },
+    {
+        id: 'qaqc_project_list',
+        label: 'Project List',
+        perm: 'inspection.view',
+        group: 'QA-QC Inspection',
+        desc: 'Pilih project untuk membuka data inspeksi QC'
+    },
+    {
+        id: 'qaqc',
+        label: 'QA-QC Inspection',
+        perm: 'inspection.view',
+        group: 'QA-QC Inspection',
+        desc: 'Inspeksi Visual & NDT'
+    },
+    {
+        id: 'testpackage',
+        label: 'Test Package',
+        perm: 'testpackage.view',
+        group: 'QA-QC Inspection',
+        desc: 'Hydrotest & Blinds Limits'
     },
     {
         id: 'project_list',
@@ -128,7 +153,24 @@ export const ROLE_SIDEBAR_MENUS = [
         label: 'Material Standard',
         anyOf: ['drawing.view', 'stock.view', 'inspection.view', 'joint.view'],
         group: 'Engineering',
-        desc: 'ASTM Standard Catalog'
+        desc: 'ASTM Standard Catalog',
+        children: [
+            {
+                id: 'material_pipe',
+                label: 'Pipe Standards',
+                desc: 'Pipe material standards'
+            },
+            {
+                id: 'material_fitting',
+                label: 'Fitting Standards',
+                desc: 'Elbow, tee, reducer, weld-o-let standards'
+            },
+            {
+                id: 'material_additional',
+                label: 'Additional Standards',
+                desc: 'Flange, valve, gasket, and fastener standards'
+            }
+        ]
     },
     {
         id: 'master_pipe',
@@ -155,6 +197,13 @@ export const ROLE_SIDEBAR_MENUS = [
         perm: 'drawing.view',
         group: 'Engineering',
         desc: 'Revision History & Transmittal Letters'
+    },
+    {
+        id: 'mat_project_list',
+        label: 'Project List',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Pilih project untuk membuka data material'
     },
     {
         id: 'mat_requirement',
@@ -199,6 +248,13 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Penyimpanan Terbuka: Pipa Batangan CS/SS & Spool'
     },
     {
+        id: 'mat_inventory',
+        label: 'Return & Adjustment',
+        perm: 'stock.view',
+        group: 'Material Control',
+        desc: 'Material return dan approval koreksi stok'
+    },
+    {
         id: 'mat_issuing',
         label: 'Material Issuing',
         perm: 'stock.view',
@@ -206,9 +262,17 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Distribusi Pengeluaran Material ke Workshop/Spool Fab'
     },
     {
+        id: 'construction_project_list',
+        label: 'Project List',
+        perm: 'joint.view',
+        group: 'Construction',
+        desc: 'Pilih project untuk membuka data konstruksi'
+    },
+    {
         id: 'construction',
         label: 'Construction Shop',
         perm: 'joint.view',
+        group: 'Construction',
         desc: 'Fabrikasi spool, fit-up QC, dan repair tracking per project'
     },
     {
@@ -216,18 +280,6 @@ export const ROLE_SIDEBAR_MENUS = [
         label: 'Field Erection',
         perm: 'joint.view',
         desc: 'Pemasangan spool dan monitoring joint di lapangan per project'
-    },
-    {
-        id: 'qaqc',
-        label: 'QA-QC Inspection',
-        perm: 'inspection.view',
-        desc: 'Inspeksi Visual & NDT'
-    },
-    {
-        id: 'testpackage',
-        label: 'Test Package',
-        perm: 'testpackage.view',
-        desc: 'Hydrotest & Blinds Limits'
     },
     {
         id: 'hse',
@@ -251,7 +303,7 @@ export const ROLE_SIDEBAR_MENUS = [
     },
     {
         id: 'pm_budget',
-        label: 'Budgeting',
+        label: 'Budget vs Actual',
         perm: 'scope.view',
         group: 'Project Management',
         desc: 'Direct & Indirect Cost Control'
@@ -266,9 +318,9 @@ export const ROLE_SIDEBAR_MENUS = [
     {
         id: 'pm_milestone',
         label: 'Project Milestone',
-        anyOf: ['scope.view', 'milestone.view'],
+        perm: 'scope.view',
         group: 'Project Management',
-        desc: 'Milestone Per Akun, Estimasi Durasi & Jadwal Kerja Harian/Jam'
+        desc: 'Phase Gates & Hold Point Sign-off'
     },
     {
         id: 'report',

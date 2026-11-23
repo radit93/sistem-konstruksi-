@@ -892,7 +892,7 @@ export function MaterialIssuingSection({
             <MaterialReportModal
                 open={reportOpen}
                 reportType="issuing"
-                initialFilters={{ search }}
+                initialFilters={{ project_id: activeProjectId, search }}
                 onClose={() => setReportOpen(false)}
             />
         </div>

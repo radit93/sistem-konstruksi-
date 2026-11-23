@@ -554,6 +554,7 @@ export function MaterialReportsSection({
         ...DEFAULT_FILTERS,
         ...(initialFilters || {}),
     }));
+    const reportProjectId = filters.project_id;
     const [report, setReport] = useState(EMPTY_REPORT);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -586,13 +587,21 @@ export function MaterialReportsSection({
 
     useEffect(() => {
         let cancelled = false;
+
+        if (!reportProjectId) {
+            setLoading(false);
+            setError('Pilih project terlebih dahulu untuk menampilkan laporan material.');
+            setReport(EMPTY_REPORT);
+            return () => { cancelled = true; };
+        }
+
         const timer = window.setTimeout(async () => {
             setLoading(true);
             setError('');
 
             const params = new URLSearchParams();
 
-            if (filters.project_id) params.set('project_id', filters.project_id);
+            params.set('project_id', reportProjectId);
             if (filters.search) params.set('search', filters.search);
 
             if (activeReport === 'receiving' || activeReport === 'issuing') {
@@ -628,7 +637,7 @@ export function MaterialReportsSection({
             cancelled = true;
             window.clearTimeout(timer);
         };
-    }, [activeReport, filters, reloadToken]);
+    }, [activeReport, filters, reportProjectId, reloadToken]);
 
     const filterSummary = useMemo(() => {
         const parts = [];

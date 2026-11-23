@@ -3,6 +3,7 @@ import { api } from '../api';
 import { can } from '../auth';
 import { jointLabel } from './FabricationTab';
 import { PcmSelect } from './SearchSelect';
+import { ProjectGuard } from './ProjectGuard';
 import {
     ConstructionChecklistSection,
     ConstructionKpiCards,
@@ -15,7 +16,7 @@ import {
 const isField = j => (j.shop_field || '').toLowerCase() === 'field';
 const specLabel = formatJointSpec;
 
-export function FieldErectionTab({ projects = [], joints, user, onReload }) {
+export function FieldErectionTab({ projects = [], joints, user, onReload, activeProjectId, onSetActiveProject }) {
     const [selectedJoint, setSelectedJoint] = useState(null);
     const [editData, setEditData] = useState({
         status: 'WELDED',
@@ -34,24 +35,18 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
         if (status === 'TESTED') return canTestEdit;
         return canEdit;
     };
-    const [activeProjectId, setActiveProjectId] = useState(() => (
-        localStorage.getItem('pcm_active_erection_project_id') || ''
-    ));
 
-    const selectedProjectId = projects.some(project => String(project.id) === String(activeProjectId))
-        ? activeProjectId
-        : String(projects[0]?.id || '');
     const activeProject = useMemo(
-        () => projects.find(project => String(project.id) === String(selectedProjectId)) || null,
-        [projects, selectedProjectId]
+        () => projects.find(project => String(project.id) === String(activeProjectId)) || null,
+        [projects, activeProjectId]
     );
     const projectJoints = useMemo(() => {
-        if (!selectedProjectId) return [];
+        if (!activeProjectId) return [];
         return (joints || []).filter(joint => (
-            String(joint.project_id || '') === String(selectedProjectId)
-            || (!joint.project_id && String(projects[0]?.id) === String(selectedProjectId))
+            String(joint.project_id || '') === String(activeProjectId)
+            || (!joint.project_id && String(projects[0]?.id) === String(activeProjectId))
         ));
-    }, [joints, projects, selectedProjectId]);
+    }, [joints, projects, activeProjectId]);
     const fieldJoints = projectJoints.filter(isField);
 
     const openEdit = (j) => {
@@ -96,6 +91,10 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
         return <span className={`badge ${map[st] || 'bg-secondary'}`}>{st}</span>;
     };
 
+    if (!activeProjectId) {
+        return <ProjectGuard projects={projects} onSelectProject={onSetActiveProject} />;
+    }
+
     return (
         <div className="container-fluid px-4 py-4">
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -116,12 +115,8 @@ export function FieldErectionTab({ projects = [], joints, user, onReload }) {
                     <select
                         className="form-select form-select-sm"
                         style={{ width: '240px' }}
-                        value={selectedProjectId}
-                        onChange={(e) => {
-                            const id = e.target.value;
-                            setActiveProjectId(id);
-                            localStorage.setItem('pcm_active_erection_project_id', id);
-                        }}
+                        value={activeProjectId}
+                        onChange={(e) => onSetActiveProject(e.target.value)}
                         aria-label="Pilih project Field Erection"
                     >
                         <option value="">-- Pilih Project --</option>

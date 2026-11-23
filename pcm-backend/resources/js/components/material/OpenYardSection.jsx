@@ -275,8 +275,8 @@ export function OpenYardSection({
                 open={Boolean(reportType)}
                 reportType={reportType || 'stock'}
                 initialFilters={reportType === 'location-map'
-                    ? { storage_type: 'OPEN_YARD', search }
-                    : { storage_type: 'OPEN_YARD', search }}
+                    ? { project_id: activeProjectId, storage_type: 'OPEN_YARD', search }
+                    : { project_id: activeProjectId, storage_type: 'OPEN_YARD', search }}
                 onClose={() => setReportType(null)}
             />
         </div>

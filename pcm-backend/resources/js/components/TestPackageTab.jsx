@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { PcmSelect } from './SearchSelect';
+import { ProjectGuard } from './ProjectGuard';
 
 // Kolom nyata test_packages: pkg_no, system_name, line_no, test_kind, test_pressure_bar,
 // holding_time_min, schedule_date, status, punch_list_open, blinds, blinds_installed, reinstated.
 const today = () => new Date().toISOString().split('T')[0];
 
-export function TestPackageTab({ testPackages, joints, user, onReload }) {
+export function TestPackageTab({ projects = [], testPackages, joints, user, onReload, activeProjectId, onSetActiveProject }) {
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
         pkg_no: 'TP-2428-MPP-01',
@@ -44,6 +45,10 @@ export function TestPackageTab({ testPackages, joints, user, onReload }) {
     const totalJoints = joints?.length || 28;
     const ndtCleared = (joints || []).filter(j => ['NDT_OK', 'TESTED'].includes(j.status)).length;
     const isReadyForHydrotest = totalJoints > 0 && ndtCleared === totalJoints;
+
+    if (!activeProjectId) {
+        return <ProjectGuard projects={projects} onSelectProject={onSetActiveProject} />;
+    }
 
     return (
         <div className="container-fluid px-4 py-4">

@@ -240,7 +240,8 @@ class CrudController extends Controller
         // Material Control perlu membaca master Engineering (drawing, katalog
         // standar, BOM) untuk mencocokkan requirement dengan stok. Hak tulis
         // tetap dijaga permission drawing.write di checkWrite().
-        'drawings' => 'stock.view',
+        'drawings' => ['stock.view', 'inspection.view', 'joint.view'],
+        'welding-maps' => ['stock.view', 'inspection.view', 'joint.view'],
         'material-standards' => 'stock.view',
         'bill-of-materials' => 'stock.view',
         'material-receivings' => 'material_inspection.write',
@@ -296,6 +297,23 @@ class CrudController extends Controller
         );
     }
 
+    private function checkRead(Request $request, string $res): void
+    {
+        $permission = match ($res) {
+            'material-inspections' => 'material_inspection.view',
+            'material-receivings', 'material-storings', 'material-issuings' => 'stock.view',
+            default => null,
+        };
+
+        if ($permission !== null) {
+            abort_unless(
+                $request->user()?->hasPermission($permission),
+                403,
+                'Akses ditolak: butuh izin '.$permission
+            );
+        }
+    }
+
     /**
      * Superadmin may narrow the whole app to one department from the sidebar.
      * The value arrives as X-Department-Id and is ignored for every other role;
@@ -340,8 +358,13 @@ class CrudController extends Controller
         }
 
         $cross = $this->crossDepartment[$res] ?? null;
-        if ($cross && $user->hasPermission($cross)) {
-            return $query;
+        if ($cross) {
+            $allowed = is_array($cross)
+                ? collect($cross)->some(fn ($permission) => $user->hasPermission($permission))
+                : $user->hasPermission($cross);
+            if ($allowed) {
+                return $query;
+            }
         }
 
         // Untuk project-milestones, setiap akun operasional hanya mengelola milestonenya sendiri
@@ -364,6 +387,7 @@ class CrudController extends Controller
 
     public function index(Request $request, string $res)
     {
+        $this->checkRead($request, $res);
         [$model] = $this->resolve($res);
         $q = $this->scope($request, $model::query(), $res);
 
@@ -523,6 +547,7 @@ class CrudController extends Controller
 
     public function show(Request $request, string $res, int $id)
     {
+        $this->checkRead($request, $res);
         [$model] = $this->resolve($res);
         $with = match ($res) {
             'joints' => ['inspections'],
@@ -590,10 +615,19 @@ class CrudController extends Controller
             }
         }
 
-        if (in_array($res, ['material-receivings', 'material-storings'], true) && empty($data['project_id'])) {
-            // Aplikasi saat ini satu project; isi otomatis supaya stok dan
-            // issuing ber-link BOM tidak terpisah project-nya.
-            $data['project_id'] = Project::query()->orderBy('id')->value('id');
+        if (in_array($res, ['material-receivings', 'material-storings', 'material-issuings'], true)
+            && empty($data['project_id'])) {
+            throw ValidationException::withMessages([
+                'project_id' => 'Project wajib dipilih untuk transaksi material.',
+            ]);
+        }
+
+        if (in_array($res, ['material-receivings', 'material-storings', 'material-issuings'], true)) {
+            $data['project_id'] = Project::query()->whereKey($data['project_id'])->exists()
+                ? (int) $data['project_id']
+                : throw ValidationException::withMessages([
+                    'project_id' => 'Project tidak ditemukan.',
+                ]);
         }
 
         if ($res === 'material-receivings') {
@@ -645,11 +679,37 @@ class CrudController extends Controller
             }
 
             $data['department_id'] = $receiving->department_id;
-            $data['project_id'] = $data['project_id'] ?? $receiving->project_id;
+            if (! empty($data['project_id']) && (int) $data['project_id'] !== (int) $receiving->project_id) {
+                throw ValidationException::withMessages([
+                    'project_id' => 'Inspeksi harus berada pada project receiving yang sama.',
+                ]);
+            }
+            $data['project_id'] = $receiving->project_id;
         }
 
         // QA-QC: Auto-update joint status when inspection passes or fails
         if ($res === 'inspections') {
+            $joint = Joint::query()->find($data['joint_id'] ?? null);
+            if (! $joint) {
+                throw ValidationException::withMessages([
+                    'joint_id' => 'Joint wajib dipilih untuk laporan inspeksi.',
+                ]);
+            }
+
+            // Nomor laporan yang masih berupa placeholder diganti dengan nomor
+            // traceable project/drawing/joint/type yang konsisten.
+            $reportNo = (string) ($data['report_no'] ?? '');
+            if ($reportNo === '' || str_starts_with($reportNo, 'QC-SEQ') || str_starts_with($reportNo, 'QC-VR') || str_starts_with($reportNo, 'AUTO')) {
+                $drawing = Drawing::query()->where('drawing_no', $joint->drawing_no)->first();
+                $project = $drawing?->project;
+                $projectCode = $project?->job_no ?: $project?->code ?: 'PROJECT';
+                $drawingCode = strtoupper((string) preg_replace('/[^A-Z0-9]/i', '', $drawing?->drawing_no ?: $joint->drawing_no ?: 'ISO'));
+                $kind = strtoupper((string) ($data['kind'] ?? 'VISUAL'));
+                $kindCode = in_array($kind, ['RT', 'PT', 'UT', 'PMI'], true) ? $kind : 'VT';
+                $count = Inspection::query()->where('joint_id', $joint->id)->where('kind', $kind)->count() + 1;
+                $data['report_no'] = sprintf('QC-%s-%s-J%s-%s-%02d', $projectCode, $drawingCode, str_pad((string) ($joint->seq ?: 1), 2, '0', STR_PAD_LEFT), $kindCode, $count);
+            }
+
             $inspection = DB::transaction(function () use ($model, $data) {
                 $inspection = $model::create($data);
                 $jointId = $inspection->joint_id;
@@ -795,6 +855,21 @@ class CrudController extends Controller
         $obj = $this->scope($request, $model::query(), $res)->findOrFail($id);
 
         $data = $request->all();
+        if (in_array($res, ['material-receivings', 'material-storings', 'material-issuings'], true)
+            && array_key_exists('project_id', $data)
+            && empty($data['project_id'])) {
+            throw ValidationException::withMessages([
+                'project_id' => 'Project wajib dipilih untuk transaksi material.',
+            ]);
+        }
+
+        if (in_array($res, ['material-receivings', 'material-storings', 'material-issuings'], true)
+            && array_key_exists('project_id', $data)
+            && ! Project::query()->whereKey($data['project_id'])->exists()) {
+            throw ValidationException::withMessages([
+                'project_id' => 'Project tidak ditemukan.',
+            ]);
+        }
         if ($res === 'joints' && array_key_exists('status', $data)) {
             $this->validateJointStatusTransition($obj, (string) $data['status'], $request->user());
         }
@@ -852,6 +927,15 @@ class CrudController extends Controller
         }
 
         if ($res === 'material-storings') {
+            if (array_key_exists('receiving_id', $data) && $data['receiving_id']) {
+                $receiving = MaterialReceiving::query()->find($data['receiving_id']);
+                if (! $receiving || (int) $receiving->project_id !== (int) $obj->project_id) {
+                    throw ValidationException::withMessages([
+                        'receiving_id' => 'Receiving harus berasal dari project yang sama dengan stok.',
+                    ]);
+                }
+            }
+
             foreach (['stock_in', 'stock_out'] as $field) {
                 if (array_key_exists($field, $data) && abs((float) $data[$field] - (float) $obj->{$field}) > 0.0001) {
                     throw ValidationException::withMessages([

@@ -21,6 +21,8 @@ import { TestPackageTab } from './components/TestPackageTab';
 import { HseTab } from './components/HseTab';
 import { AdminTab } from './components/AdminTab';
 import { ProjectManagerTab } from './components/ProjectManagerTab';
+import { ProjectListSection as ConstructionProjectListSection } from './components/construction/ProjectListSection';
+import { QaqcProjectListSection } from './components/qaqc/ProjectListSection';
 
 // Pemetaan role pengguna ke tab awal saat pertama login (Global Dashboard belum bisa dibuka)
 const ROLE_DEFAULT_TABS = {
@@ -276,7 +278,14 @@ function App() {
         };
 
         const resolved = resolveMenu(activeTab);
-        if (resolved && allowed(resolved.owner) && inScope(resolved.owner)) return;
+        if (resolved && allowed(resolved.owner) && inScope(resolved.owner)) {
+            /* Kalau yang aktif adalah menu induk yang punya sub-menu, arahkan
+               ke anak pertama supaya halaman langsung terbuka. */
+            if (Array.isArray(resolved.target.children) && resolved.target.children.length > 0) {
+                setActiveTab(resolved.target.children[0].id);
+            }
+            return;
+        }
 
         const fallback = ROLE_SIDEBAR_MENUS.find((m) => allowed(m) && inScope(m))?.id || 'overview';
         setActiveTab(fallback);
@@ -378,7 +387,6 @@ function App() {
                             scopeLabel={scopeLabel}
                             loading={dataLoading}
                             error={dataError}
-                            onSelectTab={setActiveTab}
                             onReload={() => {
                                 loadData();
                                 showToast('Data Global Dashboard diperbarui');
@@ -403,7 +411,7 @@ function App() {
                             }}
                         />
                     )}
-                    {['material', 'mat_requirement', 'mat_receiving', 'mat_inspection', 'mat_storing', 'mat_warehouse', 'mat_openyard', 'mat_issuing'].includes(activeTab) && (
+                    {['material', 'mat_project_list', 'mat_requirement', 'mat_receiving', 'mat_inspection', 'mat_storing', 'mat_warehouse', 'mat_openyard', 'mat_issuing', 'mat_inventory'].includes(activeTab) && (
                         <MaterialTab
                             currentSection={activeTab}
                             stockMoves={stockMoves}
@@ -411,6 +419,7 @@ function App() {
                             activeProject={activeProject}
                             activeProjectId={activeProjectId}
                             onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
                             user={user}
                             onReload={() => {
                                 loadData();
@@ -433,9 +442,23 @@ function App() {
                             projects={projects}
                             joints={joints}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
                             onReload={() => {
                                 loadData();
                                 showToast('Status Field Erection diperbarui');
+                            }}
+                        />
+                    )}
+                    {activeTab === 'construction_project_list' && (
+                        <ConstructionProjectListSection
+                            projects={projects}
+                            activeProjectId={activeProjectId}
+                            loading={dataLoading}
+                            onSelectProject={(id) => {
+                                handleSetActiveProject(id);
+                                setActiveTab('construction');
                             }}
                         />
                     )}
@@ -444,17 +467,36 @@ function App() {
                             projects={projects}
                             joints={joints}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
                             onReload={() => {
                                 loadData();
                                 showToast('Status Konstruksi diperbarui');
                             }}
                         />
                     )}
+                    {activeTab === 'qaqc_project_list' && (
+                        <QaqcProjectListSection
+                            projects={projects}
+                            activeProjectId={activeProjectId}
+                            loading={dataLoading}
+                            onSelectProject={(id) => {
+                                handleSetActiveProject(id);
+                                setActiveTab('qaqc');
+                            }}
+                        />
+                    )}
                     {activeTab === 'qaqc' && (
                         <QaqcTab
+                            projects={projects}
                             joints={joints}
                             inspections={inspections}
+                            drawings={drawings}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
+                            onSelectTab={setActiveTab}
                             onReload={() => {
                                 loadData();
                                 showToast('Laporan QC & Joint Status diperbarui');
@@ -463,9 +505,12 @@ function App() {
                     )}
                     {activeTab === 'testpackage' && (
                         <TestPackageTab
+                            projects={projects}
                             testPackages={testPackages}
                             joints={joints}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
                             onReload={() => {
                                 loadData();
                                 showToast('Test Package diperbarui');
@@ -474,8 +519,11 @@ function App() {
                     )}
                     {activeTab === 'hse' && (
                         <HseTab
+                            projects={projects}
                             hseLogs={hseLogs}
                             user={user}
+                            activeProjectId={activeProjectId}
+                            onSetActiveProject={handleSetActiveProject}
                             onReload={() => {
                                 loadData();
                                 showToast('Log HSE diperbarui');

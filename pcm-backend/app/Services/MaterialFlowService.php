@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\BillOfMaterial;
 use App\Models\Drawing;
 use App\Models\MaterialInspection;
+use App\Models\MaterialAdjustment;
 use App\Models\MaterialIssuing;
 use App\Models\MaterialReceiving;
+use App\Models\MaterialReturn;
 use App\Models\MaterialStockMovement;
 use App\Models\MaterialStoring;
 use App\Models\User;
@@ -15,6 +17,66 @@ use Illuminate\Validation\ValidationException;
 
 class MaterialFlowService
 {
+    public function createReturn(MaterialIssuing $issuing, array $data, User $user): MaterialReturn
+    {
+        return DB::transaction(function () use ($issuing, $data, $user): MaterialReturn {
+            $stock = MaterialStoring::query()->lockForUpdate()->findOrFail($issuing->material_storing_id);
+            $qty = (float) $data['qty'];
+            $alreadyReturned = (float) MaterialReturn::query()->where('material_issuing_id', $issuing->id)->sum('qty');
+            if ($alreadyReturned + $qty > (float) $issuing->qty + 0.0001) {
+                throw ValidationException::withMessages(['qty' => 'Qty return melebihi qty issuing.']);
+            }
+            if ($data['condition'] !== 'GOOD') {
+                $qty = 0;
+            }
+            $return = MaterialReturn::create([
+                'project_id' => $stock->project_id,
+                'material_issuing_id' => $issuing->id,
+                'material_storing_id' => $stock->id,
+                'return_no' => 'RT-'.now()->format('YmdHis').'-'.$issuing->id,
+                'qty' => (float) $data['qty'], 'unit' => $stock->unit,
+                'condition' => $data['condition'], 'reason' => $data['reason'] ?? null,
+                'status' => 'APPLIED', 'department_id' => $stock->department_id, 'created_by' => $user->id,
+            ]);
+            if ($qty > 0) {
+                $stock->increment('stock_in', $qty);
+                $stock->increment('balance', $qty);
+                $stock->update(['status' => 'AVAILABLE', 'last_movement_at' => now()]);
+                $this->recordMovement($stock, 'IN', $qty, $stock->unit, (float) $stock->balance, 'return', $return->id, $user, 'Material return');
+            }
+            return $return->fresh();
+        });
+    }
+
+    public function requestAdjustment(MaterialStoring $stock, array $data, User $user): MaterialAdjustment
+    {
+        return MaterialAdjustment::create([
+            'project_id' => $stock->project_id, 'material_storing_id' => $stock->id,
+            'adjustment_no' => 'ADJ-'.now()->format('YmdHis').'-'.$stock->id,
+            'qty_delta' => $data['qty_delta'], 'balance_before' => $stock->balance,
+            'reason' => $data['reason'], 'notes' => $data['notes'] ?? null,
+            'status' => 'PENDING', 'requested_by' => $user->id,
+        ]);
+    }
+
+    public function approveAdjustment(MaterialAdjustment $adjustment, User $user): MaterialAdjustment
+    {
+        return DB::transaction(function () use ($adjustment, $user): MaterialAdjustment {
+            $locked = MaterialAdjustment::query()->lockForUpdate()->findOrFail($adjustment->id);
+            if ($locked->status !== 'PENDING') {
+                throw ValidationException::withMessages(['status' => 'Adjustment ini sudah diproses.']);
+            }
+            $stock = MaterialStoring::query()->lockForUpdate()->findOrFail($locked->material_storing_id);
+            $balance = (float) $stock->balance + (float) $locked->qty_delta;
+            if ($balance < -0.0001) {
+                throw ValidationException::withMessages(['qty_delta' => 'Adjustment membuat saldo stok negatif.']);
+            }
+            $stock->update(['balance' => $balance, 'status' => $balance > 0 ? 'AVAILABLE' : 'DEPLETED', 'last_movement_at' => now()]);
+            $locked->update(['status' => 'APPROVED', 'balance_after' => $balance, 'approved_by' => $user->id, 'approved_at' => now()]);
+            $this->recordMovement($stock, 'ADJUSTMENT', abs((float) $locked->qty_delta), $stock->unit, $balance, 'adjustment', $locked->id, $user, $locked->reason);
+            return $locked->fresh();
+        });
+    }
     public function requestInspection(MaterialReceiving $receiving, User $user): MaterialReceiving
     {
         return DB::transaction(function () use ($receiving): MaterialReceiving {
@@ -104,8 +166,20 @@ class MaterialFlowService
     public function createIssuing(array $data, User $user): MaterialIssuing
     {
         return DB::transaction(function () use ($data, $user): MaterialIssuing {
+            if (empty($data['project_id'])) {
+                throw ValidationException::withMessages([
+                    'project_id' => 'Project wajib dipilih untuk issuing material.',
+                ]);
+            }
+
             $data = $this->resolveIssuingLinks($data);
             $stock = $this->resolveStockForIssuing($data);
+
+            if (! $stock) {
+                throw ValidationException::withMessages([
+                    'material_storing_id' => 'Lot stok tersedia untuk project ini tidak ditemukan.',
+                ]);
+            }
 
             if ($stock) {
                 $stock = MaterialStoring::query()->lockForUpdate()->findOrFail($stock->id);
@@ -120,6 +194,12 @@ class MaterialFlowService
                     && (int) $data['project_id'] !== (int) $stock->project_id) {
                     throw ValidationException::withMessages([
                         'project_id' => 'Stok berasal dari project yang berbeda.',
+                    ]);
+                }
+
+                if (! $stock->project_id || (int) $stock->project_id !== (int) $data['project_id']) {
+                    throw ValidationException::withMessages([
+                        'project_id' => 'Lot stok harus memiliki project yang sama dengan issuing.',
                     ]);
                 }
 
@@ -542,6 +622,12 @@ class MaterialFlowService
                 ]);
             }
 
+            if (! empty($data['project_id']) && (int) $data['project_id'] !== (int) $drawing->project_id) {
+                throw ValidationException::withMessages([
+                    'drawing_id' => 'Drawing berasal dari project yang berbeda.',
+                ]);
+            }
+
             $data['drawing_no'] = $data['drawing_no'] ?? $drawing->drawing_no;
             $data['project_id'] = $data['project_id'] ?? $drawing->project_id;
 
@@ -553,6 +639,12 @@ class MaterialFlowService
         if (! $bom) {
             throw ValidationException::withMessages([
                 'bom_id' => 'Baris BOM tidak ditemukan.',
+            ]);
+        }
+
+        if (! empty($data['project_id']) && (int) $data['project_id'] !== (int) $bom->project_id) {
+            throw ValidationException::withMessages([
+                'project_id' => 'BOM berasal dari project yang berbeda.',
             ]);
         }
 

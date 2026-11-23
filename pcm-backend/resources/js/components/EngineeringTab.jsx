@@ -24,6 +24,7 @@ import {
 } from './engineering/materialCascade';
 import { getComponentBadgeStyle } from './engineering/BomSection';
 import { SearchSelect, PcmSelect } from './SearchSelect';
+import { ProjectGuard } from './ProjectGuard';
 
 const strcasecmp_clean = (str) => String(str || '').trim().toLowerCase();
 
@@ -770,6 +771,13 @@ export function EngineeringTab({
         && filteredFolders.length === 0
         && unassignedDrawings.length === 0;
 
+    /* Modul engineering yang datanya terisolasi per project. Master data
+       (Material Standard, Diameter & Thickness) tidak ikut dijaga karena
+       isinya katalog global, bukan data project. */
+    const PROJECT_SCOPED_TABS = ['isometric', 'welding_map', 'line_service', 'boq', 'bom', 'document_control'];
+    const isProjectMissing = PROJECT_SCOPED_TABS.includes(activeEngTab) && !selectedProjectId;
+    const guardedSectionLabel = ENG_SUB_TABS.find((tab) => tab.id === activeEngTab)?.label || 'Modul engineering';
+
     return (
         <div className="container-fluid px-4 py-4">
 
@@ -777,6 +785,22 @@ export function EngineeringTab({
                 <div className="alert alert-danger py-2 mb-4" role="alert">
                     <strong className="fw-bold">Failed to load data.</strong> {error}
                 </div>
+            )}
+
+            {/* ============================================================
+                GUARD: modul per-project tidak memuat data sebelum project dipilih
+                ============================================================ */}
+            {isProjectMissing && (
+                <ProjectGuard
+                    sectionLabel={guardedSectionLabel}
+                    projects={folderList}
+                    activeProjectId={selectedProjectId || ''}
+                    loading={loading}
+                    onSelectProject={(id) => setSelectedProjectId(id || null)}
+                    onOpenProjectList={() => {
+                        if (onSelectTab) onSelectTab('project_list');
+                    }}
+                />
             )}
 
             {/* ============================================================
@@ -1041,7 +1065,7 @@ export function EngineeringTab({
             {/* ============================================================
                 MODUL 1: Isometric Drawing Register (Table View)
                 ============================================================ */}
-            {activeEngTab === 'isometric' && (
+            {activeEngTab === 'isometric' && !isProjectMissing && (
                 <div>
                     {/* Header Banner: Tergantung apakah Project Terkunci (Strict) atau Mode Global */}
                     {selectedProjectId && activeProject ? (
@@ -1351,28 +1375,28 @@ export function EngineeringTab({
             {/* ============================================================
                 MODUL 2: Line Service (ENG-001 / ENG-008)
                 ============================================================ */}
-            {activeEngTab === 'line_service' && (
+            {activeEngTab === 'line_service' && !isProjectMissing && (
                 <LineServiceSection user={user} projects={projects} activeProject={activeProject} activeProjectId={selectedProjectId} onToast={onReload} />
             )}
 
             {/* ============================================================
                 MODUL 3: Welding Map (ENG-002 / ENG-009)
                 ============================================================ */}
-            {activeEngTab === 'welding_map' && (
+            {activeEngTab === 'welding_map' && !isProjectMissing && (
                 <WeldingMapSection user={user} projects={projects} drawings={drawings} activeProject={activeProject} activeProjectId={selectedProjectId} onToast={onReload} />
             )}
 
             {/* ============================================================
                 MODUL 4: Bill of Quantity / BOQ (ENG-003 / ENG-010)
                 ============================================================ */}
-            {activeEngTab === 'boq' && (
+            {activeEngTab === 'boq' && !isProjectMissing && (
                 <BoqSection user={user} projects={projects} drawings={drawings} activeProject={activeProject} activeProjectId={selectedProjectId} onToast={onReload} />
             )}
 
             {/* ============================================================
                 MODUL 5: Bill of Material / BOM / MTO (ENG-004 / ENG-011)
                 ============================================================ */}
-            {activeEngTab === 'bom' && (
+            {activeEngTab === 'bom' && !isProjectMissing && (
                 <BomSection user={user} projects={projects} drawings={drawings} activeProject={activeProject} activeProjectId={selectedProjectId} onToast={onReload} />
             )}
 
@@ -1391,7 +1415,7 @@ export function EngineeringTab({
             {/* ============================================================
                 MODUL 7: Document Control (ENG-006 / ENG-013)
                 ============================================================ */}
-            {activeEngTab === 'document_control' && (
+            {activeEngTab === 'document_control' && !isProjectMissing && (
                 <DocumentControlSection user={user} projects={projects} drawings={drawings} activeProject={activeProject} activeProjectId={selectedProjectId} onToast={onReload} />
             )}
 

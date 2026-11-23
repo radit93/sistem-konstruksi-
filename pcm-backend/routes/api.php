@@ -9,6 +9,8 @@ use App\Http\Controllers\BomGenerationController;
 use App\Http\Controllers\BoqGenerationController;
 use App\Http\Controllers\CrudController;
 use App\Http\Controllers\MaterialDocumentController;
+use App\Http\Controllers\MaterialInventoryController;
+use App\Http\Controllers\MaterialMasterController;
 use App\Http\Controllers\MaterialReportController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,7 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/roles/{role}/permissions', [PermissionController::class, 'sync'])->middleware('permission:access.update');
     });
 
-    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|fitting-standards|fitting-catalogs|pipe-standards|system-parameters|piping-class-templates|pipe-schedules|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|project-members|budget-items|material-receivings|material-inspections|material-storings|material-issuings';
+    $resRegex = 'projects|drawings|joints|stock|inspections|test-packages|hse|scopes|progress|daily-progress|line-services|material-standards|fitting-standards|fitting-catalogs|pipe-standards|system-parameters|piping-class-templates|pipe-schedules|welding-maps|bill-of-materials|engineering-boqs|document-controls|project-milestones|budget-items|material-receivings|material-inspections|material-storings|material-issuings';
     Route::get('/overview', [CrudController::class, 'overview']);
     Route::get('/material-requirements', [CrudController::class, 'materialRequirements']);
 
@@ -65,8 +67,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/material-receivings/{id}/request-inspection', [CrudController::class, 'requestMaterialInspection']);
     Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);
-    Route::patch('/milestone-activities/{id}/toggle', [CrudController::class, 'toggleMilestoneActivity']);
-    Route::patch('/milestone-activities/{id}/note', [CrudController::class, 'noteMilestoneActivity']);
+    Route::post('/material-returns', [MaterialInventoryController::class, 'storeReturn']);
+    Route::post('/material-adjustments', [MaterialInventoryController::class, 'storeAdjustment']);
+    Route::get('/material-returns', [MaterialInventoryController::class, 'indexReturns']);
+    Route::get('/material-adjustments', [MaterialInventoryController::class, 'indexAdjustments']);
+    Route::post('/material-adjustments/{adjustment}/approve', [MaterialInventoryController::class, 'approveAdjustment']);
+    Route::post('/material-adjustments/{adjustment}/reject', [MaterialInventoryController::class, 'rejectAdjustment']);
+    Route::get('/material-masters/{type}', [MaterialMasterController::class, 'index']);
     Route::get('/fitting-standards/lookup', [CrudController::class, 'lookupFitting']);
     Route::get('/{res}', [CrudController::class, 'index'])->where('res', $resRegex);
     Route::get('/{res}/{id}', [CrudController::class, 'show'])->where('res', $resRegex);

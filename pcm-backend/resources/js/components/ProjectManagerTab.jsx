@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
-import { BoqContractSection } from './pm/BoqContractSection';
 import { SCurveSection } from './pm/SCurveSection';
 import { BudgetCostSection } from './pm/BudgetCostSection';
 import { DailyLogSection } from './pm/DailyLogSection';
 import { MilestoneSection } from './pm/MilestoneSection';
-import { ExecutiveReportSection } from './pm/ExecutiveReportSection';
+import { ProjectReportSection } from './pm/ProjectReportSection';
 import { PcmSelect } from './SearchSelect';
 
 /* -------------------------------------------------------------------------
@@ -85,18 +84,17 @@ function IconShield({ size }) {
 
 const SECTION_LABELS = {
     pm_projects: 'Project List',
-    schedule: 'Kontrak & BOQ',
     pm_scurve: 'Grafik',
     pm_budget: 'Budgeting',
     pm_daily: 'Daily Progress Log',
     pm_milestone: 'Project Milestone',
-    report: 'Laporan Eksekutif'
+    report: 'Laporan'
 };
 
 const emptyFolderForm = () => ({ client: '', name: '', job_no: '' });
 
 export function ProjectManagerTab({
-    currentSection = 'schedule',
+    currentSection = 'pm_scurve',
     projects = [],
     activeProjectId = '',
     onSetActiveProject,
@@ -322,7 +320,7 @@ export function ProjectManagerTab({
                         <div>
                             <h2 className="h4 fw-bold text-dark mb-1">Project List</h2>
                             <p className="text-muted small mb-0">
-                                Daftar seluruh proyek kontrak piping. Pilih proyek aktif untuk membuka Kontrak &amp; BOQ, S-Curve, Budget, dan Laporan.
+                                Daftar seluruh proyek kontrak piping. Pilih proyek aktif untuk membuka Grafik, Budget, dan Laporan.
                             </p>
                         </div>
                         {canEdit && (
@@ -428,7 +426,7 @@ export function ProjectManagerTab({
                                                             style={{ borderRadius: 'var(--pcm-radius-chip)', backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                                                             onClick={() => {
                                                                 handleSelectProject(p.id);
-                                                                if (onSelectTab) onSelectTab('schedule');
+                                                                if (onSelectTab) onSelectTab('pm_scurve');
                                                             }}
                                                         >
                                                             Buka Proyek
@@ -540,7 +538,7 @@ export function ProjectManagerTab({
             )}
 
             {/* ============================================================
-                VIEW B: KONTEN DI DALAM PROYEK AKTIF (KONTRAK & BOQ, S-CURVE, DLL)
+                VIEW B: KONTEN DI DALAM PROYEK AKTIF (S-CURVE, BUDGET, DLL)
                 ============================================================ */}
             {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && currentSection !== 'pm_scurve' && activeProject && (
                 <div>
@@ -589,16 +587,6 @@ export function ProjectManagerTab({
                     </div>
 
                     {/* SUB-MODUL KONTEN PROYEK (LAYOUT IDENTIK DENGAN NILAI TERISOLASI) */}
-                    {currentSection === 'schedule' && (
-                        <BoqContractSection
-                            project={activeProject}
-                            scopes={projectScopes}
-                            engBoqs={projectEngBoqs}
-                            joints={projectJoints}
-                            user={user}
-                            onReload={onReload}
-                        />
-                    )}
                     {currentSection === 'pm_budget' && (
                         <BudgetCostSection
                             project={activeProject}
@@ -632,7 +620,7 @@ export function ProjectManagerTab({
                         />
                     )}
                     {currentSection === 'report' && (
-                        <ExecutiveReportSection
+                        <ProjectReportSection
                             project={activeProject}
                             overview={overview}
                             joints={projectJoints}

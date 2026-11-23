@@ -151,16 +151,28 @@ html[data-placement=vertical] .nav-container .nav-content .menu-container .menu 
     color: rgba(255, 255, 255, 0.6) !important;
 }
 
-/* Print-friendly layout untuk Laporan Eksekutif PM */
+/* Print-friendly layout untuk Laporan PM */
 @media print {
+    @page {
+        size: A4 portrait;
+        margin: 14mm 0;
+    }
+
+    html,
+    body {
+        background: #ffffff !important;
+    }
+
     #nav,
     .nav-container,
     .pcm-reload-btn,
     .pcm-crumbs,
+    .page-title-container,
     footer,
     .d-print-none {
         display: none !important;
     }
+
     main {
         padding-left: 0 !important;
         padding-top: 0 !important;
@@ -171,6 +183,222 @@ html[data-placement=vertical] .nav-container .nav-content .menu-container .menu 
         width: 100% !important;
         padding: 0 !important;
     }
+
+    /* Cetak satu bagian saja: blok lain disembunyikan. */
+    body.pcm-printing .pcm-printable:not(.pcm-printable--active) {
+        display: none !important;
+    }
+
+    /* --- Dokumen cetak: hitam putih, tata letak grid --- */
+    .pcm-printable {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 8mm 18mm;
+        color: #000;
+        font-family: "Times New Roman", Georgia, serif;
+        font-size: 10pt;
+        line-height: 1.35;
+    }
+    .pcm-printable * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color: #000 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+    .pcm-doc-header {
+        padding-bottom: 6px;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #000;
+        page-break-after: avoid;
+    }
+    .pcm-doc-eyebrow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 7.5pt;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+    .pcm-doc-title {
+        margin: 4px 0 2px;
+        font-size: 16pt;
+        font-weight: 700;
+        letter-spacing: .01em;
+    }
+    .pcm-doc-subtitle {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 9pt;
+    }
+    .pcm-doc-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0;
+        margin-top: 8px;
+        border: 1px solid #000;
+        border-bottom: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8.5pt;
+    }
+    .pcm-doc-meta > div {
+        display: flex;
+        gap: 6px;
+        padding: 3px 8px;
+        border-bottom: 1px solid #000;
+    }
+    .pcm-doc-meta > div:nth-child(odd) {
+        border-right: 1px solid #000;
+    }
+    .pcm-doc-meta span {
+        min-width: 78px;
+        font-size: 7.5pt;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+    }
+    .pcm-doc-meta strong {
+        font-weight: 700;
+    }
+
+    .pcm-doc-section-title {
+        margin: 12px 0 6px;
+        padding: 3px 8px;
+        border: 1px solid #000;
+        background: #000 !important;
+        color: #fff !important;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8.5pt;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+    .pcm-doc-section-title * {
+        color: #fff !important;
+    }
+
+    /* Tabel grid hitam putih. */
+    .pcm-printable table.pcm-table {
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+        font-size: 9pt;
+    }
+    .pcm-printable table.pcm-table th,
+    .pcm-printable table.pcm-table td {
+        padding: 4px 6px !important;
+        border: 1px solid #000 !important;
+        vertical-align: top;
+    }
+    .pcm-printable table.pcm-table thead {
+        display: table-header-group;
+    }
+    .pcm-printable table.pcm-table thead th {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000 !important;
+    }
+    .pcm-printable table.pcm-table tfoot td {
+        font-weight: 700;
+        border-top: 2px solid #000 !important;
+    }
+    .pcm-printable table.pcm-table tr {
+        page-break-inside: avoid;
+    }
+
+    /* Grid KPI 4 kolom. */
+    .pcm-doc-kpi {
+        width: 100%;
+        margin: 0;
+        border: 1px solid #000;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .pcm-doc-kpi td {
+        width: 25%;
+        padding: 8px 9px;
+        border: 1px solid #000;
+        vertical-align: top;
+    }
+    .pcm-doc-kpi__label {
+        margin-bottom: 4px;
+        padding-bottom: 3px;
+        border-bottom: 1px solid #000;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 7.5pt;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .pcm-doc-kpi__value {
+        font-size: 14pt;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+    .pcm-doc-kpi__note {
+        margin-top: 2px;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 7.5pt;
+    }
+
+    .pcm-printable .text-truncate {
+        overflow: visible !important;
+        white-space: normal !important;
+    }
+
+    /* Blok tanda tangan: grid 3 kolom bergaris. */
+    .pcm-doc-sign {
+        margin-top: 18px;
+        page-break-inside: avoid;
+    }
+    .pcm-doc-sign__grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border: 1px solid #000;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8.5pt;
+        text-align: center;
+    }
+    .pcm-doc-sign__grid > div {
+        padding: 6px 8px;
+        border-right: 1px solid #000;
+    }
+    .pcm-doc-sign__grid > div:last-child {
+        border-right: 0;
+    }
+    .pcm-doc-sign__role {
+        font-size: 7.5pt;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+    }
+    .pcm-doc-sign__space {
+        height: 46px;
+    }
+    .pcm-doc-sign__name {
+        padding-top: 3px;
+        border-top: 1px solid #000;
+        font-weight: 700;
+    }
+    .pcm-doc-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 10px;
+        padding-top: 4px;
+        border-top: 1px solid #000;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 7pt;
+    }
+}
+
+.pcm-report-role {
+    min-width: 150px;
 }
 
 /* Superadmin & PM punya banyak menu: daftar bisa digulir mulus tanpa plugin JS. */

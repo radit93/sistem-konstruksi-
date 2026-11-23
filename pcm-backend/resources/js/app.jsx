@@ -482,7 +482,7 @@ function App() {
                             }}
                         />
                     )}
-                    {['pm_projects', 'schedule', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report'].includes(activeTab) && (
+                    {['pm_projects', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report'].includes(activeTab) && (
                         <ProjectManagerTab
                             currentSection={activeTab}
                             projects={projects}

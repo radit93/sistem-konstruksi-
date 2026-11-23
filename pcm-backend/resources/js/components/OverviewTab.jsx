@@ -333,7 +333,7 @@ export function OverviewTab({
         erection: 'joint.view',
         qaqc: 'inspection.view',
         testpackage: 'testpackage.view',
-        schedule: 'scope.view'
+        pm_scurve: 'scope.view'
     };
     const canOpen = (tab) =>
         Boolean(user?.is_superadmin) || (user?.permissions || []).includes(modulePerms[tab]);
@@ -345,7 +345,7 @@ export function OverviewTab({
         { tab: 'erection', icon: <IconGantry size="sm" />, title: 'Field Erection', count: `${fieldCount} joint` },
         { tab: 'qaqc', icon: <IconSearch size="sm" />, title: 'QA-QC Inspection', count: `${inspectionTotal} laporan` },
         { tab: 'testpackage', icon: <IconFlask size="sm" />, title: 'Test Package', count: `${tpList.length} paket` },
-        { tab: 'schedule', icon: <IconChart size="sm" />, title: 'Project Manager', count: `${scopeList.length} scope` }
+        { tab: 'pm_scurve', icon: <IconChart size="sm" />, title: 'Project Manager', count: `${scopeList.length} scope` }
     ].filter((item) => canOpen(item.tab));
 
     const isEmpty = totalJoints === 0 && scopeList.length === 0 && drawingList.length === 0;
@@ -758,9 +758,9 @@ export function OverviewTab({
                                     type="button"
                                     className="btn btn-primary btn-sm fw-bold px-3 py-1.5"
                                     style={{ backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
-                                    onClick={() => onSelectTab('schedule')}
+                                    onClick={() => onSelectTab('pm_scurve')}
                                 >
-                                    Buka Kurva S &amp; BOQ &rarr;
+                                    Buka Kurva S &rarr;
                                 </button>
                             </div>
                         </div>

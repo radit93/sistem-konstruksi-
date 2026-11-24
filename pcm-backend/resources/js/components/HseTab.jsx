@@ -4,17 +4,50 @@ import { can } from '../auth';
 import { PcmSelect } from './SearchSelect';
 import { ProjectGuard } from './ProjectGuard';
 
+const KIND_TEMPLATES = {
+    tbm: {
+        description: 'Safety briefing pagi sebelum pekerjaan fit-up & welding',
+        action_taken: 'Semua pekerja mengenakan APD lengkap (Face shield, welding gloves, safety shoes)'
+    },
+    permit: {
+        description: 'Izin Kerja Aman (PTW) - Hot Work & Confined Space',
+        action_taken: 'Gas detector test clear, APAR standby 1 unit di dekat area kerja'
+    },
+    finding: {
+        description: 'Temuan potensi bahaya (Unsafe condition / Unsafe action) di lokasi kerja',
+        action_taken: 'Barikade pengaman dipasang, tindakan perbaikan langsung dieksekusi'
+    },
+    induction: {
+        description: 'Induksi K3 untuk teknisi / subkontraktor baru',
+        action_taken: 'Pemberian materi K3 proyek, pembagian ID badge & APD standar'
+    },
+    inspection: {
+        description: 'Inspeksi rutin APAR, panel listrik, dan peralatan mesin las',
+        action_taken: 'Peralatan lulus inspeksi berkala dan diberi tagging stiker inspeksi'
+    }
+};
+
 export function HseTab({ projects = [], hseLogs, user, onReload, activeProjectId, onSetActiveProject }) {
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
         log_date: new Date().toISOString().split('T')[0],
         kind: 'tbm',
-        description: 'Safety briefing pagi sebelum pekerjaan fit-up & welding',
+        description: KIND_TEMPLATES.tbm.description,
         status: 'open',
-        action_taken: 'Semua pekerja mengenakan APD lengkap (Face shield, welding gloves, safety shoes)'
+        action_taken: KIND_TEMPLATES.tbm.action_taken
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const handleKindChange = (newKind) => {
+        const tpl = KIND_TEMPLATES[newKind] || {};
+        setFormData(prev => ({
+            ...prev,
+            kind: newKind,
+            description: tpl.description || prev.description,
+            action_taken: tpl.action_taken || prev.action_taken
+        }));
+    };
 
     const canEdit = can(user, 'hse.write');
 
@@ -173,9 +206,8 @@ export function HseTab({ projects = [], hseLogs, user, onReload, activeProjectId
                                         <div className="col-6">
                                             <label className="form-label small fw-semibold">Jenis Acara HSE</label>
                                             <PcmSelect
-                                                
                                                 value={formData.kind}
-                                                onChange={e => setFormData({ ...formData, kind: e.target.value })}
+                                                onChange={e => handleKindChange(e.target.value)}
                                             >
                                                 <option value="tbm">Toolbox Meeting</option>
                                                 <option value="permit">Work Permit</option>

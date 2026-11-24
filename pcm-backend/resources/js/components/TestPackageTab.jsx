@@ -10,9 +10,20 @@ const today = () => new Date().toISOString().split('T')[0];
 
 export function TestPackageTab({ projects = [], testPackages, joints, user, onReload, activeProjectId, onSetActiveProject }) {
     const [showModal, setShowModal] = useState(false);
+    const activeProject = projects.find(p => p.id === activeProjectId);
+    const jobCode = activeProject?.job_no || '2428';
+
+    // Ambil daftar unique line_no dari sambungan/drawing yang ada agar tidak perlu ketik manual
+    const availableLines = Array.from(new Set((joints || []).map(j => j.line_no).filter(Boolean)));
+
+    const generatePkgNo = () => {
+        const nextSeq = String((testPackages || []).length + 1).padStart(2, '0');
+        return `TP-${jobCode}-PKG-${nextSeq}`;
+    };
+
     const [formData, setFormData] = useState({
-        pkg_no: 'TP-2428-MPP-01',
-        system_name: 'Main Process Piping System',
+        pkg_no: '',
+        system_name: '',
         test_kind: 'Hydro',
         test_pressure_bar: 15.0,
         holding_time_min: 60,
@@ -23,6 +34,22 @@ export function TestPackageTab({ projects = [], testPackages, joints, user, onRe
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const handleOpenModal = () => {
+        setFormData({
+            pkg_no: generatePkgNo(),
+            system_name: availableLines[0] ? `Piping System Line ${availableLines[0]}` : 'Main Process Piping System',
+            test_kind: 'Hydro',
+            test_pressure_bar: 15.0,
+            holding_time_min: 60,
+            schedule_date: today(),
+            status: 'planned',
+            blinds_installed: true,
+            reinstated: false
+        });
+        setError('');
+        setShowModal(true);
+    };
 
     const canEdit = can(user, 'testpackage.write');
 
@@ -61,7 +88,7 @@ export function TestPackageTab({ projects = [], testPackages, joints, user, onRe
                 </div>
                 <div>
                     {canEdit ? (
-                        <button onClick={() => setShowModal(true)} className="btn btn-secondary text-white btn-sm">
+                        <button onClick={handleOpenModal} className="btn btn-secondary text-white btn-sm">
                             <i className="cs-plus me-1"></i> Buat Test Package Baru
                         </button>
                     ) : (
@@ -171,10 +198,17 @@ export function TestPackageTab({ projects = [], testPackages, joints, user, onRe
                                         <input
                                             type="text"
                                             required
+                                            list="line-list-suggestions"
                                             className="form-control"
+                                            placeholder="Pilih atau ketik nama jalur..."
                                             value={formData.system_name}
                                             onChange={e => setFormData({ ...formData, system_name: e.target.value })}
                                         />
+                                        <datalist id="line-list-suggestions">
+                                            {availableLines.map(line => (
+                                                <option key={line} value={`Piping System Line ${line}`} />
+                                            ))}
+                                        </datalist>
                                     </div>
                                     <div className="row g-2 mb-3">
                                         <div className="col-6">

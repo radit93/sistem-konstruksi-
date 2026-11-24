@@ -113,6 +113,7 @@ class PcmContractTest extends TestCase
 
         // Test receiving write
         $rec = $this->postJson('/api/material-receivings', [
+            'project_id' => 1,
             'arrival_date' => '2026-10-15', 'shipment_no' => 'SJ-TEST-001', 'po_no' => 'PO-TEST',
             'vendor' => 'Test Vendor', 'item_name' => 'Test Pipe', 'description' => 'Test Pipe Desc',
             'specification' => 'ASTM A106', 'size' => '4"', 'heat_no' => 'HT-TEST-01', 'qty' => 10,
@@ -122,15 +123,16 @@ class PcmContractTest extends TestCase
 
         // Test storing write
         $stk = $this->postJson('/api/material-storings', [
-            'item_code' => 'MAT-TEST-01', 'item_name' => 'Test Storing Item', 'category' => 'PIPE',
+            'project_id' => 1,
+            'item_code' => 'MAT-TEST-01', 'item_name' => 'Test Pipe', 'category' => 'PIPE',
             'specification' => 'ASTM A106', 'size' => '4"', 'storage_type' => 'OPEN_YARD',
             'location_detail' => 'Laydown Test', 'stock_in' => 10, 'balance' => 10,
         ], ['Authorization' => "Bearer $mat"])->assertCreated()->json();
         $this->assertSame('MAT-TEST-01', $stk['item_code']);
-        MaterialStoring::where('item_code', 'MAT-TEST-01')->delete();
 
         // Test issuing write
         $iss = $this->postJson('/api/material-issuings', [
+            'project_id' => 1,
             'issue_date' => '2026-10-16', 'issue_no' => 'MIS-TEST-001', 'requestor' => 'Test Requestor',
             'vendor' => 'Test Vendor', 'item_name' => 'Test Pipe', 'description' => 'Test Pipe Desc',
             'specification' => 'ASTM A106', 'size' => '4"', 'schedule_rating' => 'Sch 40', 'qty' => 2,
@@ -140,6 +142,7 @@ class PcmContractTest extends TestCase
         $this->assertSame('Test Pipe Desc', $iss['description']);
         $this->assertSame('Sch 40', $iss['schedule_rating']);
         MaterialIssuing::where('issue_no', 'MIS-TEST-001')->delete();
+        MaterialStoring::where('item_code', 'MAT-TEST-01')->delete();
     }
 
     public function test_project_manager_writes_milestone_and_budget(): void
@@ -392,6 +395,7 @@ class PcmContractTest extends TestCase
             $mat = $this->token('material');
 
             $rec = $this->postJson('/api/material-receivings', [
+                'project_id' => 1,
                 'arrival_date' => '2026-10-20',
                 'shipment_no' => $shipment,
                 'line_no' => '15-MPP-AB',
@@ -495,6 +499,7 @@ class PcmContractTest extends TestCase
             ]);
 
             $this->postJson('/api/material-issuings', [
+                'project_id' => 1,
                 'material_storing_id' => $stock->id,
                 'issue_date' => '2026-10-20',
                 'issue_no' => $overIssue,
@@ -510,6 +515,7 @@ class PcmContractTest extends TestCase
             $this->assertSame(10.0, (float) $stock->fresh()->balance);
 
             $iss = $this->postJson('/api/material-issuings', [
+                'project_id' => 1,
                 'material_storing_id' => $stock->id,
                 'issue_date' => '2026-10-20',
                 'issue_no' => $issue,
@@ -629,6 +635,7 @@ class PcmContractTest extends TestCase
             $mat = $this->token('material');
 
             $rec = $this->postJson('/api/material-receivings', [
+                'project_id' => $projectId,
                 'arrival_date' => '2026-10-22',
                 'shipment_no' => $shipment,
                 'line_no' => '15-MPP-AB',
@@ -682,6 +689,7 @@ class PcmContractTest extends TestCase
             $mat = $this->token('material');
 
             $firstIssue = $this->postJson('/api/material-issuings', [
+                'project_id' => $projectId,
                 'material_storing_id' => $stock->id,
                 'drawing_id' => $drawing->id,
                 'bom_id' => $bom->id,
@@ -745,6 +753,7 @@ class PcmContractTest extends TestCase
             $this->assertSame(3.0, (float) $updatedRequirements['rows'][0]['stock_balance']);
 
             $this->postJson('/api/material-issuings', [
+                'project_id' => $projectId,
                 'material_storing_id' => $stock->id,
                 'drawing_id' => $drawing->id,
                 'bom_id' => $bom->id,
@@ -824,6 +833,7 @@ class PcmContractTest extends TestCase
             $mat = $this->token('material');
 
             $rec = $this->postJson('/api/material-receivings', [
+                'project_id' => 1,
                 'arrival_date' => '2026-10-22',
                 'shipment_no' => $shipment,
                 'line_no' => '15-MPP-AB',
@@ -871,6 +881,7 @@ class PcmContractTest extends TestCase
             )->assertOk();
 
             $stockRow = $this->postJson('/api/material-storings', [
+                'project_id' => 1,
                 'item_code' => $itemCode,
                 'item_name' => 'Report stock item',
                 'category' => 'PIPE',
@@ -896,6 +907,7 @@ class PcmContractTest extends TestCase
             ], ['Authorization' => "Bearer {$mat}"])->assertCreated();
 
             $issue = $this->postJson('/api/material-issuings', [
+                'project_id' => 1,
                 'material_storing_id' => $stock->id,
                 'issue_date' => '2026-10-22',
                 'issue_no' => $issueNo,
@@ -911,7 +923,7 @@ class PcmContractTest extends TestCase
             $issuing = MaterialIssuing::findOrFail($issue['id']);
 
             $receivingReport = $this->getJson(
-                "/api/material-reports/receiving?search={$shipment}",
+                "/api/material-reports/receiving?project_id=1&search={$shipment}",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
@@ -922,7 +934,7 @@ class PcmContractTest extends TestCase
             $this->assertSame(1, $receivingReport['rows'][0]['documents_count']);
 
             $issuingReport = $this->getJson(
-                "/api/material-reports/issuing?search={$issueNo}",
+                "/api/material-reports/issuing?project_id=1&search={$issueNo}",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
@@ -931,7 +943,7 @@ class PcmContractTest extends TestCase
             $this->assertSame($issueNo, $issuingReport['rows'][0]['issue_no']);
 
             $stockReport = $this->getJson(
-                "/api/material-reports/stock?search={$itemCode}",
+                "/api/material-reports/stock?project_id=1&search={$itemCode}",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
@@ -941,28 +953,28 @@ class PcmContractTest extends TestCase
             $this->assertSame(1, $stockReport['rows'][0]['documents_count']);
 
             $acceptedOnly = $this->getJson(
-                "/api/material-reports/receiving?search={$shipment}&status=ACCEPTED",
+                "/api/material-reports/receiving?project_id=1&search={$shipment}&status=ACCEPTED",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
             $this->assertSame(0, $acceptedOnly['summary']['total_batches']);
 
             $warehouseStock = $this->getJson(
-                "/api/material-reports/stock?search={$itemCode}&storage_type=WAREHOUSE",
+                "/api/material-reports/stock?project_id=1&search={$itemCode}&storage_type=WAREHOUSE",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
             $this->assertSame(0, $warehouseStock['summary']['total_items']);
 
             $lowStock = $this->getJson(
-                "/api/material-reports/stock?search={$itemCode}&stock_status=LOW",
+                "/api/material-reports/stock?project_id=1&search={$itemCode}&stock_status=LOW",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
             $this->assertSame(0, $lowStock['summary']['total_items']);
 
             $mapReport = $this->getJson(
-                "/api/material-reports/location-map?search={$itemCode}",
+                "/api/material-reports/location-map?project_id=1&search={$itemCode}",
                 ['Authorization' => "Bearer {$mat}"]
             )->assertOk()->json();
 
@@ -976,7 +988,7 @@ class PcmContractTest extends TestCase
             $eng = $this->token('engineer');
 
             $this->getJson(
-                "/api/material-reports/stock?search={$itemCode}",
+                "/api/material-reports/stock?project_id=1&search={$itemCode}",
                 ['Authorization' => "Bearer {$eng}"]
             )->assertForbidden();
 

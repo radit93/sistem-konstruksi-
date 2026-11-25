@@ -71,7 +71,12 @@ export const api = {
         }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-            throw new Error(data.message || `Error HTTP ${res.status}`);
+            // Laravel menaruh pesan validasi per field di `errors`. Tanpa ini
+            // semua kegagalan 422 hanya tampil sebagai "The given data was invalid."
+            const fieldErrors = data && data.errors && typeof data.errors === 'object'
+                ? Object.values(data.errors).flat().filter(Boolean)
+                : [];
+            throw new Error(fieldErrors[0] || data.message || `Error HTTP ${res.status}`);
         }
         return data;
     },

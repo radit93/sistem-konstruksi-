@@ -6,13 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Pada database lama kolom repair_cycle sudah dibuat oleh migrasi 2024.
+     * Pada instalasi baru migrasi 2024 berjalan sebelum tabel inspections ada,
+     * sehingga kolom ditambahkan di sini setelah tabelnya tersedia.
+     */
     public function up(): void
     {
-        // Superseded by 2024_01_05_000001_add_repair_cycle_to_inspections_table.
+        if (! Schema::hasTable('inspections') || Schema::hasColumn('inspections', 'repair_cycle')) {
+            return;
+        }
+
+        Schema::table('inspections', function (Blueprint $table) {
+            $table->json('repair_cycle')->nullable()->after('remarks');
+        });
     }
 
     public function down(): void
     {
-        // Kept for migration-history compatibility.
+        // Kolom dimiliki oleh migrasi 2024; jangan dihapus dua kali.
     }
 };

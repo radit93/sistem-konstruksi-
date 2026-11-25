@@ -73,6 +73,9 @@ class AccessCatalog
 
             ['hse.view',          'hse',          'Lihat HSE Safety',               70],
             ['hse.write',         'hse',          'Ubah HSE Safety',                71],
+            ['hse.approve',       'hse',          'Setujui Permit & Verifikasi Hazard', 72],
+            ['hse.hazard.report', 'hse',          'Laporkan Hazard Lapangan',       73],
+            ['hse.hazard.respond', 'hse',          'Tanggapi Hazard yang Ditugaskan', 74],
 
             ['scope.view',        'schedule',     'Lihat BOQ dan S-Curve',          80],
             ['scope.write',       'schedule',     'Ubah BOQ kontrak',               81],
@@ -127,6 +130,7 @@ class AccessCatalog
                 'milestone.view', 'milestone.write',
                 'drawing.view', 'stock.view', 'material_inspection.view',
                 'joint.view', 'inspection.view', 'testpackage.view', 'hse.view',
+                'hse.approve', 'hse.hazard.report',
             ]),
 
             // Engineer membuka folder proyek dan mengunggah drawing.
@@ -134,6 +138,7 @@ class AccessCatalog
                 'dashboard.view',
                 'drawing.view', 'drawing.write',
                 'milestone.view', 'milestone.write',
+                'hse.hazard.report', 'hse.hazard.respond',
             ],
 
             'material' => [
@@ -141,12 +146,14 @@ class AccessCatalog
                 'stock.view', 'stock.write',
                 'material_inspection.view',
                 'milestone.view', 'milestone.write',
+                'hse.hazard.report', 'hse.hazard.respond',
             ],
 
             'construction' => [
                 'dashboard.view',
                 'joint.view', 'joint.write',
                 'milestone.view', 'milestone.write',
+                'hse.hazard.report', 'hse.hazard.respond',
             ],
 
             'qaqc' => [
@@ -155,17 +162,24 @@ class AccessCatalog
                 'inspection.view', 'inspection.write',
                 'material_inspection.view', 'material_inspection.write',
                 'milestone.view', 'milestone.write',
+                'hse.hazard.report', 'hse.hazard.respond',
             ],
 
             'testpackage' => [
                 'dashboard.view',
                 'testpackage.view', 'testpackage.write',
+                // Paket uji disusun dari joint milik Construction dan diverifikasi
+                // lewat laporan QC. Tanpa dua izin ini role Test Package hanya
+                // melihat paket kosong dan tidak bisa menilai kesiapan.
+                'joint.view', 'joint.cross', 'inspection.view',
                 'milestone.view', 'milestone.write',
+                'hse.hazard.report', 'hse.hazard.respond',
             ],
 
             'hse' => [
                 'dashboard.view',
-                'hse.view', 'hse.write',
+                'hse.view', 'hse.write', 'hse.approve',
+                'hse.hazard.report', 'hse.hazard.respond',
                 'milestone.view', 'milestone.write',
             ],
         ];

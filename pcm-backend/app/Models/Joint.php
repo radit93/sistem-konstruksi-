@@ -22,4 +22,11 @@ class Joint extends Model
     {
         return $this->hasMany(Inspection::class);
     }
+
+    /** Paket uji (hydrotest/pneumatic) yang memuat joint ini. */
+    public function testPackages()
+    {
+        return $this->belongsToMany(TestPackage::class, 'joint_test_package')
+            ->withTimestamps();
+    }
 }

@@ -24,6 +24,7 @@ import {
 } from './engineering/materialCascade';
 import { getComponentBadgeStyle } from './engineering/BomSection';
 import { SearchSelect, PcmSelect } from './SearchSelect';
+import { buildPlantAreaOptions } from './masterParameters';
 import { ProjectGuard } from './ProjectGuard';
 
 const strcasecmp_clean = (str) => String(str || '').trim().toLowerCase();
@@ -197,14 +198,10 @@ export function EngineeringTab({
         }));
     }, [lineServices]);
 
-    const plantAreaOptions = useMemo(() => {
-        const active = (systemParameters || []).filter(
-            (p) => p.category === 'plant_area' && p.is_active !== false
-        );
-        return active
-            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-            .map((p) => ({ value: p.name, label: p.description ? `${p.name} — ${p.description}` : p.name }));
-    }, [systemParameters]);
+    const plantAreaOptions = useMemo(
+        () => buildPlantAreaOptions(systemParameters),
+        [systemParameters]
+    );
 
     const distributionTargetOptions = useMemo(() => {
         const active = (systemParameters || []).filter(

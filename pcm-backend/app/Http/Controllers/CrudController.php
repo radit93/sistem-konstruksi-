@@ -11,7 +11,11 @@ use App\Models\Drawing;
 use App\Models\EngineeringBoq;
 use App\Models\FittingCatalog;
 use App\Models\FittingStandard;
+use App\Models\HseHazard;
 use App\Models\HseLog;
+use App\Models\HseManhour;
+use App\Models\HsePermit;
+use App\Models\HseTbm;
 use App\Models\Inspection;
 use App\Models\Joint;
 use App\Models\LineService;
@@ -31,6 +35,7 @@ use App\Models\Scope;
 use App\Models\StockMove;
 use App\Models\SystemParameter;
 use App\Models\TestPackage;
+use App\Models\User;
 use App\Models\WeldingMap;
 use App\Services\MaterialFlowService;
 use App\Services\MaterialRequirementService;
@@ -58,6 +63,20 @@ class CrudController extends Controller
         private readonly MaterialFlowService $materialFlow,
         private readonly MaterialRequirementService $materialRequirements
     ) {}
+
+    /**
+     * Alur status paket uji. Panah hanya boleh maju satu tahap, kecuali
+     * kembali ke DRAFT (sebelum uji) dan FAILED -> READY_FOR_TEST (retest).
+     */
+    private const TEST_PACKAGE_FLOW = [
+        'DRAFT' => ['READY_FOR_TEST'],
+        'READY_FOR_TEST' => ['TEST_IN_PROGRESS', 'DRAFT'],
+        'TEST_IN_PROGRESS' => ['PASSED', 'FAILED'],
+        'PASSED' => ['REINSTATED'],
+        'FAILED' => ['READY_FOR_TEST'],
+        'REINSTATED' => ['CLOSED'],
+        'CLOSED' => [],
+    ];
 
     private array $map = [
         'projects' => [Project::class, [
@@ -91,6 +110,27 @@ class CrudController extends Controller
             'delete' => 'testpackage.write',
         ]],
         'hse' => [HseLog::class, [
+            'create' => 'hse.write',
+            'update' => 'hse.write',
+            'delete' => 'hse.write',
+        ]],
+        'hse-permits' => [HsePermit::class, [
+            'create' => 'hse.write',
+            'update' => 'hse.write',
+            'delete' => 'hse.write',
+        ]],
+        // Hazard boleh dilaporkan siapa saja yang punya akun, bukan hanya HSE.
+        'hse-hazards' => [HseHazard::class, [
+            'create' => 'hse.hazard.report',
+            'update' => 'hse.write',
+            'delete' => 'hse.write',
+        ]],
+        'hse-tbm' => [HseTbm::class, [
+            'create' => 'hse.write',
+            'update' => 'hse.write',
+            'delete' => 'hse.write',
+        ]],
+        'hse-manhours' => [HseManhour::class, [
             'create' => 'hse.write',
             'update' => 'hse.write',
             'delete' => 'hse.write',
@@ -213,7 +253,8 @@ class CrudController extends Controller
      */
     private array $departmentScoped = [
         'drawings', 'joints', 'stock', 'inspections', 'test-packages',
-        'hse', 'scopes', 'progress', 'daily-progress',
+        'hse', 'hse-permits', 'hse-hazards', 'hse-tbm', 'hse-manhours',
+        'scopes', 'progress', 'daily-progress',
         'line-services', 'material-standards', 'pipe-standards', 'welding-maps',
         'bill-of-materials', 'engineering-boqs', 'document-controls',
         'project-milestones', 'budget-items',
@@ -237,6 +278,9 @@ class CrudController extends Controller
      */
     private array $crossDepartment = [
         'joints' => 'joint.cross',
+        // Inspeksi QC menempel pada joint Construction; QA/QC dan Test Package
+        // harus bisa membacanya lintas departemen untuk menilai kesiapan uji.
+        'inspections' => 'inspection.view',
         // Material Control perlu membaca master Engineering (drawing, katalog
         // standar, BOM) untuk mencocokkan requirement dengan stok. Hak tulis
         // tetap dijaga permission drawing.write di checkWrite().
@@ -246,6 +290,10 @@ class CrudController extends Controller
         'bill-of-materials' => 'stock.view',
         'material-receivings' => 'material_inspection.write',
         'material-inspections' => 'material_inspection.write',
+        // Hazard adalah register lintas departemen: temuan yang dilaporkan
+        // Construction harus terlihat oleh HSE dan sebaliknya. Hak tulis tetap
+        // dijaga per baris di updateHseHazard().
+        'hse-hazards' => ['hse.view', 'hse.hazard.report'],
     ];
 
     /**
@@ -260,6 +308,10 @@ class CrudController extends Controller
         'inspections' => 'QAQC',
         'test-packages' => 'QAQC',
         'hse' => 'HSE',
+        'hse-permits' => 'HSE',
+        'hse-hazards' => 'HSE',
+        'hse-tbm' => 'HSE',
+        'hse-manhours' => 'HSE',
         'scopes' => 'PMO',
         'progress' => 'PMO',
         'daily-progress' => 'PMO',
@@ -299,9 +351,22 @@ class CrudController extends Controller
 
     private function checkRead(Request $request, string $res): void
     {
+        $user = $request->user();
+
+        if ($res === 'hse-hazards') {
+            abort_unless(
+                $user && ($user->hasPermission('hse.view') || $user->hasPermission('hse.hazard.report')),
+                403,
+                'Akses ditolak: butuh izin hse.view atau hse.hazard.report'
+            );
+
+            return;
+        }
+
         $permission = match ($res) {
             'material-inspections' => 'material_inspection.view',
             'material-receivings', 'material-storings', 'material-issuings' => 'stock.view',
+            'hse', 'hse-permits', 'hse-tbm', 'hse-manhours' => 'hse.view',
             default => null,
         };
 
@@ -420,6 +485,14 @@ class CrudController extends Controller
             if ($request->filled('shop_field')) {
                 $q->where('shop_field', $request->shop_field);
             }
+            if ($request->filled('project_id')) {
+                // Joint tidak menyimpan project_id; kepemilikan project turun
+                // dari isometric (drawing_no) yang menaunginya.
+                $q->whereIn(
+                    'drawing_no',
+                    Drawing::query()->where('project_id', $request->project_id)->pluck('drawing_no')
+                );
+            }
         } elseif ($res === 'projects') {
             $q->withCount('drawings');
             if ($request->filled('search')) {
@@ -531,6 +604,84 @@ class CrudController extends Controller
             $q->with(['user:id,name,email,role', 'project:id,job_no,name,client', 'activities']);
         } elseif ($res === 'project-members') {
             $q->with(['user:id,name,email,role', 'project:id,job_no,name,client', 'assignedBy:id,name']);
+        } elseif ($res === 'test-packages') {
+            // Paket selalu membawa joint anggotanya supaya layar bisa
+            // menghitung kesiapan tanpa menebak dari seluruh joint project.
+            $q->with([
+                'project:id,job_no,name,client',
+                'joints:id,drawing_no,line_no,spool_no,seq,size_in,status',
+            ]);
+            if ($request->filled('status')) {
+                $q->where('status', $request->status);
+            }
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('pkg_no', 'like', "%{$s}%")
+                        ->orWhere('system_name', 'like', "%{$s}%")
+                        ->orWhere('line_no', 'like', "%{$s}%");
+                });
+            }
+        } elseif ($res === 'hse-hazards') {
+            if ($request->filled('status')) {
+                $q->where('status', $request->status);
+            }
+            if ($request->filled('category')) {
+                $q->where('category', $request->category);
+            }
+            if ($request->filled('severity')) {
+                $q->where('severity', $request->severity);
+            }
+            if ($request->boolean('overdue')) {
+                $q->where('status', '!=', 'CLOSED')
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '<', now()->toDateString());
+            }
+            if ($request->boolean('mine')) {
+                $q->where('pic_user_id', $request->user()->id);
+            }
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('hazard_no', 'like', "%{$s}%")
+                        ->orWhere('location', 'like', "%{$s}%")
+                        ->orWhere('description', 'like', "%{$s}%")
+                        ->orWhere('pic_name', 'like', "%{$s}%");
+                });
+            }
+        } elseif ($res === 'hse-permits') {
+            if ($request->filled('status')) {
+                $q->where('status', $request->status);
+            }
+            if ($request->filled('permit_type')) {
+                $q->where('permit_type', $request->permit_type);
+            }
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('permit_no', 'like', "%{$s}%")
+                        ->orWhere('work_location', 'like', "%{$s}%")
+                        ->orWhere('applicant_name', 'like', "%{$s}%")
+                        ->orWhere('work_scope', 'like', "%{$s}%");
+                });
+            }
+        } elseif ($res === 'hse-tbm') {
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('topic', 'like', "%{$s}%")
+                        ->orWhere('location', 'like', "%{$s}%")
+                        ->orWhere('leader_name', 'like', "%{$s}%");
+                });
+            }
+        } elseif ($res === 'hse-manhours') {
+            if ($request->filled('search')) {
+                $s = $request->search;
+                $q->where(function ($query) use ($s) {
+                    $query->where('area', 'like', "%{$s}%")
+                        ->orWhere('contractor', 'like', "%{$s}%");
+                });
+            }
         } elseif ($request->filled('search')) {
             $s = $request->search;
             $col = $res === 'stock' ? 'description' : 'id';
@@ -541,8 +692,26 @@ class CrudController extends Controller
             $q->where($q->getModel()->getTable().'.project_id', $request->project_id);
         }
 
+        $rows = $q->orderByDesc('id')->get();
+
+        // Identitas pelapor hazard anonim hanya boleh dibaca HSE. Role lain
+        // tetap melihat temuannya supaya bisa menindaklanjuti.
+        if ($res === 'hse-hazards') {
+            $canSeeIdentity = $request->user()
+                && ($request->user()->hasPermission('hse.view') || $request->user()->hasPermission('hse.write'));
+
+            $rows->each(function (HseHazard $hazard) use ($canSeeIdentity) {
+                if ($hazard->is_anonymous && ! $canSeeIdentity) {
+                    $hazard->reporter_name = 'Anonim';
+                    $hazard->reporter_company = null;
+                    $hazard->reported_by = null;
+                    $hazard->reporter_department_id = null;
+                }
+            });
+        }
+
         // app.jsx memanggil api.get('/x') lalu memakai hasilnya sebagai array langsung.
-        return response()->json($q->orderByDesc('id')->get());
+        return response()->json($rows);
     }
 
     public function show(Request $request, string $res, int $id)
@@ -551,6 +720,7 @@ class CrudController extends Controller
         [$model] = $this->resolve($res);
         $with = match ($res) {
             'joints' => ['inspections'],
+            'test-packages' => ['project:id,job_no,name,client', 'joints'],
             'bill-of-materials' => ['materialStandard', 'drawing'],
             'material-receivings' => ['storing', 'inspections', 'materialStandard', 'documents.uploader:id,name'],
             'material-inspections' => ['receiving.materialStandard'],
@@ -834,6 +1004,170 @@ class CrudController extends Controller
             );
         }
 
+        $hseResources = ['hse', 'hse-permits', 'hse-hazards', 'hse-tbm', 'hse-manhours'];
+
+        if (in_array($res, $hseResources, true)) {
+            // Validasi minimum: kolom NOT NULL tidak boleh mengandalkan form
+            // frontend saja, karena API ini juga dipakai klien lain.
+            $hseRules = [
+                'hse' => [
+                    'log_date' => ['required', 'date'],
+                    'kind' => ['required', 'string', 'max:32'],
+                    'description' => ['required', 'string'],
+                ],
+                'hse-permits' => [
+                    'permit_type' => ['required', 'string', 'max:64'],
+                    'work_location' => ['required', 'string', 'max:255'],
+                    'work_scope' => ['required', 'string'],
+                    'applicant_name' => ['required', 'string', 'max:255'],
+                    'valid_from' => ['required', 'date'],
+                    'valid_to' => ['required', 'date', 'after:valid_from'],
+                ],
+                'hse-hazards' => [
+                    'location' => ['required', 'string', 'max:255'],
+                    'description' => ['required', 'string'],
+                    'found_date' => ['nullable', 'date'],
+                    'severity' => ['nullable', 'string', 'max:32'],
+                    'category' => ['nullable', 'string', 'max:32'],
+                ],
+                'hse-tbm' => [
+                    'tbm_date' => ['required', 'date'],
+                    'topic' => ['required', 'string'],
+                    'shift' => ['nullable', 'string', 'max:16'],
+                ],
+                'hse-manhours' => [
+                    'work_date' => ['required', 'date'],
+                    'worker_count' => ['required', 'numeric', 'min:0'],
+                    'work_hours' => ['required', 'numeric', 'min:0'],
+                ],
+            ];
+
+            if (isset($hseRules[$res])) {
+                $request->validate($hseRules[$res]);
+            }
+
+            if (empty($data['project_id'])) {
+                throw ValidationException::withMessages([
+                    'project_id' => 'Project wajib dipilih untuk data HSE.',
+                ]);
+            }
+
+            $project = Project::query()->find($data['project_id']);
+            if (! $project) {
+                throw ValidationException::withMessages([
+                    'project_id' => 'Project tidak ditemukan.',
+                ]);
+            }
+
+            $jobNo = $project->job_no ?: 'PROJECT';
+
+            if ($res === 'hse' && empty($data['log_no'])) {
+                $data['log_no'] = $this->nextHseNumber(HseLog::class, 'log_no', "HSE-{$jobNo}-");
+            }
+
+            if ($res === 'hse-permits' && empty($data['permit_no'])) {
+                $data['permit_no'] = $this->nextHseNumber(HsePermit::class, 'permit_no', "PTW-{$jobNo}-");
+            }
+
+            if ($res === 'hse-permits' && empty($data['status'])) {
+                // Default kolom DB tidak ikut terkirim pada response create,
+                // jadi status diisi eksplisit agar UI langsung tahu PENDING.
+                $data['status'] = 'PENDING';
+            }
+
+            if ($res === 'hse-manhours') {
+                // Angka man-hours selalu dihitung server; klien tidak boleh
+                // mengirim total yang berbeda dari pekerja x jam.
+                $this->assertManhourSane($data, (int) $data['project_id']);
+                $data['manhours'] = round(
+                    (float) ($data['worker_count'] ?? 0) * (float) ($data['work_hours'] ?? 0),
+                    2
+                );
+            }
+
+            if ($res === 'hse-tbm' && is_string($data['attendee_list'] ?? null)) {
+                $decoded = json_decode($data['attendee_list'], true);
+                $data['attendee_list'] = is_array($decoded) ? $decoded : null;
+            }
+
+            if ($res === 'hse-tbm'
+                && empty($data['attendees_count'])
+                && is_array($data['attendee_list'] ?? null)) {
+                $data['attendees_count'] = count($data['attendee_list']);
+            }
+
+            $data['created_by'] = $request->user()->id;
+        }
+
+        if ($res === 'hse' || $res === 'hse-tbm') {
+            $data = $this->storeHseUpload($request, $data, 'photo_file', 'photo_path');
+        }
+
+        if ($res === 'hse-permits') {
+            $data = $this->storeHseUpload($request, $data, 'attachment_file', 'attachment_path');
+        }
+
+        if ($res === 'hse-hazards') {
+            $user = $request->user();
+
+            // department_id adalah pemilik modul (HSE), bukan departemen
+            // pelapor. Kalau tertukar, temuan Construction akan hilang dari
+            // layar HSE karena filter departemen.
+            $data['department_id'] = Department::query()->where('code', 'HSE')->value('id');
+            $data['reported_by'] = $user->id;
+            $data['reporter_name'] = $data['reporter_name'] ?? $user->name;
+            $data['reporter_department_id'] = $data['reporter_department_id'] ?? $user->department_id;
+            $data['status'] = 'OPEN';
+            $data['found_date'] = $data['found_date'] ?? now()->toDateString();
+
+            if (empty($data['hazard_no'])) {
+                $jobNo = Project::query()->whereKey($data['project_id'])->value('job_no') ?: 'PROJECT';
+                $data['hazard_no'] = $this->nextHseNumber(HseHazard::class, 'hazard_no', "HZD-{$jobNo}-");
+            }
+
+            if (array_key_exists('pic_user_id', $data) && ($data['pic_user_id'] === '' || $data['pic_user_id'] === null)) {
+                // PIC eksternal (nama + perusahaan) tidak punya user_id.
+                $data['pic_user_id'] = null;
+                $data['pic_department_id'] = null;
+            } elseif (! empty($data['pic_user_id'])) {
+                $pic = User::query()->find($data['pic_user_id']);
+                if (! $pic) {
+                    throw ValidationException::withMessages([
+                        'pic_user_id' => 'PIC tidak ditemukan.',
+                    ]);
+                }
+                $data['pic_department_id'] = $pic->department_id;
+                $data['pic_name'] = $data['pic_name'] ?? $pic->name;
+            }
+
+            unset($data['verified_by'], $data['verified_at'], $data['verification_note']);
+
+            $data = $this->storeHseUpload($request, $data, 'photo_before_file', 'photo_before');
+            $data = $this->storeHseUpload($request, $data, 'photo_after_file', 'photo_after');
+        }
+
+        if ($res === 'test-packages') {
+            [$data, $testPackageJoints] = $this->prepareTestPackage($request, $data);
+
+            // Status READY_FOR_TEST hanya boleh lahir dari paket yang benar-benar
+            // siap. DRAFT tidak diuji gate karena paket masih boleh disusun.
+            if ($data['status'] !== 'DRAFT') {
+                $this->assertTestPackageReady($data, $testPackageJoints ?? []);
+            }
+
+            $obj = DB::transaction(function () use ($model, $data, $testPackageJoints) {
+                $pkg = $model::create($data);
+                $pkg->joints()->sync($testPackageJoints ?? []);
+
+                return $pkg->fresh()->load([
+                    'project:id,job_no,name,client',
+                    'joints:id,drawing_no,line_no,spool_no,seq,size_in,status',
+                ]);
+            });
+
+            return response()->json($obj, 201);
+        }
+
         $obj = $model::create($data);
 
         if ($res === 'joints') {
@@ -849,12 +1183,73 @@ class CrudController extends Controller
 
     public function update(Request $request, string $res, int $id)
     {
+        // Hazard punya aturan tulis per baris (PIC hanya baris yang ditugaskan),
+        // jadi tidak bisa memakai checkWrite() generik.
+        if ($res === 'hse-hazards') {
+            return $this->updateHseHazard($request, $id);
+        }
+
         $this->checkWrite($request, $res, 'update');
         [$model] = $this->resolve($res);
 
         $obj = $this->scope($request, $model::query(), $res)->findOrFail($id);
 
         $data = $request->all();
+
+        if ($res === 'test-packages') {
+            return $this->updateTestPackage($request, $obj, $data);
+        }
+
+        if ($res === 'hse-permits' && array_key_exists('status', $data)) {
+            if (in_array($data['status'], ['APPROVED', 'REJECTED'], true)
+                && ! $request->user()->hasPermission('hse.approve')) {
+                abort(403, 'Akses ditolak: butuh izin hse.approve untuk menyetujui permit.');
+            }
+
+            if ($data['status'] === 'APPROVED') {
+                $data['approved_by'] = $request->user()->id;
+                $data['approved_at'] = now();
+                $data['rejection_reason'] = null;
+            }
+
+            if ($data['status'] === 'REJECTED') {
+                $data['approved_by'] = null;
+                $data['approved_at'] = null;
+            }
+        }
+
+        if ($res === 'hse-manhours') {
+            $merged = [
+                'worker_count' => array_key_exists('worker_count', $data) ? $data['worker_count'] : $obj->worker_count,
+                'work_hours' => array_key_exists('work_hours', $data) ? $data['work_hours'] : $obj->work_hours,
+                'work_date' => array_key_exists('work_date', $data)
+                    ? $data['work_date']
+                    : optional($obj->work_date)->toDateString(),
+                'area' => array_key_exists('area', $data) ? $data['area'] : $obj->area,
+                'contractor' => array_key_exists('contractor', $data) ? $data['contractor'] : $obj->contractor,
+            ];
+
+            $this->assertManhourSane($merged, (int) $obj->project_id, (int) $obj->id);
+
+            if (array_key_exists('worker_count', $data) || array_key_exists('work_hours', $data)) {
+                $data['manhours'] = round(
+                    (float) $merged['worker_count'] * (float) $merged['work_hours'],
+                    2
+                );
+            }
+        }
+
+        if ($res === 'hse' || $res === 'hse-tbm') {
+            if ($res === 'hse-tbm' && is_string($data['attendee_list'] ?? null)) {
+                $decoded = json_decode($data['attendee_list'], true);
+                $data['attendee_list'] = is_array($decoded) ? $decoded : null;
+            }
+            $data = $this->storeHseUpload($request, $data, 'photo_file', 'photo_path');
+        }
+
+        if ($res === 'hse-permits') {
+            $data = $this->storeHseUpload($request, $data, 'attachment_file', 'attachment_path');
+        }
         if (in_array($res, ['material-receivings', 'material-storings', 'material-issuings'], true)
             && array_key_exists('project_id', $data)
             && empty($data['project_id'])) {
@@ -1054,6 +1449,322 @@ class CrudController extends Controller
         return response()->json($obj);
     }
 
+    /**
+     * Hazard ditulis oleh dua pihak dengan hak berbeda:
+     * - PIC (user yang ditugaskan) hanya boleh mengisi corrective action,
+     *   foto after, dan status IN_PROGRESS/RESOLVED pada barisnya sendiri.
+     * - HSE (hse.write / hse.approve) boleh mengubah seluruh baris, menutup
+     *   (CLOSED) setelah verifikasi, atau membuka kembali (REOPENED).
+     */
+    private function updateHseHazard(Request $request, int $id)
+    {
+        $user = $request->user();
+        $hazard = $this->scope($request, HseHazard::query(), 'hse-hazards')->findOrFail($id);
+
+        $isHse = $user->hasPermission('hse.write') || $user->hasPermission('hse.approve');
+        $isPic = $hazard->pic_user_id !== null && (int) $hazard->pic_user_id === (int) $user->id;
+
+        abort_unless(
+            $isHse || $isPic,
+            403,
+            'Akses ditolak: hanya PIC yang ditugaskan atau HSE yang dapat mengubah temuan ini.'
+        );
+
+        $data = $request->all();
+
+        unset(
+            $data['project_id'], $data['hazard_no'], $data['reported_by'],
+            $data['reporter_name'], $data['reporter_company'], $data['reporter_department_id'],
+            $data['is_anonymous'], $data['department_id'], $data['found_date'],
+            $data['verified_by'], $data['verified_at']
+        );
+
+        if (! $isHse) {
+            // Identitas temuan tetap milik pelapor/HSE.
+            $data = array_intersect_key($data, array_flip([
+                'corrective_action', 'status', 'photo_after_file',
+            ]));
+        }
+
+        $nextStatus = $data['status'] ?? null;
+
+        if ($nextStatus !== null && ! $isHse && ! in_array($nextStatus, ['IN_PROGRESS', 'RESOLVED'], true)) {
+            abort(403, 'PIC hanya dapat memulai atau menyelesaikan tindakan perbaikan.');
+        }
+
+        if ($nextStatus === 'RESOLVED') {
+            $action = trim((string) ($data['corrective_action'] ?? $hazard->corrective_action));
+            if ($action === '') {
+                throw ValidationException::withMessages([
+                    'corrective_action' => 'Isi tindakan perbaikan sebelum menandai temuan selesai.',
+                ]);
+            }
+        }
+
+        if ($isHse && $nextStatus === 'CLOSED') {
+            $data['verified_by'] = $user->id;
+            $data['verified_at'] = now();
+        }
+
+        if ($isHse && $nextStatus === 'REOPENED') {
+            $data['verified_by'] = null;
+            $data['verified_at'] = null;
+        }
+
+        if ($isHse && array_key_exists('pic_user_id', $data)) {
+            if ($data['pic_user_id'] === '' || $data['pic_user_id'] === null) {
+                // Form mengirim string kosong saat PIC eksternal dipilih.
+                // Tanpa normalisasi ini kolom bigint menerima '' dan MySQL
+                // strict mode menolak simpanan.
+                $data['pic_user_id'] = null;
+                $data['pic_department_id'] = null;
+            } else {
+                $pic = User::query()->find($data['pic_user_id']);
+                if (! $pic) {
+                    throw ValidationException::withMessages([
+                        'pic_user_id' => 'PIC tidak ditemukan.',
+                    ]);
+                }
+                $data['pic_department_id'] = $pic->department_id;
+                if (empty($data['pic_name'])) {
+                    $data['pic_name'] = $pic->name;
+                }
+            }
+        }
+
+        $data = $this->storeHseUpload($request, $data, 'photo_before_file', 'photo_before');
+        $data = $this->storeHseUpload($request, $data, 'photo_after_file', 'photo_after');
+
+        $hazard->update($data);
+
+        return response()->json($hazard->fresh());
+    }
+
+    public function approveHsePermit(Request $request, int $id)
+    {
+        abort_unless(
+            $request->user()->hasPermission('hse.approve'),
+            403,
+            'Akses ditolak: butuh izin hse.approve'
+        );
+
+        $permit = $this->scope($request, HsePermit::query(), 'hse-permits')->findOrFail($id);
+
+        if ($permit->status === 'CLOSED') {
+            throw ValidationException::withMessages([
+                'status' => 'Permit yang sudah ditutup tidak bisa disetujui ulang.',
+            ]);
+        }
+
+        $permit->update([
+            'status' => 'APPROVED',
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+            'rejection_reason' => null,
+        ]);
+
+        return response()->json($permit->fresh());
+    }
+
+    public function rejectHsePermit(Request $request, int $id)
+    {
+        abort_unless(
+            $request->user()->hasPermission('hse.approve'),
+            403,
+            'Akses ditolak: butuh izin hse.approve'
+        );
+
+        $validated = $request->validate([
+            'rejection_reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $permit = $this->scope($request, HsePermit::query(), 'hse-permits')->findOrFail($id);
+
+        $permit->update([
+            'status' => 'REJECTED',
+            'approved_by' => null,
+            'approved_at' => null,
+            'rejection_reason' => $validated['rejection_reason'],
+        ]);
+
+        return response()->json($permit->fresh());
+    }
+
+    /**
+     * Pilihan PIC untuk form hazard. Daftar user lengkap ada di area admin,
+     * yang tidak boleh dibuka HSE; endpoint ini hanya mengembalikan identitas
+     * minimum yang dibutuhkan untuk menugaskan tindakan perbaikan.
+     */
+    public function hsePicOptions(Request $request)
+    {
+        abort_unless(
+            $request->user()->hasPermission('hse.write')
+                || $request->user()->hasPermission('hse.approve'),
+            403,
+            'Akses ditolak: butuh izin hse.write atau hse.approve'
+        );
+
+        return response()->json(
+            User::query()
+                ->where('is_active', true)
+                ->with('department:id,code,name')
+                ->orderBy('name')
+                ->get(['id', 'name', 'role', 'department_id'])
+        );
+    }
+
+    /**
+     * KPI HSE dihitung dari baris database, bukan konstanta. Angka nol berarti
+     * memang belum ada data, bukan "zero accident" karangan.
+     */
+    public function hseSummary(Request $request)
+    {
+        $user = $request->user();
+        abort_unless(
+            $user && ($user->hasPermission('hse.view') || $user->hasPermission('hse.hazard.report')),
+            403,
+            'Akses ditolak: butuh izin hse.view atau hse.hazard.report'
+        );
+
+        $projectId = $request->filled('project_id') ? (int) $request->project_id : null;
+        $withProject = function ($query) use ($projectId) {
+            return $projectId
+                ? $query->where($query->getModel()->getTable().'.project_id', $projectId)
+                : $query;
+        };
+
+        $openStatuses = ['OPEN', 'IN_PROGRESS', 'REOPENED'];
+        $today = now()->toDateString();
+
+        $hazards = $withProject($this->scope($request, HseHazard::query(), 'hse-hazards'));
+        $permits = $withProject($this->scope($request, HsePermit::query(), 'hse-permits'));
+        $tbm = $withProject($this->scope($request, HseTbm::query(), 'hse-tbm'));
+        $manhours = $withProject($this->scope($request, HseManhour::query(), 'hse-manhours'));
+
+        return response()->json([
+            'project_id' => $projectId,
+            'generated_at' => now()->toIso8601String(),
+            'hazards' => [
+                'total' => (clone $hazards)->count(),
+                'open' => (clone $hazards)->whereIn('status', $openStatuses)->count(),
+                'overdue' => (clone $hazards)
+                    ->whereIn('status', $openStatuses)
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '<', $today)
+                    ->count(),
+                'closed' => (clone $hazards)->where('status', 'CLOSED')->count(),
+                'reported_this_month' => (clone $hazards)
+                    ->whereYear('found_date', now()->year)
+                    ->whereMonth('found_date', now()->month)
+                    ->count(),
+            ],
+            'permits' => [
+                'total' => (clone $permits)->count(),
+                'pending' => (clone $permits)->where('status', 'PENDING')->count(),
+                'active' => (clone $permits)
+                    ->where('status', 'APPROVED')
+                    ->where(function ($query) {
+                        $query->whereNull('valid_to')->orWhere('valid_to', '>=', now());
+                    })
+                    ->count(),
+                'expired' => (clone $permits)
+                    ->where('status', 'APPROVED')
+                    ->whereNotNull('valid_to')
+                    ->where('valid_to', '<', now())
+                    ->count(),
+            ],
+            'tbm' => [
+                'total' => (clone $tbm)->count(),
+                'this_month' => (clone $tbm)
+                    ->whereYear('tbm_date', now()->year)
+                    ->whereMonth('tbm_date', now()->month)
+                    ->count(),
+                'last_date' => (clone $tbm)->max('tbm_date'),
+                'attendees_total' => (int) (clone $tbm)->sum('attendees_count'),
+            ],
+            'manhours' => [
+                'total' => round((float) (clone $manhours)->sum('manhours'), 2),
+                'this_month' => round((float) (clone $manhours)
+                    ->whereYear('work_date', now()->year)
+                    ->whereMonth('work_date', now()->month)
+                    ->sum('manhours'), 2),
+                'days_recorded' => (clone $manhours)->distinct()->count('work_date'),
+            ],
+        ]);
+    }
+
+    private function nextHseNumber(string $modelClass, string $column, string $prefix): string
+    {
+        $sequence = $modelClass::query()->where($column, 'like', $prefix.'%')->count() + 1;
+
+        do {
+            $number = $prefix.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+            $exists = $modelClass::query()->where($column, $number)->exists();
+            $sequence++;
+        } while ($exists);
+
+        return $number;
+    }
+
+    private function storeHseUpload(Request $request, array $data, string $fileField, string $column): array
+    {
+        unset($data[$fileField]);
+
+        if ($request->hasFile($fileField)) {
+            $data[$column] = '/storage/'.$request->file($fileField)->store('hse/'.now()->format('Y/m'), 'public');
+        }
+
+        return $data;
+    }
+
+    /**
+     * Man-hours adalah angka KPI, jadi nilainya harus wajar dan tidak boleh
+     * dobel. Tanpa penjagaan ini satu baris bisa dikirim berkali-kali dan
+     * "safe man-hours" naik tanpa ada pekerjaan tambahan.
+     */
+    private function assertManhourSane(array $data, int $projectId, ?int $ignoreId = null): void
+    {
+        $workers = (int) ($data['worker_count'] ?? 0);
+        $hours = (float) ($data['work_hours'] ?? 0);
+
+        if ($workers < 1 || $workers > 5000) {
+            throw ValidationException::withMessages([
+                'worker_count' => 'Jumlah pekerja harus antara 1 dan 5.000 orang.',
+            ]);
+        }
+
+        if ($hours <= 0 || $hours > 24) {
+            throw ValidationException::withMessages([
+                'work_hours' => 'Jam kerja per orang harus lebih dari 0 dan maksimal 24 jam per hari.',
+            ]);
+        }
+
+        $date = substr((string) ($data['work_date'] ?? ''), 0, 10);
+        if ($date === '') {
+            throw ValidationException::withMessages([
+                'work_date' => 'Tanggal kerja wajib diisi.',
+            ]);
+        }
+
+        $area = trim((string) ($data['area'] ?? ''));
+        $contractor = trim((string) ($data['contractor'] ?? ''));
+
+        $duplicate = HseManhour::query()
+            ->where('project_id', $projectId)
+            ->whereDate('work_date', $date)
+            ->whereRaw("TRIM(COALESCE(area, '')) = ?", [$area])
+            ->whereRaw("TRIM(COALESCE(contractor, '')) = ?", [$contractor])
+            ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
+            ->first();
+
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'work_date' => "Sudah ada man-hours untuk tanggal, area, dan kontraktor yang sama (baris #{$duplicate->id}). "
+                    .'Ubah baris itu, atau bedakan area/kontraktor bila memang pekerjaannya terpisah.',
+            ]);
+        }
+    }
+
     private function syncFitupSpecsToBom(Drawing $drawing): void
     {
         $specs = $drawing->fitup_specs;
@@ -1214,6 +1925,19 @@ class CrudController extends Controller
             $obj->movements()->delete();
         }
 
+        if ($res === 'test-packages') {
+            // Paket yang sudah diuji adalah rekaman mutu; hanya paket yang
+            // belum masuk tahap uji yang boleh dihapus.
+            $status = $this->normaliseTestPackageStatus($obj->status);
+            if (in_array($status, ['TEST_IN_PROGRESS', 'PASSED', 'FAILED', 'REINSTATED', 'CLOSED'], true)) {
+                throw ValidationException::withMessages([
+                    'test_package' => 'Paket yang sudah masuk tahap uji tidak bisa dihapus; tutup atau biarkan sebagai rekaman.',
+                ]);
+            }
+
+            $obj->joints()->detach();
+        }
+
         $obj->delete();
 
         return response()->json(['message' => 'OK']);
@@ -1353,6 +2077,330 @@ class CrudController extends Controller
             $this->scope($request, MaterialReceiving::query(), 'material-receivings'),
             $filters
         ));
+    }
+
+    /* ------------------------------------------------------------------
+     * Test Package: cakupan joint, nomor otomatis, dan gate kesiapan uji
+     * ------------------------------------------------------------------ */
+
+    /**
+     * Validasi & normalisasi payload paket uji.
+     *
+     * @return array{0: array, 1: array<int>|null} [data siap simpan, id joint]
+     */
+    private function prepareTestPackage(Request $request, array $data, ?TestPackage $existing = null): array
+    {
+        $request->validate([
+            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
+            'pkg_no' => ['nullable', 'string', 'max:64'],
+            'system_name' => ['sometimes', 'required', 'string', 'max:255'],
+            'line_no' => ['nullable', 'string', 'max:255'],
+            'test_kind' => ['nullable', 'string', 'max:32'],
+            'test_pressure_bar' => ['nullable', 'numeric', 'min:0.1', 'max:2000'],
+            'holding_time_min' => ['nullable', 'integer', 'min:1', 'max:1440'],
+            'schedule_date' => ['nullable', 'date'],
+            'status' => ['nullable', 'string', 'max:32'],
+            'punch_list_open' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'blinds_installed' => ['nullable', 'boolean'],
+            'reinstated' => ['nullable', 'boolean'],
+            'blinds' => ['nullable', 'string'],
+            'joint_ids' => ['nullable', 'array'],
+            'joint_ids.*' => ['integer', 'exists:joints,id'],
+        ]);
+
+        $projectId = $data['project_id'] ?? $existing?->project_id;
+        if (! $projectId) {
+            throw ValidationException::withMessages([
+                'project_id' => 'Project wajib dipilih untuk test package.',
+            ]);
+        }
+        $data['project_id'] = (int) $projectId;
+
+        $status = $this->normaliseTestPackageStatus($data['status'] ?? $existing?->status ?? 'DRAFT');
+        if (! array_key_exists($status, self::TEST_PACKAGE_FLOW)) {
+            throw ValidationException::withMessages([
+                'status' => "Status test package '{$status}' tidak dikenal.",
+            ]);
+        }
+        $data['status'] = $status;
+
+        if (array_key_exists('test_kind', $data)) {
+            $data['test_kind'] = $this->normaliseTestKind($data['test_kind']);
+        }
+
+        if (array_key_exists('punch_list_open', $data)) {
+            $data['punch_list_open'] = max(0, (int) $data['punch_list_open']);
+        }
+
+        foreach (['blinds_installed', 'reinstated'] as $flag) {
+            if (array_key_exists($flag, $data)) {
+                $data[$flag] = filter_var($data[$flag], FILTER_VALIDATE_BOOLEAN);
+            }
+        }
+
+        if (! $existing) {
+            // Default eksplisit supaya gate kesiapan punya angka, bukan null.
+            $data['punch_list_open'] = (int) ($data['punch_list_open'] ?? 0);
+            $data['blinds_installed'] = filter_var($data['blinds_installed'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $data['reinstated'] = filter_var($data['reinstated'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if (blank($data['pkg_no'] ?? null)) {
+            $data['pkg_no'] = $this->nextTestPackageNo((int) $data['project_id'], $existing?->id);
+        }
+
+        $jointIds = null;
+        if (array_key_exists('joint_ids', $data)) {
+            $jointIds = collect((array) $data['joint_ids'])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+        unset($data['joint_ids']);
+
+        if ($jointIds !== null) {
+            $this->assertJointsUsableForPackage($jointIds, (int) $data['project_id'], $existing?->id);
+        }
+
+        return [$data, $jointIds];
+    }
+
+    private function updateTestPackage(Request $request, TestPackage $pkg, array $data)
+    {
+        [$data, $jointIds] = $this->prepareTestPackage($request, $data, $pkg);
+
+        // Departemen pemilik tidak boleh berpindah lewat form biasa.
+        if (! $request->user()->isSuperAdmin()) {
+            unset($data['department_id']);
+        }
+
+        $current = $this->normaliseTestPackageStatus($pkg->status);
+        $next = $data['status'] ?? $current;
+
+        if ($next !== $current) {
+            $reinstated = array_key_exists('reinstated', $data) ? (bool) $data['reinstated'] : (bool) $pkg->reinstated;
+            $this->assertTestPackageStatusChange($current, $next, $reinstated);
+        }
+
+        // Naik ke READY_FOR_TEST adalah permintaan eksplisit: kalau prasyarat
+        // belum lengkap, tolak dengan alasan. Kalau paket sudah READY lalu
+        // diedit sampai tidak lagi memenuhi syarat, turunkan sendiri ke DRAFT
+        // supaya status tidak pernah berbohong.
+        $requestedReady = $current !== 'READY_FOR_TEST' && $next === 'READY_FOR_TEST';
+
+        if ($next === 'REINSTATED') {
+            $data['reinstated'] = true;
+        }
+
+        $result = DB::transaction(function () use ($pkg, $data, $jointIds, $next, $requestedReady) {
+            if ($jointIds !== null) {
+                $pkg->joints()->sync($jointIds);
+            }
+
+            $pkg->update($data);
+
+            // Gate memakai nilai final (setelah update): punch list dan blind
+            // yang baru diubah pada request ini ikut dinilai. Uji juga tidak
+            // boleh dimulai dari paket yang prasyaratnya belum lengkap.
+            if ($next === 'READY_FOR_TEST' || $next === 'TEST_IN_PROGRESS') {
+                try {
+                    $this->assertTestPackageReady([
+                        'punch_list_open' => $pkg->punch_list_open,
+                        'blinds_installed' => $pkg->blinds_installed,
+                    ], $pkg->joints()->pluck('joints.id')->all());
+                } catch (ValidationException $exception) {
+                    if ($requestedReady || $next === 'TEST_IN_PROGRESS') {
+                        throw $exception;
+                    }
+
+                    $pkg->update(['status' => 'DRAFT']);
+                }
+            }
+
+            return $pkg->fresh()->load([
+                'project:id,job_no,name,client',
+                'joints:id,drawing_no,line_no,spool_no,seq,size_in,status',
+            ]);
+        });
+
+        return response()->json($result);
+    }
+
+    private function normaliseTestPackageStatus(?string $status): string
+    {
+        $value = strtoupper(trim((string) $status));
+
+        return match ($value) {
+            '', 'PLANNED', 'DRAFT' => 'DRAFT',
+            'READY', 'READY_FOR_TEST', 'READY TO TEST' => 'READY_FOR_TEST',
+            'IN_PROGRESS', 'TEST_IN_PROGRESS', 'TESTING' => 'TEST_IN_PROGRESS',
+            'PASS', 'PASSED' => 'PASSED',
+            'FAIL', 'FAILED' => 'FAILED',
+            'REINSTATED' => 'REINSTATED',
+            'CLOSED' => 'CLOSED',
+            default => $value,
+        };
+    }
+
+    private function normaliseTestKind(?string $kind): string
+    {
+        $value = trim((string) $kind);
+        if ($value === '') {
+            return 'Hydro';
+        }
+
+        $lower = strtolower($value);
+        if (str_contains($lower, 'pneum')) {
+            return 'Pneumatic';
+        }
+        if (str_contains($lower, 'hydro')) {
+            return 'Hydro';
+        }
+
+        return $value;
+    }
+
+    private function nextTestPackageNo(int $projectId, ?int $ignoreId = null): string
+    {
+        $jobNo = Project::query()->whereKey($projectId)->value('job_no') ?: 'PROJECT';
+        $prefix = "TP-{$jobNo}-";
+
+        $max = 0;
+        $used = TestPackage::query()
+            ->where('pkg_no', 'like', $prefix.'%')
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->pluck('pkg_no');
+
+        foreach ($used as $no) {
+            if (preg_match('/^'.preg_quote($prefix, '/').'(\d+)$/', (string) $no, $m)) {
+                $max = max($max, (int) $m[1]);
+            }
+        }
+
+        do {
+            $max++;
+            $candidate = $prefix.str_pad((string) $max, 3, '0', STR_PAD_LEFT);
+        } while (TestPackage::query()->where('pkg_no', $candidate)->exists());
+
+        return $candidate;
+    }
+
+    /**
+     * Joint hanya boleh dipakai satu paket aktif, dan harus berasal dari
+     * project yang sama. Joint tanpa isometric terdaftar dibiarkan supaya
+     * data lama tidak terkunci.
+     */
+    private function assertJointsUsableForPackage(array $jointIds, int $projectId, ?int $ignorePackageId = null): void
+    {
+        if ($jointIds === []) {
+            return;
+        }
+
+        $joints = Joint::query()->whereIn('id', $jointIds)->get(['id', 'drawing_no', 'spool_no']);
+        if ($joints->count() !== count($jointIds)) {
+            throw ValidationException::withMessages([
+                'joint_ids' => 'Ada joint yang tidak ditemukan.',
+            ]);
+        }
+
+        $drawingProjects = Drawing::query()
+            ->whereIn('drawing_no', $joints->pluck('drawing_no')->filter()->unique()->values())
+            ->pluck('project_id', 'drawing_no');
+
+        $foreign = $joints->filter(function ($joint) use ($drawingProjects, $projectId) {
+            $owner = $drawingProjects[$joint->drawing_no] ?? null;
+
+            return $owner !== null && (int) $owner !== $projectId;
+        });
+
+        if ($foreign->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'joint_ids' => 'Joint berikut berasal dari project lain: '
+                    .$foreign->take(5)->map(fn ($j) => $j->spool_no ?: '#'.$j->id)->implode(', '),
+            ]);
+        }
+
+        $conflictPackages = DB::table('joint_test_package as jtp')
+            ->join('test_packages as tp', 'tp.id', '=', 'jtp.test_package_id')
+            ->whereIn('jtp.joint_id', $jointIds)
+            ->where('tp.status', '!=', 'CLOSED')
+            ->when($ignorePackageId, fn ($query) => $query->where('tp.id', '!=', $ignorePackageId))
+            ->pluck('tp.pkg_no')
+            ->unique()
+            ->values();
+
+        if ($conflictPackages->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'joint_ids' => 'Joint ini sudah masuk paket lain yang belum ditutup: '
+                    .$conflictPackages->implode(', ').'.',
+            ]);
+        }
+    }
+
+    private function assertTestPackageStatusChange(string $from, string $to, bool $reinstated): void
+    {
+        $allowed = self::TEST_PACKAGE_FLOW[$from] ?? [];
+
+        if (! in_array($to, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'status' => "Status {$from} tidak bisa langsung menjadi {$to}.",
+            ]);
+        }
+
+        if ($to === 'CLOSED' && ! $reinstated) {
+            throw ValidationException::withMessages([
+                'status' => 'Paket hanya bisa ditutup setelah blind dilepas dan sistem di-reinstate.',
+            ]);
+        }
+    }
+
+    /**
+     * Gate uji tekan: tidak ada satu pun joint yang boleh masuk READY_FOR_TEST
+     * sebelum NDT bersih, punch list nol, dan blind terpasang.
+     *
+     * @param  array<int>  $jointIds
+     */
+    private function assertTestPackageReady(array $data, array $jointIds): void
+    {
+        if ($jointIds === []) {
+            throw ValidationException::withMessages([
+                'joint_ids' => 'Paket belum berisi joint. Pilih joint yang akan diuji sebelum menandai siap uji.',
+            ]);
+        }
+
+        $joints = Joint::query()
+            ->whereIn('id', $jointIds)
+            ->get(['id', 'status', 'spool_no']);
+
+        $notReady = $joints->reject(fn ($joint) => in_array($joint->status, ['NDT_OK', 'TESTED'], true));
+
+        if ($notReady->isNotEmpty()) {
+            $labels = $notReady->take(5)->map(fn ($j) => $j->spool_no ?: '#'.$j->id)->implode(', ');
+
+            throw ValidationException::withMessages([
+                'status' => sprintf(
+                    '%d dari %d joint belum lolos NDT (%s). Selesaikan inspeksi QC dulu.',
+                    $notReady->count(),
+                    $joints->count(),
+                    $labels
+                ),
+            ]);
+        }
+
+        $punch = (int) ($data['punch_list_open'] ?? 0);
+        if ($punch > 0) {
+            throw ValidationException::withMessages([
+                'status' => "Masih ada {$punch} punch list terbuka. Tutup dulu sebelum uji tekan.",
+            ]);
+        }
+
+        if (! ($data['blinds_installed'] ?? false)) {
+            throw ValidationException::withMessages([
+                'status' => 'Blind/test blind belum ditandai terpasang. Pasang dulu sebelum uji tekan.',
+            ]);
+        }
     }
 
     private function isDepartmentScoped(string $res): bool

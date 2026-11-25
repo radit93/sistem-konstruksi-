@@ -7,7 +7,11 @@ use App\Models\BudgetItem;
 use App\Models\DailyProgress;
 use App\Models\Department;
 use App\Models\Drawing;
+use App\Models\HseHazard;
 use App\Models\HseLog;
+use App\Models\HseManhour;
+use App\Models\HsePermit;
+use App\Models\HseTbm;
 use App\Models\Inspection;
 use App\Models\Joint;
 use App\Models\LineService;
@@ -26,8 +30,10 @@ use App\Models\ProjectMilestone;
 use App\Models\Scope;
 use App\Models\StockMove;
 use App\Models\TestPackage;
+use App\Models\User;
 use App\Models\WeldingMap;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -270,24 +276,393 @@ class PcmContractTest extends TestCase
     public function test_testpackage_write(): void
     {
         $tp = $this->token('testpackage');
+        $proj = Project::first();
+
+        // Paket tanpa project tidak bisa difilter dan tidak bisa dinilai
+        // kesiapannya, jadi server menolaknya.
+        $this->postJson('/api/test-packages', [
+            'system_name' => 'Tanpa project', 'test_kind' => 'Hydro',
+        ], ['Authorization' => "Bearer $tp"])->assertStatus(422);
+
         $pkg = $this->postJson('/api/test-packages', [
+            'project_id' => $proj->id,
             'pkg_no' => 'TP-KT', 'system_name' => 'Sys', 'test_kind' => 'Hydro',
             'test_pressure_bar' => 15, 'holding_time_min' => 60,
             'schedule_date' => '2026-10-20', 'status' => 'planned',
         ], ['Authorization' => "Bearer $tp"])->assertCreated()->json();
         $this->assertSame('Sys', $pkg['system_name']);
+        $this->assertSame('DRAFT', $pkg['status']);
+        $this->assertSame($proj->id, $pkg['project_id']);
         TestPackage::where('pkg_no', 'TP-KT')->delete();
+    }
+
+    public function test_testpackage_joints_and_readiness_gate(): void
+    {
+        $tp = $this->token('testpackage');
+        $proj = Project::first();
+        $drawing = Drawing::where('project_id', $proj->id)->firstOrFail();
+
+        $joint = Joint::create([
+            'drawing_no' => $drawing->drawing_no,
+            'line_no' => 'TP-GATE',
+            'spool_no' => 'TP-GATE-SP',
+            'seq' => 1,
+            'status' => 'VISUAL_OK',
+            'department_id' => Department::where('code', 'CONS')->value('id'),
+        ]);
+
+        // Nomor paket dibuat otomatis dan joint tersimpan sebagai anggota paket.
+        $pkg = $this->postJson('/api/test-packages', [
+            'project_id' => $proj->id,
+            'system_name' => 'Gate System',
+            'test_kind' => 'Hydrostatic Test',
+            'punch_list_open' => 0,
+            'blinds_installed' => true,
+            'joint_ids' => [$joint->id],
+        ], ['Authorization' => "Bearer $tp"])->assertCreated()->json();
+
+        $this->assertStringStartsWith('TP-'.$proj->job_no.'-', $pkg['pkg_no']);
+        $this->assertSame('DRAFT', $pkg['status']);
+        $this->assertSame('Hydro', $pkg['test_kind']);
+        $this->assertCount(1, $pkg['joints']);
+
+        // Joint belum NDT OK: READY_FOR_TEST harus ditolak.
+        $this->putJson("/api/test-packages/{$pkg['id']}", [
+            'status' => 'READY_FOR_TEST',
+        ], ['Authorization' => "Bearer $tp"])->assertStatus(422);
+
+        // Joint yang sama tidak boleh masuk paket lain yang belum ditutup.
+        $this->postJson('/api/test-packages', [
+            'project_id' => $proj->id,
+            'system_name' => 'Duplikat',
+            'joint_ids' => [$joint->id],
+        ], ['Authorization' => "Bearer $tp"])->assertStatus(422);
+
+        // Setelah NDT bersih, gate terbuka dan alur status berjalan.
+        $joint->update(['status' => 'NDT_OK']);
+
+        $this->putJson("/api/test-packages/{$pkg['id']}", [
+            'status' => 'READY_FOR_TEST',
+        ], ['Authorization' => "Bearer $tp"])->assertOk()->assertJsonPath('status', 'READY_FOR_TEST');
+
+        $this->putJson("/api/test-packages/{$pkg['id']}", [
+            'status' => 'CLOSED',
+        ], ['Authorization' => "Bearer $tp"])->assertStatus(422);
+
+        foreach (['TEST_IN_PROGRESS', 'PASSED', 'REINSTATED', 'CLOSED'] as $status) {
+            $this->putJson("/api/test-packages/{$pkg['id']}", [
+                'status' => $status,
+            ], ['Authorization' => "Bearer $tp"])->assertOk()->assertJsonPath('status', $status);
+        }
+
+        // Rekaman yang sudah diuji tidak boleh dihapus.
+        $this->deleteJson("/api/test-packages/{$pkg['id']}", [], [
+            'Authorization' => "Bearer $tp",
+        ])->assertStatus(422);
+
+        DB::table('joint_test_package')->where('test_package_id', $pkg['id'])->delete();
+        TestPackage::whereKey($pkg['id'])->delete();
+        $joint->delete();
     }
 
     public function test_hse_write(): void
     {
         $hse = $this->token('hse');
+        $proj = Project::first();
+
+        // Data HSE wajib punya project; tanpa itu baris tidak bisa difilter
+        // dan KPI akan mencampur semua pekerjaan.
+        $this->postJson('/api/hse', [
+            'log_date' => '2026-10-12', 'kind' => 'tbm', 'description' => 'Briefing tanpa project',
+        ], ['Authorization' => "Bearer $hse"])->assertStatus(422);
+
         $log = $this->postJson('/api/hse', [
+            'project_id' => $proj->id,
             'log_date' => '2026-10-12', 'kind' => 'tbm', 'description' => 'Briefing KT',
-            'action_taken' => 'APD', 'status' => 'open',
+            'action_taken' => 'APD', 'status' => 'open', 'pic' => 'Mandor',
+            'due_date' => '2026-10-15',
         ], ['Authorization' => "Bearer $hse"])->assertCreated()->json();
+
         $this->assertSame('APD', $log['action_taken']);
+        $this->assertSame($proj->id, $log['project_id']);
+        $this->assertStringStartsWith('HSE-', $log['log_no']);
+
         HseLog::where('description', 'Briefing KT')->delete();
+    }
+
+    // Hazard adalah register lintas departemen: Construction boleh melapor
+    // walau PIC-nya dari perusahaan lain, dan QA/QC tetap bisa melihatnya.
+    public function test_hazard_report_is_cross_department(): void
+    {
+        $con = $this->token('construction');
+        $proj = Project::first();
+
+        $hazard = $this->postJson('/api/hse-hazards', [
+            'project_id' => $proj->id,
+            'found_date' => '2026-11-17',
+            'location' => 'Line MPP-AB',
+            'category' => 'UNSAFE_CONDITION',
+            'severity' => 'HIGH',
+            'description' => 'Tangga akses tanpa railing',
+            'due_date' => '2026-11-20',
+            'pic_user_id' => '',
+            'pic_name' => 'Mandor Subcon',
+            'pic_company' => 'PT Subcon Jaya',
+        ], ['Authorization' => "Bearer $con"])->assertCreated()->json();
+
+        $this->assertSame('OPEN', $hazard['status']);
+        $this->assertSame(
+            Department::where('code', 'HSE')->value('id'),
+            $hazard['department_id'],
+            'department_id harus milik HSE agar temuan tidak hilang dari layar HSE.'
+        );
+        $this->assertSame(
+            Department::where('code', 'CONS')->value('id'),
+            $hazard['reporter_department_id'],
+            'Departemen pelapor disimpan terpisah.'
+        );
+        $this->assertSame('PT Subcon Jaya', $hazard['pic_company']);
+        $this->assertStringStartsWith('HZD-', $hazard['hazard_no']);
+
+        // Role non-HSE tidak boleh membuka log/permit/man-hours lengkap.
+        $this->getJson('/api/hse', ['Authorization' => "Bearer $con"])->assertForbidden();
+
+        $this->app['auth']->forgetGuards();
+        $qaqc = $this->token('qaqc');
+        $rows = $this->getJson(
+            '/api/hse-hazards?project_id='.$proj->id,
+            ['Authorization' => "Bearer $qaqc"]
+        )->assertOk()->json();
+
+        $this->assertTrue(
+            collect($rows)->contains('id', $hazard['id']),
+            'QA/QC harus bisa membaca temuan lintas departemen.'
+        );
+
+        HseHazard::whereKey($hazard['id'])->delete();
+    }
+
+    // PIC hanya boleh menindaklanjuti baris yang ditugaskan kepadanya; HSE
+    // memegang keputusan akhir (CLOSED / REOPENED).
+    public function test_hazard_respond_is_limited_to_assigned_pic(): void
+    {
+        $proj = Project::first();
+        $pic = User::where('email', 'construction@pcm.local')->firstOrFail();
+        $hseUser = User::where('email', 'hse@pcm.local')->firstOrFail();
+
+        $hazard = HseHazard::create([
+            'project_id' => $proj->id,
+            'hazard_no' => 'HZD-KT-'.uniqid(),
+            'found_date' => '2026-11-17',
+            'location' => 'Shop Fabrikasi',
+            'category' => 'UNSAFE_ACT',
+            'severity' => 'MEDIUM',
+            'description' => 'Pekerja tanpa safety glasses',
+            'due_date' => '2026-11-19',
+            'pic_user_id' => $pic->id,
+            'pic_name' => $pic->name,
+            'status' => 'OPEN',
+            'department_id' => Department::where('code', 'HSE')->value('id'),
+        ]);
+
+        try {
+            $eng = $this->token('engineer');
+            $this->putJson("/api/hse-hazards/{$hazard->id}", [
+                'status' => 'IN_PROGRESS', 'corrective_action' => 'Tegur pekerja',
+            ], ['Authorization' => "Bearer $eng"])->assertForbidden();
+
+            $this->app['auth']->forgetGuards();
+            $con = $this->token('construction');
+
+            // Resolved wajib punya tindakan perbaikan.
+            $this->putJson("/api/hse-hazards/{$hazard->id}", [
+                'status' => 'RESOLVED',
+            ], ['Authorization' => "Bearer $con"])->assertStatus(422);
+
+            // PIC tidak boleh menutup sendiri.
+            $this->putJson("/api/hse-hazards/{$hazard->id}", [
+                'status' => 'CLOSED', 'corrective_action' => 'Safety glasses dibagikan',
+            ], ['Authorization' => "Bearer $con"])->assertForbidden();
+
+            $resolved = $this->putJson("/api/hse-hazards/{$hazard->id}", [
+                'status' => 'RESOLVED',
+                'corrective_action' => 'Safety glasses dibagikan dan briefing ulang',
+            ], ['Authorization' => "Bearer $con"])->assertOk()->json();
+
+            $this->assertSame('RESOLVED', $resolved['status']);
+            $this->assertStringContainsString('Safety glasses', $resolved['corrective_action']);
+
+            $this->app['auth']->forgetGuards();
+            $hse = $this->token('hse');
+
+            $closed = $this->putJson("/api/hse-hazards/{$hazard->id}", [
+                'status' => 'CLOSED',
+                'verification_note' => 'Bukti after diterima',
+            ], ['Authorization' => "Bearer $hse"])->assertOk()->json();
+
+            $this->assertSame('CLOSED', $closed['status']);
+            $this->assertSame($hseUser->id, $closed['verified_by']);
+            $this->assertNotNull($closed['verified_at']);
+
+            // Ganti PIC internal ke PIC eksternal: string kosong harus menjadi null.
+            $external = $this->putJson("/api/hse-hazards/{$hazard->id}", [
+                'pic_user_id' => '',
+                'pic_name' => 'Mandor Subcon',
+                'pic_company' => 'PT Subcon Jaya',
+            ], ['Authorization' => "Bearer $hse"])->assertOk()->json();
+
+            $this->assertNull($external['pic_user_id']);
+            $this->assertNull($external['pic_department_id']);
+            $this->assertSame('PT Subcon Jaya', $external['pic_company']);
+        } finally {
+            $hazard->delete();
+        }
+    }
+
+    public function test_permit_approval_requires_hse_approve_permission(): void
+    {
+        $hse = $this->token('hse');
+        $proj = Project::first();
+
+        $permit = $this->postJson('/api/hse-permits', [
+            'project_id' => $proj->id,
+            'permit_type' => 'HOT_WORK',
+            'work_location' => 'Shop Fabrikasi',
+            'line_no' => 'MPP-AB',
+            'work_scope' => 'Pengelasan spool',
+            'applicant_name' => 'Mandor Subcon',
+            'applicant_company' => 'PT Subcon Jaya',
+            'valid_from' => '2026-11-17 08:00:00',
+            'valid_to' => '2026-11-17 17:00:00',
+        ], ['Authorization' => "Bearer $hse"])->assertCreated()->json();
+
+        $this->assertSame('PENDING', $permit['status']);
+        $this->assertStringStartsWith('PTW-', $permit['permit_no']);
+
+        try {
+            $this->app['auth']->forgetGuards();
+            $eng = $this->token('engineer');
+            $this->postJson(
+                "/api/hse-permits/{$permit['id']}/approve",
+                [],
+                ['Authorization' => "Bearer $eng"]
+            )->assertForbidden();
+
+            // PM punya hse.approve walau bukan departemen HSE.
+            $this->app['auth']->forgetGuards();
+            $pm = $this->token('project_manager');
+            $approved = $this->postJson(
+                "/api/hse-permits/{$permit['id']}/approve",
+                [],
+                ['Authorization' => "Bearer $pm"]
+            )->assertOk()->json();
+
+            $this->assertSame('APPROVED', $approved['status']);
+            $this->assertNotNull($approved['approved_at']);
+        } finally {
+            HsePermit::whereKey($permit['id'])->delete();
+        }
+    }
+
+    public function test_hse_summary_is_data_driven(): void
+    {
+        $hse = $this->token('hse');
+        $proj = Project::first();
+
+        $manhour = $this->postJson('/api/hse-manhours', [
+            'project_id' => $proj->id,
+            'work_date' => '2026-11-17',
+            'area' => 'Shop Fabrikasi',
+            'contractor' => 'PT Subcon Jaya',
+            'worker_count' => 10,
+            'work_hours' => 8,
+        ], ['Authorization' => "Bearer $hse"])->assertCreated()->json();
+
+        // Total dihitung server, bukan dikirim klien.
+        $this->assertEqualsWithDelta(80, (float) $manhour['manhours'], 0.01);
+
+        $tbm = $this->postJson('/api/hse-tbm', [
+            'project_id' => $proj->id,
+            'tbm_date' => '2026-11-17',
+            'shift' => 'PAGI',
+            'location' => 'Shop Fabrikasi',
+            'topic' => 'APD dan housekeeping',
+            'attendee_list' => json_encode([
+                ['name' => 'Budi', 'company' => 'PT Subcon Jaya'],
+                ['name' => 'Slamet', 'company' => 'PCM'],
+            ]),
+        ], ['Authorization' => "Bearer $hse"])->assertCreated()->json();
+
+        $this->assertSame(2, (int) $tbm['attendees_count']);
+
+        try {
+            $summary = $this->getJson(
+                '/api/hse-summary?project_id='.$proj->id,
+                ['Authorization' => "Bearer $hse"]
+            )->assertOk()->json();
+
+            $this->assertGreaterThanOrEqual(80, (float) $summary['manhours']['total']);
+            $this->assertGreaterThanOrEqual(1, (int) $summary['manhours']['days_recorded']);
+            $this->assertGreaterThanOrEqual(1, (int) $summary['tbm']['total']);
+            $this->assertGreaterThanOrEqual(2, (int) $summary['tbm']['attendees_total']);
+            $this->assertArrayHasKey('overdue', $summary['hazards']);
+            $this->assertArrayHasKey('expired', $summary['permits']);
+        } finally {
+            HseManhour::whereKey($manhour['id'])->delete();
+            HseTbm::whereKey($tbm['id'])->delete();
+        }
+    }
+
+    /**
+     * Safe man-hours adalah angka KPI. Server harus menolak baris dobel dan
+     * nilai yang tidak mungkin (jam > 24, pekerja 0) supaya KPI tidak bisa
+     * "digenjot" tanpa sengaja.
+     */
+    public function test_manhours_reject_duplicate_and_unreasonable_values(): void
+    {
+        $hse = $this->token('hse');
+        $proj = Project::first();
+
+        $payload = [
+            'project_id' => $proj->id,
+            'work_date' => '2026-11-18',
+            'area' => 'MPP Area',
+            'contractor' => 'PT Subcon Jaya',
+            'worker_count' => 10,
+            'work_hours' => 8,
+        ];
+
+        $created = $this->postJson('/api/hse-manhours', $payload, [
+            'Authorization' => "Bearer $hse",
+        ])->assertCreated()->json();
+
+        try {
+            $this->postJson('/api/hse-manhours', $payload, [
+                'Authorization' => "Bearer $hse",
+            ])->assertStatus(422);
+
+            $this->postJson('/api/hse-manhours', array_merge($payload, ['work_hours' => 30]), [
+                'Authorization' => "Bearer $hse",
+            ])->assertStatus(422);
+
+            $this->postJson('/api/hse-manhours', array_merge($payload, ['worker_count' => 0]), [
+                'Authorization' => "Bearer $hse",
+            ])->assertStatus(422);
+
+            // Baris yang sama boleh diperbarui; dirinya sendiri bukan duplikat.
+            $this->putJson("/api/hse-manhours/{$created['id']}", ['notes' => 'revisi'], [
+                'Authorization' => "Bearer $hse",
+            ])->assertOk();
+
+            // Area berbeda adalah pekerjaan berbeda, jadi boleh disimpan.
+            $this->postJson('/api/hse-manhours', array_merge($payload, ['area' => 'Tank Farm Area']), [
+                'Authorization' => "Bearer $hse",
+            ])->assertCreated();
+        } finally {
+            HseManhour::where('project_id', $proj->id)
+                ->whereDate('work_date', '2026-11-18')
+                ->delete();
+        }
     }
 
     // BOQ dan progres harian adalah artefak Project Management. Sejak department

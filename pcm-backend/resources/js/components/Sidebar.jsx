@@ -36,6 +36,12 @@ export const OPERATIONAL_MENU_IDS = [
     'qaqc',
     'testpackage',
     'hse',
+    'hse_summary',
+    'hse_log',
+    'hse_permit',
+    'hse_hazard',
+    'hse_tbm',
+    'hse_manhours',
 ];
 
 // Modul yang dimiliki tiap departemen.
@@ -74,7 +80,7 @@ export const DEPARTMENT_MENUS = {
     ],
     CONS: ['construction_project_list', 'construction', 'erection'],
     QAQC: ['qaqc_project_list', 'qaqc', 'testpackage', 'mat_inspection', 'material_standard', 'master_pipe'],
-    HSE: ['hse']
+    HSE: ['hse_summary', 'hse_log', 'hse_permit', 'hse_hazard', 'hse_tbm', 'hse_manhours']
 };
 
 // Satu menu = satu layar. Visibilitas ditentukan izin dari database.
@@ -284,8 +290,18 @@ export const ROLE_SIDEBAR_MENUS = [
     {
         id: 'hse',
         label: 'HSE Safety',
-        perm: 'hse.view',
-        desc: 'Jam Kerja Aman & Safety Log'
+        anyOf: ['hse.view', 'hse.hazard.report'],
+        desc: 'Hazard, Permit, TBM, Man-hours & Safety Log',
+        // Satu anak = satu layar, sama seperti departemen lain. Role yang
+        // hanya boleh melapor hazard tetap melihat sub-menu itu saja.
+        children: [
+            { id: 'hse_summary', label: 'Ringkasan', perm: 'hse.view', desc: 'KPI HSE project: man-hours, hazard, permit, dan TBM' },
+            { id: 'hse_log', label: 'Log Harian', perm: 'hse.view', desc: 'Briefing, inspeksi, induksi, dan kejadian lapangan' },
+            { id: 'hse_permit', label: 'Permit (PTW)', perm: 'hse.view', desc: 'Permit to work dan persetujuannya' },
+            { id: 'hse_hazard', label: 'Hazard & Temuan', anyOf: ['hse.view', 'hse.hazard.report'], desc: 'Laporan hazard, PIC, dan verifikasi HSE' },
+            { id: 'hse_tbm', label: 'Toolbox Meeting', perm: 'hse.view', desc: 'Toolbox meeting beserta daftar peserta' },
+            { id: 'hse_manhours', label: 'Safe Man-hours', perm: 'hse.view', desc: 'Jam kerja aman per hari dan area' },
+        ]
     },
     {
         id: 'pm_projects',
@@ -399,15 +415,18 @@ export function Sidebar({
 
     /* --- Sub-menu (parent bisa dibuka/tutup) ---------------------------------
        Status buka-tutup disimpan di localStorage supaya tidak reset saat reload.
-       Default: terbuka, agar isi "Master Pipe" langsung terlihat. */
+       Default: terbuka, agar isi "Master Pipe" dan "HSE Safety" langsung terlihat. */
     const SUBMENU_STORAGE_KEY = 'pcm.sidebar.submenus';
+    const DEFAULT_OPEN_SUBMENUS = { master_pipe: true, material_standard: true, hse: true };
     const [openSubmenus, setOpenSubmenus] = useState(() => {
         try {
             const raw = window.localStorage.getItem(SUBMENU_STORAGE_KEY);
             const parsed = raw ? JSON.parse(raw) : null;
-            return parsed && typeof parsed === 'object' ? parsed : { master_pipe: true, material_standard: true };
+            return parsed && typeof parsed === 'object'
+                ? { ...DEFAULT_OPEN_SUBMENUS, ...parsed }
+                : DEFAULT_OPEN_SUBMENUS;
         } catch (err) {
-            return { master_pipe: true, material_standard: true };
+            return DEFAULT_OPEN_SUBMENUS;
         }
     });
 
@@ -433,9 +452,26 @@ export function Sidebar({
         setOpenSubmenus((prev) => (prev[parent.id] ? prev : { ...prev, [parent.id]: true }));
     }, [activeTab]);
 
-    let displayedMenus = ROLE_SIDEBAR_MENUS.filter((menu) =>
-        menu.anyOf ? menu.anyOf.some(allow) : allow(menu.perm)
-    );
+    /* Sub-menu punya izinnya sendiri. Induk yang tidak punya satu pun anak
+       yang boleh dibuka tidak dirender supaya sidebar tidak menampilkan
+       folder kosong. */
+    const filterMenuChildren = (menu) => {
+        if (!Array.isArray(menu.children)) return menu;
+        /* Anak yang tidak mendefinisikan izin sendiri (mis. Pipe Standards)
+           mewarisi izin menu induknya — tanpa ini sub-menu lama ikut hilang. */
+        const childAllowed = (child) => {
+            if (child.anyOf) return child.anyOf.some(allow);
+            if (child.perm) return allow(child.perm);
+            return menu.anyOf ? menu.anyOf.some(allow) : allow(menu.perm);
+        };
+        const children = menu.children.filter(childAllowed);
+        return { ...menu, children };
+    };
+
+    let displayedMenus = ROLE_SIDEBAR_MENUS
+        .filter((menu) => (menu.anyOf ? menu.anyOf.some(allow) : allow(menu.perm)))
+        .map(filterMenuChildren)
+        .filter((menu) => !Array.isArray(menu.children) || menu.children.length > 0);
 
     // Untuk superadmin: susun menu utama dan administrasi secara ringkas.
     // Dropdown departemen ditaruh langsung di dalam menu sidebar, tepat di bawah Departments.
@@ -446,11 +482,21 @@ export function Sidebar({
 
         const baseMenus = adminOrder
             .map((id) => ROLE_SIDEBAR_MENUS.find((m) => m.id === id))
-            .filter(Boolean);
+            .filter(Boolean)
+            .map(filterMenuChildren);
 
-        const opMenus = deptModules
-            .map((id) => ROLE_SIDEBAR_MENUS.find((m) => m.id === id))
-            .filter(Boolean);
+        /* DEPARTMENT_MENUS boleh berisi id anak (mis. hse_summary). Resolusi
+           ke menu induk dan buang duplikat supaya sub-menu tidak muncul
+           berkali-kali. */
+        const opMenus = [];
+        deptModules.forEach((id) => {
+            const parent = ROLE_SIDEBAR_MENUS.find((m) => m.id === id)
+                || ROLE_SIDEBAR_MENUS.find(
+                    (m) => Array.isArray(m.children) && m.children.some((c) => c.id === id)
+                );
+            if (!parent || opMenus.some((m) => m.id === parent.id)) return;
+            opMenus.push(filterMenuChildren(parent));
+        });
 
         displayedMenus = [...baseMenus, ...opMenus];
     } else if (user?.role === 'project_manager') {

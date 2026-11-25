@@ -2,6 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
 import { PcmSelect } from './SearchSelect';
+import {
+    HAZARD_CATEGORIES, HAZARD_SEVERITIES, HseModal, submitHseForm, today as hseToday,
+} from './hse/HseShared';
 
 /* --------------------------------------------------------------------------
  * Helpers & Formatters
@@ -89,6 +92,16 @@ function IconList({ className = '' }) {
     );
 }
 
+function IconAlert({ className = '' }) {
+    return (
+        <svg className={`pcm-i ${className}`} style={{ width: '1rem', height: '1rem' }} {...SVG_PROPS}>
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+    );
+}
+
 export function QaqcTab({
     joints = [],
     inspections = [],
@@ -146,6 +159,23 @@ export function QaqcTab({
     const [error, setError] = useState('');
 
     const canEdit = can(user, 'inspection.write');
+
+    /* Jalur pintas QA/QC → HSE: temuan inspeksi bisa dikirim sebagai hazard.
+       Yang disimpan tetap satu baris hazard HSE; data QC tidak diduplikasi. */
+    const canReportHazard = can(user, 'hse.hazard.report') || can(user, 'hse.write');
+    const [hseFinding, setHseFinding] = useState(null);
+    const [hseForm, setHseForm] = useState({
+        found_date: hseToday(),
+        location: '',
+        category: 'UNSAFE_CONDITION',
+        severity: 'MEDIUM',
+        description: '',
+        due_date: '',
+    });
+    const [hsePhoto, setHsePhoto] = useState(null);
+    const [hseBusy, setHseBusy] = useState(false);
+    const [hseError, setHseError] = useState('');
+    const [hseCreated, setHseCreated] = useState(null);
 
     // Drawing lookup helper
     const drawingLookup = useMemo(() => {
@@ -308,6 +338,82 @@ export function QaqcTab({
     const handleOpenDetailReport = (r) => {
         setActiveReport(r);
         setShowDetailReportModal(true);
+    };
+
+    const closeHseModal = () => {
+        setHseFinding(null);
+        setHsePhoto(null);
+        setHseError('');
+        setHseCreated(null);
+    };
+
+    const hseProjectId = () => {
+        if (selectedProjectId) return selectedProjectId;
+        const joint = hseFinding?.joint;
+        const drawingProject = joint ? drawingLookup[joint.drawing_no]?.project_id : null;
+        return drawingProject || activeProjectId || '';
+    };
+
+    /* Buka form hazard dengan lokasi/uraian yang sudah terisi dari laporan QC.
+       Petugas QA/QC cukup meninjau lalu mengirim; status tetap OPEN dan
+       verifikasi/penutupan tetap di tangan HSE. */
+    const handleOpenHseReport = (r) => {
+        const joint = (joints || []).find((j) => j.id === r.joint_id) || null;
+        const place = [joint?.line_no, joint?.drawing_no].filter(Boolean).join(' — ');
+        const defect = r.defect_type && r.defect_type !== 'NONE'
+            ? `defect ${r.defect_type}`
+            : `hasil inspeksi ${r.kind || 'QC'} ${r.result || ''}`.trim();
+
+        setHseFinding({ report: r, joint });
+        setHseForm({
+            found_date: hseToday(),
+            location: place || joint?.spool_no || 'Area QA/QC',
+            category: 'UNSAFE_CONDITION',
+            severity: r.result === 'FAIL' ? 'HIGH' : 'MEDIUM',
+            description: `Temuan QC ${r.report_no || ''}: ${defect}${r.remarks ? ` — ${r.remarks}` : ''}`,
+            due_date: '',
+        });
+        setHsePhoto(null);
+        setHseError('');
+        setHseCreated(null);
+    };
+
+    const handleSubmitHseReport = async (event) => {
+        event.preventDefault();
+        if (!hseFinding) return;
+
+        const projectId = hseProjectId();
+        if (!projectId) {
+            setHseError('Project belum dipilih. Pilih project dulu di layar QA/QC.');
+            return;
+        }
+
+        setHseBusy(true);
+        setHseError('');
+
+        try {
+            const payload = { ...hseForm, project_id: projectId };
+            if (!payload.due_date) delete payload.due_date;
+
+            const created = await submitHseForm(
+                '/hse-hazards',
+                payload,
+                { photo_before_file: hsePhoto }
+            );
+            setHseCreated(created);
+            if (onReload) onReload();
+        } catch (err) {
+            setHseError(err.message || 'Gagal mengirim laporan hazard ke HSE.');
+        } finally {
+            setHseBusy(false);
+        }
+    };
+
+    const handleOpenHseMenu = () => {
+        const projectId = hseProjectId();
+        if (projectId && onSetActiveProject) onSetActiveProject(projectId);
+        closeHseModal();
+        if (onSelectTab) onSelectTab('hse_hazard');
     };
 
     return (
@@ -650,7 +756,7 @@ export function QaqcTab({
                                     <th scope="col" className="text-center" style={{ width: '110px' }}>
                                         <span className="pcm-th-title">Tanggal</span>
                                     </th>
-                                    <th scope="col" className="text-end" style={{ minWidth: '150px' }}>
+                                    <th scope="col" className="text-end" style={{ minWidth: '250px' }}>
                                         <span className="pcm-th-title">Aksi</span>
                                     </th>
                                 </tr>
@@ -714,6 +820,17 @@ export function QaqcTab({
                                                 </td>
                                                 <td className="text-end text-nowrap">
                                                     <div className="d-inline-flex gap-1.5">
+                                                        {canReportHazard && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleOpenHseReport(r)}
+                                                                className="btn btn-outline-danger btn-sm px-2.5 py-1"
+                                                                title="Laporkan temuan QC ini sebagai hazard ke HSE"
+                                                            >
+                                                                <IconAlert className="me-1" />
+                                                                <span>Ke HSE</span>
+                                                            </button>
+                                                        )}
                                                         <button
                                                             type="button"
                                                             onClick={() => handleOpenDetailReport(r)}
@@ -744,6 +861,158 @@ export function QaqcTab({
                         </table>
                     </div>
                 </div>
+            )}
+
+            {/* Modal Lapor Temuan QC ke HSE */}
+            {hseFinding && (
+                <HseModal
+                    title="Laporkan temuan ke HSE"
+                    subtitle={`Sumber: laporan QC ${hseFinding.report.report_no || ''} — data QC tidak diduplikasi, hanya dibuat satu hazard HSE.`}
+                    size="modal-lg"
+                    onClose={closeHseModal}
+                    footer={hseCreated ? (
+                        <>
+                            {onSelectTab && (
+                                <button type="button" className="btn btn-outline-dark btn-sm" onClick={handleOpenHseMenu}>
+                                    Buka menu HSE
+                                </button>
+                            )}
+                            <button type="button" className="btn btn-dark btn-sm" onClick={closeHseModal}>
+                                Tutup
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={closeHseModal}>
+                                Batal
+                            </button>
+                            <button type="submit" form="qaqc-hse-form" className="btn btn-danger btn-sm" disabled={hseBusy}>
+                                {hseBusy ? 'Mengirim…' : 'Kirim ke HSE'}
+                            </button>
+                        </>
+                    )}
+                >
+                    {hseCreated ? (
+                        <div className="alert alert-success mb-0">
+                            <div className="fw-bold mb-1">Terkirim sebagai {hseCreated.hazard_no}.</div>
+                            <div className="small">
+                                Status <strong>OPEN</strong>. HSE akan memverifikasi dan menunjuk PIC.
+                                Temuan ini sudah masuk ke menu <strong>HSE Safety → Hazard &amp; Temuan</strong>.
+                            </div>
+                        </div>
+                    ) : (
+                        <form id="qaqc-hse-form" onSubmit={handleSubmitHseReport} className="row g-3">
+                            {hseError && (
+                                <div className="col-12">
+                                    <div className="alert alert-danger py-2 small mb-0">{hseError}</div>
+                                </div>
+                            )}
+
+                            <div className="col-12">
+                                <div className="bg-light border rounded p-3 small">
+                                    <div>
+                                        <span className="text-muted">Laporan QC:</span>{' '}
+                                        <strong>{hseFinding.report.report_no || '—'}</strong>
+                                        {' · '}{hseFinding.report.kind || '—'}{' · '}{hseFinding.report.result || '—'}
+                                    </div>
+                                    <div>
+                                        <span className="text-muted">Joint:</span>{' '}
+                                        {hseFinding.joint ? jointLabel(hseFinding.joint) : `#${hseFinding.report.joint_id}`}
+                                        {hseFinding.joint?.drawing_no ? ` · ${hseFinding.joint.drawing_no}` : ''}
+                                    </div>
+                                    {(hseFinding.report.defect_type && hseFinding.report.defect_type !== 'NONE') && (
+                                        <div>
+                                            <span className="text-muted">Defect:</span>{' '}
+                                            <strong className="text-danger">{hseFinding.report.defect_type}</strong>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="col-md-6">
+                                <label className="form-label small fw-semibold">Lokasi / area <span className="text-danger">*</span></label>
+                                <input
+                                    className="form-control"
+                                    required
+                                    value={hseForm.location}
+                                    onChange={(event) => setHseForm({ ...hseForm, location: event.target.value })}
+                                />
+                            </div>
+
+                            <div className="col-md-6">
+                                <label className="form-label small fw-semibold">Tanggal ditemukan</label>
+                                <input
+                                    type="date"
+                                    className="form-control"
+                                    value={hseForm.found_date}
+                                    onChange={(event) => setHseForm({ ...hseForm, found_date: event.target.value })}
+                                />
+                            </div>
+
+                            <div className="col-md-6">
+                                <label className="form-label small fw-semibold">Kategori</label>
+                                <select
+                                    className="form-select"
+                                    value={hseForm.category}
+                                    onChange={(event) => setHseForm({ ...hseForm, category: event.target.value })}
+                                >
+                                    {HAZARD_CATEGORIES.map(([value, label]) => (
+                                        <option key={value} value={value}>{label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="col-md-6">
+                                <label className="form-label small fw-semibold">Severity</label>
+                                <select
+                                    className="form-select"
+                                    value={hseForm.severity}
+                                    onChange={(event) => setHseForm({ ...hseForm, severity: event.target.value })}
+                                >
+                                    {HAZARD_SEVERITIES.map(([value, label]) => (
+                                        <option key={value} value={value}>{label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="col-12">
+                                <label className="form-label small fw-semibold">Uraian temuan <span className="text-danger">*</span></label>
+                                <textarea
+                                    className="form-control"
+                                    rows="3"
+                                    required
+                                    value={hseForm.description}
+                                    onChange={(event) => setHseForm({ ...hseForm, description: event.target.value })}
+                                />
+                            </div>
+
+                            <div className="col-md-6">
+                                <label className="form-label small fw-semibold">Due date tindak lanjut</label>
+                                <input
+                                    type="date"
+                                    className="form-control"
+                                    value={hseForm.due_date}
+                                    onChange={(event) => setHseForm({ ...hseForm, due_date: event.target.value })}
+                                />
+                            </div>
+
+                            <div className="col-md-6">
+                                <label className="form-label small fw-semibold">Foto kondisi (before)</label>
+                                <input
+                                    type="file"
+                                    className="form-control"
+                                    accept="image/*"
+                                    onChange={(event) => setHsePhoto(event.target.files?.[0] || null)}
+                                />
+                            </div>
+
+                            <div className="col-12 text-muted small">
+                                QA/QC tercatat sebagai pelapor. PIC boleh dari departemen/perusahaan lain,
+                                dan HSE yang memverifikasi sampai status CLOSED.
+                            </div>
+                        </form>
+                    )}
+                </HseModal>
             )}
 
             {/* Modal Input Inspeksi Baru (Auto Report No & Locked Reference) */}

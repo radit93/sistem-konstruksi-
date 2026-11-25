@@ -33,7 +33,7 @@ const ROLE_DEFAULT_TABS = {
     construction: 'construction',
     qaqc: 'qaqc',
     testpackage: 'testpackage',
-    hse: 'hse'
+    hse: 'hse_summary'
 };
 
 function App() {
@@ -76,6 +76,11 @@ function App() {
     const [inspections, setInspections] = useState([]);
     const [testPackages, setTestPackages] = useState([]);
     const [hseLogs, setHseLogs] = useState([]);
+    const [hsePermits, setHsePermits] = useState([]);
+    const [hseHazards, setHseHazards] = useState([]);
+    const [hseTbm, setHseTbm] = useState([]);
+    const [hseManhours, setHseManhours] = useState([]);
+    const [hseSummary, setHseSummary] = useState(null);
     const [scopes, setScopes] = useState([]);
     const [projects, setProjects] = useState([]);
     const [activeProjectId, setActiveProjectId] = useState(() => localStorage.getItem('pcm_active_project_id') || '');
@@ -131,11 +136,54 @@ function App() {
                 api.get('/inspections'),
                 api.get('/test-packages'),
             ]);
-            const [hsRes, scRes, pjRes] = await Promise.all([
-                api.get('/hse'),
+            const [scRes, pjRes] = await Promise.all([
                 api.get('/scopes'),
                 api.get('/projects'),
             ]);
+
+            /* HSE hanya dimuat bila akun punya izinnya. Tanpa gerbang ini,
+               satu 403 dari /hse menggagalkan seluruh Promise.all dan semua
+               modul ikut kosong untuk role non-HSE. */
+            const currentUser = api.getUser();
+            const currentPermissions = currentUser?.permissions || [];
+            const isSuper = Boolean(currentUser?.is_superadmin);
+            const canViewHse = isSuper
+                || currentPermissions.includes('hse.view')
+                || currentPermissions.includes('hse.write');
+            const canReportHazard = isSuper || currentPermissions.includes('hse.hazard.report');
+
+            let hseLogRows = [];
+            let hsePermitRows = [];
+            let hseHazardRows = [];
+            let hseTbmRows = [];
+            let hseManhourRows = [];
+            let hseSummaryData = null;
+
+            if (canViewHse) {
+                const [hsRes, hpRes, htRes, hmRes, hsumRes] = await Promise.all([
+                    api.get('/hse'),
+                    api.get('/hse-permits'),
+                    api.get('/hse-tbm'),
+                    api.get('/hse-manhours'),
+                    api.get('/hse-summary'),
+                ]);
+                hseLogRows = hsRes || [];
+                hsePermitRows = hpRes || [];
+                hseTbmRows = htRes || [];
+                hseManhourRows = hmRes || [];
+                hseSummaryData = hsumRes || null;
+            }
+
+            if (canViewHse) {
+                const [hzRes] = await Promise.all([
+                    api.get('/hse-hazards'),
+                ]);
+                hseHazardRows = hzRes || [];
+            } else if (canReportHazard) {
+                // Role pelapor tidak punya akses modul HSE lengkap, jadi cukup
+                // register hazard; KPI penuh tidak perlu diambil.
+                hseHazardRows = (await api.get('/hse-hazards')) || [];
+            }
 
             setOverview(ovRes);
             setDrawings(dwRes);
@@ -143,7 +191,12 @@ function App() {
             setStockMoves(smRes);
             setInspections(inRes);
             setTestPackages(tpRes);
-            setHseLogs(hsRes);
+            setHseLogs(hseLogRows);
+            setHsePermits(hsePermitRows);
+            setHseTbm(hseTbmRows);
+            setHseManhours(hseManhourRows);
+            setHseHazards(hseHazardRows);
+            setHseSummary(hseSummaryData);
             setScopes(scRes);
             setProjects(pjRes || []);
             setLastRefresh(new Date().toLocaleTimeString('id-ID'));
@@ -250,17 +303,25 @@ function App() {
     useEffect(() => {
         if (!token || !user) return;
 
-        const allowed = (menu) => (menu.anyOf
-            ? menu.anyOf.some((code) => user.is_superadmin || permissions.includes(code))
-            : user.is_superadmin || permissions.includes(menu.perm));
+        /* Anak sub-menu boleh tidak punya izin sendiri; dalam hal itu ia
+           mewarisi izin menu induknya (mis. Pipe Standards di bawah
+           Material Standard). Tanpa pewarisan, tab anak lama ikut ditolak. */
+        const allowed = (menu, owner = null) => {
+            if (user.is_superadmin) return true;
+            if (menu.anyOf) return menu.anyOf.some((code) => permissions.includes(code));
+            if (menu.perm) return permissions.includes(menu.perm);
+            return owner ? allowed(owner) : false;
+        };
 
         const inScope = (menu) => {
             if (!user.is_superadmin || !departmentFilter) return true;
-            if (!OPERATIONAL_MENU_IDS.includes(menu.id)) return true;
             const department = departments.find((d) => d.id === Number(departmentFilter));
-            return department
-                ? (DEPARTMENT_MENUS[department.code] || []).includes(menu.id)
-                : false;
+            const modules = department ? (DEPARTMENT_MENUS[department.code] || []) : [];
+            /* Menu induk dan anak-anaknya dianggap satu kesatuan cakupan:
+               HSE misalnya diwakili oleh id anak (hse_summary, dst.). */
+            const ids = [menu.id, ...(menu.children || []).map((child) => child.id)];
+            if (!ids.some((id) => OPERATIONAL_MENU_IDS.includes(id))) return true;
+            return ids.some((id) => modules.includes(id));
         };
 
         /* Menu bisa berada di dalam sub-menu (children). Izin & cakupan
@@ -278,16 +339,31 @@ function App() {
         };
 
         const resolved = resolveMenu(activeTab);
-        if (resolved && allowed(resolved.owner) && inScope(resolved.owner)) {
+        if (resolved && allowed(resolved.owner) && allowed(resolved.target, resolved.owner) && inScope(resolved.owner)) {
             /* Kalau yang aktif adalah menu induk yang punya sub-menu, arahkan
-               ke anak pertama supaya halaman langsung terbuka. */
+               ke anak pertama yang boleh dibuka supaya halaman langsung terbuka. */
             if (Array.isArray(resolved.target.children) && resolved.target.children.length > 0) {
-                setActiveTab(resolved.target.children[0].id);
+                const firstChild = resolved.target.children.find((child) => allowed(child, resolved.target))
+                    || resolved.target.children[0];
+                setActiveTab(firstChild.id);
             }
             return;
         }
 
-        const fallback = ROLE_SIDEBAR_MENUS.find((m) => allowed(m) && inScope(m))?.id || 'overview';
+        /* Fallback juga harus membuka anak pertama yang diizinkan, bukan
+           menu induk yang hanya berfungsi sebagai folder. */
+        let fallback = 'overview';
+        for (const menu of ROLE_SIDEBAR_MENUS) {
+            if (!allowed(menu) || !inScope(menu)) continue;
+            if (Array.isArray(menu.children) && menu.children.length > 0) {
+                const child = menu.children.find((entry) => allowed(entry, menu));
+                if (!child) continue;
+                fallback = child.id;
+            } else {
+                fallback = menu.id;
+            }
+            break;
+        }
         setActiveTab(fallback);
     }, [activeTab, token, user, permissions, departmentFilter, departments, setActiveTab]);
 
@@ -367,6 +443,11 @@ function App() {
                         onSetActiveProject={handleSetActiveProject}
                         isAtRisk={
                             (hseLogs || []).some(l => (l.status || '').toLowerCase() === 'open') ||
+                            (hseHazards || []).some(h => (
+                                h.status !== 'CLOSED'
+                                && h.due_date
+                                && String(h.due_date).slice(0, 10) < new Date().toISOString().slice(0, 10)
+                            )) ||
                             (overview?.ndt_reject_pct !== undefined && overview?.ndt_reject_pct !== null && overview.ndt_reject_pct > 5)
                         }
                     />
@@ -517,16 +598,22 @@ function App() {
                             }}
                         />
                     )}
-                    {activeTab === 'hse' && (
+                    {['hse_summary', 'hse_log', 'hse_permit', 'hse_hazard', 'hse_tbm', 'hse_manhours'].includes(activeTab) && (
                         <HseTab
+                            currentSection={activeTab}
                             projects={projects}
                             hseLogs={hseLogs}
+                            hsePermits={hsePermits}
+                            hseHazards={hseHazards}
+                            hseTbm={hseTbm}
+                            hseManhours={hseManhours}
+                            hseSummary={hseSummary}
                             user={user}
                             activeProjectId={activeProjectId}
                             onSetActiveProject={handleSetActiveProject}
                             onReload={() => {
                                 loadData();
-                                showToast('Log HSE diperbarui');
+                                showToast('Data HSE diperbarui');
                             }}
                         />
                     )}

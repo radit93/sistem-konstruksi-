@@ -71,6 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/material-receivings/{id}/request-inspection', [CrudController::class, 'requestMaterialInspection']);
     Route::post('/material-storings/{id}/transfer', [CrudController::class, 'transferMaterialStock']);
+    Route::patch('/milestone-activities/{id}/toggle', [CrudController::class, 'toggleMilestoneActivity']);
+    Route::patch('/milestone-activities/{id}/note', [CrudController::class, 'noteMilestoneActivity']);
     Route::post('/material-returns', [MaterialInventoryController::class, 'storeReturn']);
     Route::post('/material-adjustments', [MaterialInventoryController::class, 'storeAdjustment']);
     Route::get('/material-returns', [MaterialInventoryController::class, 'indexReturns']);

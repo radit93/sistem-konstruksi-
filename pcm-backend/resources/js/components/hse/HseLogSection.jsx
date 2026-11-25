@@ -7,13 +7,34 @@ import {
     matchesSearch, submitHseForm, today, useHseFilters,
 } from './HseShared';
 
+// Template isian per jenis (dari branch stya); hanya mengisi kolom yang masih kosong.
+const KIND_TEMPLATES = {
+    tbm: { description: 'Safety briefing pagi sebelum pekerjaan fit-up & welding', action_taken: 'Semua pekerja mengenakan APD lengkap (Face shield, welding gloves, safety shoes)' },
+    permit: { description: 'Izin Kerja Aman (PTW) - Hot Work & Confined Space', action_taken: 'Gas detector test clear, APAR standby 1 unit di dekat area kerja' },
+    finding: { description: 'Temuan potensi bahaya (Unsafe condition / Unsafe action) di lokasi kerja', action_taken: 'Barikade pengaman dipasang, tindakan perbaikan langsung dieksekusi' },
+    induction: { description: 'Induksi K3 untuk teknisi / subkontraktor baru', action_taken: 'Pemberian materi K3 proyek, pembagian ID badge & APD standar' },
+    inspection: { description: 'Inspeksi rutin APAR, panel listrik, dan peralatan mesin las', action_taken: 'Peralatan lulus inspeksi berkala dan diberi tagging stiker inspeksi' },
+};
+
+const isTemplateText = (field, value) => !value || Object.values(KIND_TEMPLATES).some((tpl) => tpl[field] === value);
+
+const applyKind = (form, kind) => {
+    const tpl = KIND_TEMPLATES[kind] || {};
+    return {
+        ...form,
+        kind,
+        description: isTemplateText('description', form.description) ? (tpl.description || '') : form.description,
+        action_taken: isTemplateText('action_taken', form.action_taken) ? (tpl.action_taken || '') : form.action_taken,
+    };
+};
+
 const emptyForm = () => ({
     log_date: today(),
     kind: 'tbm',
     location: '',
     severity: 'MEDIUM',
-    description: '',
-    action_taken: '',
+    description: KIND_TEMPLATES.tbm.description,
+    action_taken: KIND_TEMPLATES.tbm.action_taken,
     status: 'open',
     pic: '',
     due_date: '',
@@ -237,7 +258,7 @@ export function HseLogSection({ rows = [], project, canEdit, onReload, onPrint }
                             <select
                                 className="form-select"
                                 value={form.kind}
-                                onChange={(event) => setForm({ ...form, kind: event.target.value })}
+                                onChange={(event) => setForm(applyKind(form, event.target.value))}
                             >
                                 {LOG_KINDS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                             </select>

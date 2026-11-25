@@ -946,29 +946,31 @@ export function MilestoneSection({
                         </div>
                     </div>
 
-                    <div className="d-flex flex-wrap gap-2 mb-3">
-                        <div className="flex-grow-1" style={{ minWidth: '220px' }}>
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <div style={{ width: '280px', maxWidth: '100%' }}>
                             <input
                                 type="text"
                                 className="form-control form-control-sm"
-                                placeholder="Cari nama akun, role, atau departemen..."
+                                placeholder="Cari nama akun, role, departemen..."
                                 value={accountSearch}
                                 onChange={(e) => setAccountSearch(e.target.value)}
-                                style={{ borderRadius: 'var(--pcm-radius-control)', padding: '0.5rem 0.75rem' }}
+                                style={{ borderRadius: 'var(--pcm-radius-control)', height: '38px', padding: '0.375rem 0.75rem', fontSize: '0.85rem' }}
                             />
                         </div>
                         {accountRoleOptions.length > 0 && (
-                            <PcmSelect
-                                searchable={false}
-                                clearable={false}
-                                value={accountRoleFilter}
-                                onChange={(e) => setAccountRoleFilter(e.target.value)}
-                            >
-                                <option value="ALL">Semua Role ({accountDirectory.length})</option>
-                                {accountRoleOptions.map(r => (
-                                    <option key={r.code} value={r.code}>{r.label}</option>
-                                ))}
-                            </PcmSelect>
+                            <div style={{ width: '240px', maxWidth: '100%' }}>
+                                <PcmSelect
+                                    searchable={false}
+                                    clearable={false}
+                                    value={accountRoleFilter}
+                                    onChange={(e) => setAccountRoleFilter(e.target.value)}
+                                >
+                                    <option value="ALL">Semua Role ({accountDirectory.length})</option>
+                                    {accountRoleOptions.map(r => (
+                                        <option key={r.code} value={r.code}>{r.label}</option>
+                                    ))}
+                                </PcmSelect>
+                            </div>
                         )}
                     </div>
 
@@ -1117,15 +1119,15 @@ export function MilestoneSection({
                         )}
                     </div>
 
-                    <div className="d-flex flex-wrap gap-2 mb-3">
-                        <div className="flex-grow-1" style={{ minWidth: '220px' }}>
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <div style={{ width: '320px', maxWidth: '100%' }}>
                             <input
                                 type="text"
                                 className="form-control form-control-sm"
                                 placeholder={`Cari proyek milik ${selectedAccount.name} (Job No, Nama Proyek, Client)...`}
                                 value={pmProjectSearch}
                                 onChange={(e) => setPmProjectSearch(e.target.value)}
-                                style={{ borderRadius: 'var(--pcm-radius-control)', padding: '0.5rem 0.75rem' }}
+                                style={{ borderRadius: 'var(--pcm-radius-control)', height: '38px', padding: '0.375rem 0.75rem', fontSize: '0.85rem' }}
                             />
                         </div>
                     </div>
@@ -1368,52 +1370,58 @@ export function MilestoneSection({
                     )}
 
                     {/* Search & Filter Toolbar */}
-                    <div className="d-flex flex-wrap gap-2 mb-3">
-                        <div className="flex-grow-1" style={{ minWidth: '210px' }}>
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <div style={{ width: '280px', maxWidth: '100%' }}>
                             <input
                                 type="text"
                                 className="form-control form-control-sm"
                                 placeholder="Cari Milestone, Peran (Welder/Fitter), Nama Akun..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                style={{ borderRadius: 'var(--pcm-radius-control)', padding: '0.5rem 0.75rem' }}
+                                style={{ borderRadius: 'var(--pcm-radius-control)', height: '38px', padding: '0.375rem 0.75rem', fontSize: '0.85rem' }}
                             />
                         </div>
                         {isManager && pmViewMode === 'BASELINE' && accountOptionsFilter.length > 0 && (
-                            <PcmSelect
-                                searchable={false}
-                                clearable={false}
-                                value={filterAccount}
-                                onChange={(e) => setFilterAccount(e.target.value)}
-                            >
-                                <option value="ALL">Semua Akun ({accountOptionsFilter.length})</option>
-                                {accountOptionsFilter.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                            </PcmSelect>
+                            <div style={{ width: '200px', maxWidth: '100%' }}>
+                                <PcmSelect
+                                    searchable={false}
+                                    clearable={false}
+                                    value={filterAccount}
+                                    onChange={(e) => setFilterAccount(e.target.value)}
+                                >
+                                    <option value="ALL">Semua Akun ({accountOptionsFilter.length})</option>
+                                    {accountOptionsFilter.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                </PcmSelect>
+                            </div>
                         )}
                         {roleOptionsFilter.length > 0 && (
+                            <div style={{ width: '180px', maxWidth: '100%' }}>
+                                <PcmSelect
+                                    searchable={false}
+                                    clearable={false}
+                                    value={filterRole}
+                                    onChange={(e) => setFilterRole(e.target.value)}
+                                >
+                                    <option value="ALL">Semua Peran</option>
+                                    {roleOptionsFilter.map(r => <option key={r} value={r}>{r}</option>)}
+                                </PcmSelect>
+                            </div>
+                        )}
+                        <div style={{ width: '180px', maxWidth: '100%' }}>
                             <PcmSelect
+                                key="milestone-status-filter"
                                 searchable={false}
                                 clearable={false}
-                                value={filterRole}
-                                onChange={(e) => setFilterRole(e.target.value)}
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
                             >
-                                <option value="ALL">Semua Peran</option>
-                                {roleOptionsFilter.map(r => <option key={r} value={r}>{r}</option>)}
+                                <option value="ALL">Semua Status</option>
+                                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                                <option value="COMPLETED">COMPLETED</option>
+                                <option value="PENDING">PENDING</option>
+                                <option value="HOLD_POINT">Hold Point Kritis</option>
                             </PcmSelect>
-                        )}
-                        <PcmSelect
-                            key="milestone-status-filter"
-                            searchable={false}
-                            clearable={false}
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            <option value="ALL">Semua Status</option>
-                            <option value="IN_PROGRESS">IN_PROGRESS</option>
-                            <option value="COMPLETED">COMPLETED</option>
-                            <option value="PENDING">PENDING</option>
-                            <option value="HOLD_POINT">Hold Point Kritis</option>
-                        </PcmSelect>
+                        </div>
                     </div>
 
                     {/* Table */}

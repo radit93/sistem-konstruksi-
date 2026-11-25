@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { api } from '../api';
 import { can } from '../auth';
-import { BoqContractSection } from './pm/BoqContractSection';
 import { SCurveSection } from './pm/SCurveSection';
 import { BudgetCostSection } from './pm/BudgetCostSection';
 import { DailyLogSection } from './pm/DailyLogSection';
 import { MilestoneSection } from './pm/MilestoneSection';
-import { ExecutiveReportSection } from './pm/ExecutiveReportSection';
+import { ProjectReportSection } from './pm/ProjectReportSection';
 import { PcmSelect } from './SearchSelect';
 
 /* -------------------------------------------------------------------------
@@ -85,18 +84,17 @@ function IconShield({ size }) {
 
 const SECTION_LABELS = {
     pm_projects: 'Project List',
-    schedule: 'Kontrak & BOQ',
-    pm_scurve: 'S-Curve & Schedule',
+    pm_scurve: 'Grafik',
     pm_budget: 'Budgeting',
     pm_daily: 'Daily Progress Log',
     pm_milestone: 'Project Milestone',
-    report: 'Laporan Eksekutif'
+    report: 'Laporan'
 };
 
 const emptyFolderForm = () => ({ client: '', name: '', job_no: '' });
 
 export function ProjectManagerTab({
-    currentSection = 'schedule',
+    currentSection = 'pm_scurve',
     projects = [],
     activeProjectId = '',
     onSetActiveProject,
@@ -322,7 +320,7 @@ export function ProjectManagerTab({
                         <div>
                             <h2 className="h4 fw-bold text-dark mb-1">Project List</h2>
                             <p className="text-muted small mb-0">
-                                Daftar seluruh proyek kontrak piping. Pilih proyek aktif untuk membuka Kontrak &amp; BOQ, S-Curve, Budget, dan Laporan.
+                                Daftar seluruh proyek kontrak piping. Pilih proyek aktif untuk membuka Grafik, Budget, dan Laporan.
                             </p>
                         </div>
                         {canEdit && (
@@ -428,7 +426,7 @@ export function ProjectManagerTab({
                                                             style={{ borderRadius: 'var(--pcm-radius-chip)', backgroundColor: '#1e40af', borderColor: '#1d4ed8' }}
                                                             onClick={() => {
                                                                 handleSelectProject(p.id);
-                                                                if (onSelectTab) onSelectTab('schedule');
+                                                                if (onSelectTab) onSelectTab('pm_scurve');
                                                             }}
                                                         >
                                                             Buka Proyek
@@ -448,7 +446,7 @@ export function ProjectManagerTab({
             {/* ============================================================
                 LOADING / EMPTY STATE JIKA PROYEK BELUM SIAP
                 ============================================================ */}
-            {currentSection !== 'pm_projects' && !(currentSection === 'pm_milestone' && isPmOversight) && !activeProject && loading && (
+            {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && currentSection !== 'pm_scurve' && !activeProject && loading && (
                 <div className="pcm-state" role="status" aria-live="polite">
                     <span className="spinner-border spinner-border-sm text-primary mb-2" aria-hidden="true" />
                     <p className="pcm-state__title">Memuat data proyek</p>
@@ -456,7 +454,7 @@ export function ProjectManagerTab({
                 </div>
             )}
 
-            {currentSection !== 'pm_projects' && !(currentSection === 'pm_milestone' && isPmOversight) && !activeProject && !loading && (
+            {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && currentSection !== 'pm_scurve' && !activeProject && !loading && (
                 <div className="pcm-state">
                     <span className="pcm-state__icon"><IconFolder size="lg" /></span>
                     <h2 className="pcm-state__title">Belum ada proyek terdaftar</h2>
@@ -476,25 +474,73 @@ export function ProjectManagerTab({
                 </div>
             )}
 
-            {/* KHUSUS PROJECT MANAGER: MONITORING MILESTONE PER AKUN -> PER PROJECT */}
-            {currentSection === 'pm_milestone' && isPmOversight && (
-                <MilestoneSection
-                    project={activeProject}
-                    projects={enrichedProjects}
-                    drawings={projectDrawings}
-                    joints={projectJoints}
-                    materialInspections={crossData.materialInspections}
-                    inspections={crossData.inspections}
-                    testPackages={crossData.testPackages}
+            {/* S-CURVE & SCHEDULE: TAMPILKAN LIST PROJECT & DRILL-DOWN PROGRES GLOBAL / PER AKUN */}
+            {currentSection === 'pm_scurve' && (
+                <SCurveSection
+                    projects={enrichedProjects.length > 0 ? enrichedProjects : projects}
+                    initialProjectId={activeProject?.id || selectedProjectId || ''}
+                    onSelectProject={(projId) => handleSelectProject(projId)}
+                    scopes={scopes}
+                    joints={joints}
+                    dailyLogs={crossData.dailyLogs}
                     user={user}
-                    onToast={onReload}
                 />
             )}
 
+            {/* PROJECT MILESTONE: LANGSUNG RENDER TANPA DIBLOKIR STATUS PROYEK */}
+            {currentSection === 'pm_milestone' && (
+                <div>
+                    {activeProject && !isPmOversight && (
+                        <div
+                            className="pcm-crumbs mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 bg-white border"
+                            style={{ borderRadius: 'var(--pcm-radius-card)', boxShadow: 'var(--pcm-elev-1)', borderColor: 'var(--pcm-line-soft)' }}
+                        >
+                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                                <span className="pcm-chip pcm-chip--primary pcm-code">
+                                    JOB: {activeProject.job_no || '-'}
+                                </span>
+                                <span className="fw-bold text-dark">{activeProject.name}</span>
+                                <span className="pcm-chip pcm-chip--neutral">
+                                    <IconBuilding size="sm" />
+                                    <span>{activeProject.client || 'Client Umum'}</span>
+                                </span>
+                            </div>
+
+                            <div className="d-flex align-items-center gap-2">
+                                <span className="text-muted small fw-semibold text-nowrap">Pindah Proyek:</span>
+                                <PcmSelect
+                                    searchable={false}
+                                    clearable={false}
+                                    value={activeProject.id}
+                                    onChange={(e) => handleSelectProject(e.target.value)}
+                                >
+                                    {projects.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.job_no ? `[${p.job_no}] ` : ''}{p.name}
+                                        </option>
+                                    ))}
+                                </PcmSelect>
+                            </div>
+                        </div>
+                    )}
+                    <MilestoneSection
+                        project={activeProject || enrichedProjects[0] || projects[0] || null}
+                        projects={enrichedProjects}
+                        drawings={projectDrawings}
+                        joints={projectJoints}
+                        materialInspections={crossData.materialInspections}
+                        inspections={crossData.inspections}
+                        testPackages={crossData.testPackages}
+                        user={user}
+                        onToast={onReload}
+                    />
+                </div>
+            )}
+
             {/* ============================================================
-                VIEW B: KONTEN DI DALAM PROYEK AKTIF (KONTRAK & BOQ, S-CURVE, DLL)
+                VIEW B: KONTEN DI DALAM PROYEK AKTIF (S-CURVE, BUDGET, DLL)
                 ============================================================ */}
-            {currentSection !== 'pm_projects' && !(currentSection === 'pm_milestone' && isPmOversight) && activeProject && (
+            {currentSection !== 'pm_projects' && currentSection !== 'pm_milestone' && currentSection !== 'pm_scurve' && activeProject && (
                 <div>
                     {/* BREADCRUMB & PROJECT CONTEXT BAR */}
                     <div
@@ -541,25 +587,6 @@ export function ProjectManagerTab({
                     </div>
 
                     {/* SUB-MODUL KONTEN PROYEK (LAYOUT IDENTIK DENGAN NILAI TERISOLASI) */}
-                    {currentSection === 'schedule' && (
-                        <BoqContractSection
-                            project={activeProject}
-                            scopes={projectScopes}
-                            engBoqs={projectEngBoqs}
-                            joints={projectJoints}
-                            user={user}
-                            onReload={onReload}
-                        />
-                    )}
-                    {currentSection === 'pm_scurve' && (
-                        <SCurveSection
-                            project={activeProject}
-                            scopes={projectScopes}
-                            joints={projectJoints}
-                            dailyLogs={projectDailyLogs}
-                            user={user}
-                        />
-                    )}
                     {currentSection === 'pm_budget' && (
                         <BudgetCostSection
                             project={activeProject}
@@ -593,7 +620,7 @@ export function ProjectManagerTab({
                         />
                     )}
                     {currentSection === 'report' && (
-                        <ExecutiveReportSection
+                        <ProjectReportSection
                             project={activeProject}
                             overview={overview}
                             joints={projectJoints}

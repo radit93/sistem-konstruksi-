@@ -12,7 +12,7 @@ export const OPERATIONAL_MENU_IDS = [
     'bom',
     'material_standard',
     'document_control',
-    'schedule',
+    'pm_projects',
     'pm_scurve',
     'pm_budget',
     'pm_daily',
@@ -47,7 +47,7 @@ export const OPERATIONAL_MENU_IDS = [
 // Modul yang dimiliki tiap departemen.
 export const DEPARTMENT_MENUS = {
     PMO: [
-        'schedule',
+        'pm_projects',
         'pm_scurve',
         'pm_budget',
         'pm_daily',
@@ -311,15 +311,8 @@ export const ROLE_SIDEBAR_MENUS = [
         desc: 'Daftar Proyek Kontrak & Pemilihan Job Aktif'
     },
     {
-        id: 'schedule',
-        label: 'Kontrak & BOQ',
-        perm: 'scope.view',
-        group: 'Project Management',
-        desc: '18 Scopes Kontrak Piping & Target Volume'
-    },
-    {
         id: 'pm_scurve',
-        label: 'S-Curve & Schedule',
+        label: 'Grafik',
         perm: 'scope.view',
         group: 'Project Management',
         desc: 'Kurva S Mingguan & Deviasi Jadwal'
@@ -347,7 +340,7 @@ export const ROLE_SIDEBAR_MENUS = [
     },
     {
         id: 'report',
-        label: 'Laporan Eksekutif',
+        label: 'Laporan',
         perm: 'report.view',
         group: 'Project Management',
         desc: 'Export CSV & Lembar Pengesahan'
@@ -504,7 +497,7 @@ export function Sidebar({
         // lalu Administrasi dan Pengawasan Departemen (Read-Only) di bawahnya.
         const pmOrder = [
             'overview',
-            'pm_projects', 'schedule', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report',
+            'pm_projects', 'pm_scurve', 'pm_budget', 'pm_daily', 'pm_milestone', 'report',
             'project', 'users', 'roles', 'access',
         ];
         const pmMenus = pmOrder
